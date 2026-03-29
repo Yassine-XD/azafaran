@@ -1,0 +1,258 @@
+import { pool } from "../config/database";
+import type { ListProductsInput } from "../validators/product.schema";
+
+export interface ProductRow {
+  id: string;
+  category_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  short_desc: string | null;
+  price_per_kg: string;
+  unit_type: "kg" | "unit" | "pack";
+  halal_cert_id: string | null;
+  halal_cert_body: string | null;
+  images: any[];
+  tags: string[];
+  is_active: boolean;
+  is_featured: boolean;
+  sort_order: number;
+  created_at: Date;
+  updated_at: Date;
+  // Joined fields
+  category_name?: string;
+  category_slug?: string;
+}
+
+export interface VariantRow {
+  id: string;
+  product_id: string;
+  label: string;
+  weight_grams: number;
+  price: string;
+  stock_qty: number;
+  sku: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ProductWithVariants extends ProductRow {
+  variants: VariantRow[];
+  category_name: string;
+  category_slug: string;
+}
+
+export const productRepository = {
+  async findAll(
+    input: ListProductsInput,
+  ): Promise<{ rows: ProductRow[]; total: number }> {
+    const conditions: string[] = ["p.is_active = true"];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (input.category) {
+      conditions.push(`c.slug = $${idx++}`);
+      values.push(input.category);
+    }
+
+    if (input.in_stock) {
+      conditions.push(
+        `EXISTS (
+          SELECT 1 FROM product_variants v
+          WHERE v.product_id = p.id AND v.stock_qty > 0 AND v.is_active = true
+        )`,
+      );
+    }
+
+    if (input.search) {
+      conditions.push(`(p.name ILIKE $${idx} OR p.description ILIKE $${idx})`);
+      values.push(`%${input.search}%`);
+      idx++;
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    // Sort column mapping
+    const sortMap: Record<string, string> = {
+      price: "p.price_per_kg",
+      popularity: "p.sort_order",
+      date: "p.created_at",
+      name: "p.name",
+    };
+    const sortCol = sortMap[input.sort] || "p.created_at";
+    const sortDir = input.order.toUpperCase();
+
+    const offset = (input.page - 1) * input.limit;
+
+    // Count query
+    const countRes = await pool.query(
+      `SELECT COUNT(*) FROM products p
+       JOIN categories c ON c.id = p.category_id
+       ${where}`,
+      values,
+    );
+    const total = parseInt(countRes.rows[0].count, 10);
+
+    // Data query
+    const dataValues = [...values, input.limit, offset];
+    const { rows } = await pool.query(
+      `SELECT
+         p.*,
+         c.name AS category_name,
+         c.slug AS category_slug
+       FROM products p
+       JOIN categories c ON c.id = p.category_id
+       ${where}
+       ORDER BY ${sortCol} ${sortDir}
+       LIMIT $${idx} OFFSET $${idx + 1}`,
+      dataValues,
+    );
+
+    return { rows, total };
+  },
+
+  async findById(id: string): Promise<ProductWithVariants | null> {
+    // Fetch product
+    const { rows: productRows } = await pool.query(
+      `SELECT
+         p.*,
+         c.name AS category_name,
+         c.slug AS category_slug
+       FROM products p
+       JOIN categories c ON c.id = p.category_id
+       WHERE p.id = $1 AND p.is_active = true`,
+      [id],
+    );
+
+    if (!productRows[0]) return null;
+
+    // Fetch variants
+    const { rows: variantRows } = await pool.query(
+      `SELECT * FROM product_variants
+       WHERE product_id = $1 AND is_active = true
+       ORDER BY sort_order ASC, weight_grams ASC`,
+      [id],
+    );
+
+    return { ...productRows[0], variants: variantRows };
+  },
+
+  async findBySlug(slug: string): Promise<ProductWithVariants | null> {
+    const { rows } = await pool.query(
+      "SELECT id FROM products WHERE slug = $1 AND is_active = true",
+      [slug],
+    );
+    if (!rows[0]) return null;
+    return productRepository.findById(rows[0].id);
+  },
+
+  async findFeatured(): Promise<ProductRow[]> {
+    const { rows } = await pool.query(
+      `SELECT
+         p.*,
+         c.name AS category_name,
+         c.slug AS category_slug
+       FROM products p
+       JOIN categories c ON c.id = p.category_id
+       WHERE p.is_active = true AND p.is_featured = true
+       ORDER BY p.sort_order ASC
+       LIMIT 10`,
+    );
+    return rows;
+  },
+
+  async findBestsellers(): Promise<ProductRow[]> {
+    // Products with most order_items
+    const { rows } = await pool.query(
+      `SELECT
+         p.*,
+         c.name AS category_name,
+         c.slug AS category_slug,
+         COUNT(oi.id) AS order_count
+       FROM products p
+       JOIN categories c ON c.id = p.category_id
+       LEFT JOIN product_variants pv ON pv.product_id = p.id
+       LEFT JOIN order_items oi ON oi.variant_id = pv.id
+       WHERE p.is_active = true
+       GROUP BY p.id, c.name, c.slug
+       ORDER BY order_count DESC
+       LIMIT 10`,
+    );
+    return rows;
+  },
+
+  async findByCategory(
+    categorySlug: string,
+    page: number,
+    limit: number,
+  ): Promise<{ rows: ProductRow[]; total: number }> {
+    return productRepository.findAll({
+      category: categorySlug,
+      page,
+      limit,
+      sort: "date",
+      order: "desc",
+    });
+  },
+
+  async findVariantById(variantId: string): Promise<VariantRow | null> {
+    const { rows } = await pool.query(
+      "SELECT * FROM product_variants WHERE id = $1 AND is_active = true",
+      [variantId],
+    );
+    return rows[0] || null;
+  },
+
+  async findVariantsByProductId(productId: string): Promise<VariantRow[]> {
+    const { rows } = await pool.query(
+      `SELECT * FROM product_variants
+       WHERE product_id = $1 AND is_active = true
+       ORDER BY sort_order ASC, weight_grams ASC`,
+      [productId],
+    );
+    return rows;
+  },
+
+  async searchProducts(query: string, limit = 10): Promise<ProductRow[]> {
+    const { rows } = await pool.query(
+      `SELECT
+         p.*,
+         c.name AS category_name,
+         c.slug AS category_slug,
+         ts_rank(
+           to_tsvector('spanish', p.name || ' ' || COALESCE(p.description, '')),
+           plainto_tsquery('spanish', $1)
+         ) AS rank
+       FROM products p
+       JOIN categories c ON c.id = p.category_id
+       WHERE p.is_active = true
+         AND to_tsvector('spanish', p.name || ' ' || COALESCE(p.description, ''))
+             @@ plainto_tsquery('spanish', $1)
+       ORDER BY rank DESC
+       LIMIT $2`,
+      [query, limit],
+    );
+
+    // Fallback to ILIKE if FTS returns nothing
+    if (rows.length === 0) {
+      const { rows: fallback } = await pool.query(
+        `SELECT
+           p.*,
+           c.name AS category_name,
+           c.slug AS category_slug
+         FROM products p
+         JOIN categories c ON c.id = p.category_id
+         WHERE p.is_active = true
+           AND (p.name ILIKE $1 OR p.description ILIKE $1)
+         ORDER BY p.sort_order ASC
+         LIMIT $2`,
+        [`%${query}%`, limit],
+      );
+      return fallback;
+    }
+
+    return rows;
+  },
+};

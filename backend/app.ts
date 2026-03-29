@@ -1,0 +1,55 @@
+import express from "express";
+import helmet from "helmet";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+import { corsOptions } from "./src/config/cors";
+import { errorHandler } from "./src/middleware/errorHandler";
+import { notFound } from "./src/middleware/notFound";
+import routes from "./src/routes/index";
+import { logger } from "./src/utils/logger";
+import { env } from "./src/config/env";
+
+const app = express();
+
+// ─── Security middleware ─────────────────────────────
+app.use(helmet());
+app.use(corsOptions);
+
+// ─── Global rate limiter ─────────────────────────────
+// Auth routes have their own stricter limiter
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 300, // 300 requests per 15min per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      success: false,
+      error: { message: "Demasiadas peticiones", code: "RATE_LIMITED" },
+    },
+  }),
+);
+
+// ─── Body parsers ────────────────────────────────────
+// NOTE: Stripe webhook needs raw body — must be BEFORE json parser
+// That's handled in payment.routes.ts with express.raw()
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+// ─── Request logging ─────────────────────────────────
+if (env.NODE_ENV !== "test") {
+  app.use(
+    morgan("combined", {
+      stream: { write: (message) => logger.info(message.trim()) },
+    }),
+  );
+}
+
+// ─── API Routes ──────────────────────────────────────
+app.use("/api/v1", routes);
+
+// ─── Error handling (must be last) ───────────────────
+app.use(notFound);
+app.use(errorHandler);
+
+export default app;
