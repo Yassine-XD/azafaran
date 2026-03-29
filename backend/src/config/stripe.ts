@@ -1,12 +1,8 @@
 /**
  * Stripe Configuration
+ * TODO: Install stripe package (npm i stripe @types/stripe) when ready to enable payments
  */
 
-import Stripe from "stripe";
-import env from "./env";
-
-const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-});
-
+// Placeholder until stripe is installed
+const stripe: any = null;
 export default stripe;

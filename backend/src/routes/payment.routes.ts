@@ -1,11 +1,6 @@
-/**
- * Payment Routes
- */
-
 import { Router } from "express";
-import paymentController from "../controllers/payment.controller";
+import { paymentController } from "../controllers/payment.controller";
 import { authenticate } from "../middleware/authenticate";
-import { validate } from "../middleware/validate";
 import { stripeWebhookLimiter } from "../config/rateLimit";
 
 const router = Router();

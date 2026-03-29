@@ -2,12 +2,12 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
-import { corsOptions } from "./src/config/cors";
-import { errorHandler } from "./src/middleware/errorHandler";
-import { notFound } from "./src/middleware/notFound";
-import routes from "./src/routes/index";
-import { logger } from "./src/utils/logger";
-import { env } from "./src/config/env";
+import { corsOptions } from "./config/cors";
+import { errorHandler } from "./middleware/errorHandler";
+import { notFound } from "./middleware/notFound";
+import routes from "./routes/index";
+import { logger } from "./utils/logger";
+import { env } from "./config/env";
 
 const app = express();
 

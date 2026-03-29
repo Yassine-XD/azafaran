@@ -1,32 +1,35 @@
-/**
- * Promotion Routes
- */
-
 import { Router } from "express";
-import promotionController from "../controllers/promotion.controller";
+import { promotionController } from "../controllers/promotion.controller";
 import { authenticate } from "../middleware/authenticate";
-import { validate } from "../middleware/validate";
-import { promotionSchema } from "../validators/promotion.schema";
+import { requireAdmin } from "../middleware/requireAdmin";
+import { validateBody } from "../middleware/validate";
+import {
+  createPromotionSchema,
+  updatePromotionSchema,
+} from "../validators/promotion.schema";
 
 const router = Router();
 
+// Public
 router.get("/", promotionController.getAll);
 router.get("/:id", promotionController.getById);
 router.get("/validate/:code", promotionController.validateCode);
 
-// Admin operations require authentication and admin role
+// Admin operations
 router.post(
   "/",
   authenticate,
-  validate(promotionSchema.create),
+  requireAdmin,
+  validateBody(createPromotionSchema),
   promotionController.create,
 );
 router.put(
   "/:id",
   authenticate,
-  validate(promotionSchema.update),
+  requireAdmin,
+  validateBody(updatePromotionSchema),
   promotionController.update,
 );
-router.delete("/:id", authenticate, promotionController.delete);
+router.delete("/:id", authenticate, requireAdmin, promotionController.delete);
 
 export default router;

@@ -1,120 +1,186 @@
-import { userRepository } from '../repositories/user.repository'
-import { hashPassword, comparePassword } from '../utils/hash'
-import {
-  signAccessToken,
-  generateRefreshToken,
-  hashRefreshToken,
-  getRefreshTokenExpiry,
-} from '../utils/jwt'
-import type { RegisterInput, LoginInput } from '../validators/auth.schema'
+/**
+ * Admin Service — dashboard, user management, order management, analytics
+ */
 
-function createAppError(message: string, statusCode: number, code: string) {
-  const err: any = new Error(message)
-  err.statusCode = statusCode
-  err.code = code
-  return err
+import { pool } from "../config/database";
+import { orderRepository } from "../repositories/order.repository";
+import { logger } from "../utils/logger";
+
+function appError(message: string, statusCode: number, code: string) {
+  const err: any = new Error(message);
+  err.statusCode = statusCode;
+  err.code = code;
+  return err;
 }
 
-export const authService = {
-  async register(input: RegisterInput, deviceInfo?: object) {
-    // Check duplicate email
-    const existing = await userRepository.findByEmail(input.email)
-    if (existing) {
-      throw createAppError('El email ya está registrado', 409, 'EMAIL_EXISTS')
-    }
-
-    // Hash password
-    const password_hash = await hashPassword(input.password)
-
-    // Create user
-    const user = await userRepository.create({
-      first_name: input.first_name,
-      last_name: input.last_name,
-      email: input.email,
-      password_hash,
-      phone: input.phone,
-    })
-
-    // Generate tokens
-    return authService._issueTokens(user, deviceInfo)
-  },
-
-  async login(input: LoginInput, deviceInfo?: object) {
-    const user = await userRepository.findByEmail(input.email)
-
-    // Generic error — never reveal if email exists
-    if (!user) {
-      throw createAppError('Credenciales incorrectas', 401, 'INVALID_CREDENTIALS')
-    }
-
-    const valid = await comparePassword(input.password, user.password_hash)
-    if (!valid) {
-      throw createAppError('Credenciales incorrectas', 401, 'INVALID_CREDENTIALS')
-    }
-
-    return authService._issueTokens(user, deviceInfo)
-  },
-
-  async refresh(rawRefreshToken: string, deviceInfo?: object) {
-    const tokenHash = hashRefreshToken(rawRefreshToken)
-    const stored = await userRepository.findRefreshToken(tokenHash)
-
-    if (!stored) {
-      // Token not found or expired
-      // Could be reuse attack — if you want, revoke all tokens for this user here
-      throw createAppError('Token inválido o expirado', 401, 'INVALID_REFRESH_TOKEN')
-    }
-
-    // Rotate — delete old token
-    await userRepository.deleteRefreshToken(tokenHash)
-
-    // Fetch user
-    const user = await userRepository.findById(stored.user_id)
-    if (!user) {
-      throw createAppError('Usuario no encontrado', 401, 'USER_NOT_FOUND')
-    }
-
-    // Issue new tokens
-    return authService._issueTokens(user, deviceInfo)
-  },
-
-  async logout(rawRefreshToken: string) {
-    const tokenHash = hashRefreshToken(rawRefreshToken)
-    await userRepository.deleteRefreshToken(tokenHash)
-  },
-
-  async logoutAll(userId: string) {
-    await userRepository.deleteAllRefreshTokens(userId)
-  },
-
-  // Internal helper — issues both tokens, saves refresh to DB
-  async _issueTokens(user: any, deviceInfo?: object) {
-    const accessToken = signAccessToken({
-      sub: user.id,
-      role: user.role,
-      email: user.email,
-    })
-
-    const rawRefreshToken = generateRefreshToken()
-    const tokenHash = hashRefreshToken(rawRefreshToken)
-
-    await userRepository.saveRefreshToken({
-      userId: user.id,
-      tokenHash,
-      deviceInfo,
-      expiresAt: getRefreshTokenExpiry(),
-    })
+export const adminService = {
+  async getDashboard() {
+    const [usersCount, ordersToday, revenue] = await Promise.all([
+      pool.query("SELECT COUNT(*) FROM users WHERE is_active = true"),
+      pool.query(
+        "SELECT COUNT(*) FROM orders WHERE created_at >= CURRENT_DATE",
+      ),
+      pool.query(
+        "SELECT COALESCE(SUM(total::numeric), 0) AS revenue FROM orders WHERE status = 'delivered'",
+      ),
+    ]);
 
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        role: user.role,
-      },
-      accessToken,
-      refreshToken: rawRefreshToken,
-    }
+      total_users: parseInt(usersCount.rows[0].count, 10),
+      orders_today: parseInt(ordersToday.rows[0].count, 10),
+      total_revenue: parseFloat(revenue.rows[0].revenue),
+    };
   },
-}
+
+  async getAllUsers(filters: {
+    page: number;
+    limit: number;
+    search?: string;
+  }) {
+    const { page, limit, search } = filters;
+    const offset = (page - 1) * limit;
+    const conditions: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (search) {
+      conditions.push(
+        `(first_name ILIKE $${idx} OR last_name ILIKE $${idx} OR email ILIKE $${idx})`,
+      );
+      values.push(`%${search}%`);
+      idx++;
+    }
+
+    const where = conditions.length
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
+
+    const countRes = await pool.query(
+      `SELECT COUNT(*) FROM users ${where}`,
+      values,
+    );
+    const total = parseInt(countRes.rows[0].count, 10);
+
+    const { rows } = await pool.query(
+      `SELECT id, email, first_name, last_name, phone, role, is_active, created_at
+       FROM users ${where}
+       ORDER BY created_at DESC
+       LIMIT $${idx} OFFSET $${idx + 1}`,
+      [...values, limit, offset],
+    );
+
+    return {
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  },
+
+  async getAllOrders(filters: {
+    page: number;
+    limit: number;
+    status?: string;
+    userId?: string;
+  }) {
+    const { page, limit, status, userId } = filters;
+    const offset = (page - 1) * limit;
+    const conditions: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (status) {
+      conditions.push(`status = $${idx++}`);
+      values.push(status);
+    }
+    if (userId) {
+      conditions.push(`user_id = $${idx++}`);
+      values.push(userId);
+    }
+
+    const where = conditions.length
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
+
+    const countRes = await pool.query(
+      `SELECT COUNT(*) FROM orders ${where}`,
+      values,
+    );
+    const total = parseInt(countRes.rows[0].count, 10);
+
+    const { rows } = await pool.query(
+      `SELECT * FROM orders ${where}
+       ORDER BY created_at DESC
+       LIMIT $${idx} OFFSET $${idx + 1}`,
+      [...values, limit, offset],
+    );
+
+    return {
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  },
+
+  async updateOrderStatus(orderId: string, status: string) {
+    const order = await orderRepository.updateStatus(orderId, status);
+    if (!order)
+      throw appError("Pedido no encontrado", 404, "ORDER_NOT_FOUND");
+    logger.info(`Order ${orderId} status updated to ${status}`);
+    return order;
+  },
+
+  async getAnalytics(startDate?: string, endDate?: string) {
+    const start = startDate || new Date(Date.now() - 30 * 86400000).toISOString();
+    const end = endDate || new Date().toISOString();
+
+    const { rows } = await pool.query(
+      `SELECT
+         DATE(created_at) AS date,
+         COUNT(*) AS order_count,
+         SUM(total::numeric) AS daily_revenue
+       FROM orders
+       WHERE created_at >= $1 AND created_at <= $2
+         AND status NOT IN ('cancelled', 'refunded')
+       GROUP BY DATE(created_at)
+       ORDER BY date ASC`,
+      [start, end],
+    );
+
+    return rows;
+  },
+
+  async getReports(type: string) {
+    if (type === "sales") {
+      const { rows } = await pool.query(
+        `SELECT
+           DATE_TRUNC('month', created_at) AS month,
+           COUNT(*) AS orders,
+           SUM(total::numeric) AS revenue
+         FROM orders
+         WHERE status = 'delivered'
+         GROUP BY month
+         ORDER BY month DESC
+         LIMIT 12`,
+      );
+      return rows;
+    }
+
+    return [];
+  },
+
+  async sendBroadcastNotification(
+    _message: string,
+    _title: string,
+    _targetUsers?: string[],
+  ) {
+    logger.info("Broadcast notification — not yet implemented");
+  },
+};

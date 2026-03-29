@@ -1,5 +1,5 @@
 import request from "supertest";
-import app from "../../app";
+import app from "../app";
 import { pool } from "../config/database";
 
 // We need a product + variant in DB to test against

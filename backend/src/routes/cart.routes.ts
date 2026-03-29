@@ -1,18 +1,16 @@
 import { Router } from "express";
 import { cartController } from "../controllers/cart.controller";
 import { authenticate } from "../middleware/authenticate";
-import { validateBody, validateParams } from "../middleware/validate";
+import { validateBody } from "../middleware/validate";
 import {
   addToCartSchema,
   updateCartItemSchema,
   applyPromoSchema,
-  cartItemIdSchema,
 } from "../validators/cart.schema";
 
 const router = Router();
 router.use(authenticate);
 
-router.get("/", validateBody(applyPromoSchema), cartController.getCart);
 router.get("/", cartController.getCart);
 router.post("/items", validateBody(addToCartSchema), cartController.addItem);
 router.put(
@@ -28,6 +26,5 @@ router.post(
   validateBody(applyPromoSchema),
   cartController.applyPromo,
 );
-router.delete("/promo", cartController.clearCart);
 
 export default router;

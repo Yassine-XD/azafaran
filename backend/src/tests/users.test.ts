@@ -1,5 +1,5 @@
 import request from 'supertest'
-import app from '../../app'
+import app from '../app'
 import { pool } from '../config/database.js'
 
 let accessToken : string

@@ -1,9 +1,5 @@
-/**
- * Admin Routes
- */
-
 import { Router } from "express";
-import adminController from "../controllers/admin.controller";
+import { adminController } from "../controllers/admin.controller";
 import { authenticate } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/requireAdmin";
 

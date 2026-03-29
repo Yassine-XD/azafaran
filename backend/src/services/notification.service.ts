@@ -2,68 +2,61 @@
  * Notification Service
  */
 
+import { pool } from "../config/database";
+import { v4 as uuidv4 } from "uuid";
 import { AppError } from "../types/api";
-import notificationRepository from "../repositories/notification.repository";
-import logger from "../utils/logger";
+import { logger } from "../utils/logger";
 
-class NotificationService {
-  async getUserNotifications(userId: string, filters: any) {
-    const { page = 1, limit = 20 } = filters;
-    const skip = (page - 1) * limit;
+export const notificationService = {
+  async getUserNotifications(userId: string, filters: { page: number; limit: number }) {
+    const { page, limit } = filters;
+    const offset = (page - 1) * limit;
 
-    const [notifications, total] = await Promise.all([
-      notificationRepository.find({ user_id: userId }, skip, limit),
-      notificationRepository.count({ user_id: userId }),
+    const [dataRes, countRes] = await Promise.all([
+      pool.query(
+        `SELECT * FROM notification_log
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [userId, limit, offset],
+      ),
+      pool.query(
+        "SELECT COUNT(*) FROM notification_log WHERE user_id = $1",
+        [userId],
+      ),
     ]);
 
+    const total = parseInt(countRes.rows[0].count, 10);
+
     return {
-      data: notifications,
+      data: dataRes.rows,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     };
-  }
-
-  async getNotificationById(id: string) {
-    const notification = await notificationRepository.findById(id);
-    if (!notification) {
-      throw new AppError("Notification not found", 404);
-    }
-    return notification;
-  }
+  },
 
   async markAsRead(id: string) {
-    const result = await notificationRepository.update(id, { read: true });
-    if (!result) {
-      throw new AppError("Notification not found", 404);
-    }
+    const { rowCount } = await pool.query(
+      "UPDATE notification_log SET read = true WHERE id = $1",
+      [id],
+    );
+    if (!rowCount) throw new AppError("Notificación no encontrada", 404, "NOTIFICATION_NOT_FOUND");
     logger.info(`Notification marked as read: ${id}`);
-  }
+  },
 
   async markAllAsRead(userId: string) {
-    await notificationRepository.updateMany(
-      { user_id: userId },
-      { read: true },
+    await pool.query(
+      "UPDATE notification_log SET read = true WHERE user_id = $1",
+      [userId],
     );
     logger.info(`All notifications marked as read for user ${userId}`);
-  }
+  },
 
-  async deleteNotification(id: string) {
-    const result = await notificationRepository.delete(id);
-    if (!result) {
-      throw new AppError("Notification not found", 404);
-    }
-    logger.info(`Notification deleted: ${id}`);
-  }
-
-  async sendNotification(userId: string, data: any) {
-    const notification = await notificationRepository.create({
-      user_id: userId,
-      ...data,
-      read: false,
-      created_at: new Date(),
-    });
+  async sendNotification(userId: string, data: { title: string; message: string; type: string }) {
+    await pool.query(
+      `INSERT INTO notification_log (id, user_id, title, message, type, read, created_at)
+       VALUES ($1, $2, $3, $4, $5, false, NOW())`,
+      [uuidv4(), userId, data.title, data.message, data.type],
+    );
     logger.info(`Notification sent to user ${userId}`);
-    return notification;
-  }
-}
-
-export default new NotificationService();
+  },
+};

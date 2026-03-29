@@ -1,7 +1,7 @@
 import "dotenv/config"; // Load .env FIRST before anything else
-import { connectDatabase, pool } from "./src/config/database";
-import { env } from "./src/config/env";
-import { logger } from "./src/utils/logger";
+import { connectDatabase, pool } from "./config/database";
+import { env } from "./config/env";
+import { logger } from "./utils/logger";
 import app from "./app";
 
 const PORT = parseInt(env.PORT, 10);

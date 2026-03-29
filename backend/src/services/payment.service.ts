@@ -4,13 +4,14 @@
 
 import { AppError } from "../types/api";
 import stripe from "../config/stripe";
-import orderRepository from "../repositories/order.repository";
-import notificationService from "./notification.service";
-import logger from "../utils/logger";
+import { orderRepository } from "../repositories/order.repository";
+import { notificationService } from "./notification.service";
+import { logger } from "../utils/logger";
+import { env } from "../config/env";
 
-class PaymentService {
-  async createPaymentIntent(userId: string, data: any) {
-    const { amount, orderId, currency = "USD" } = data;
+export const paymentService = {
+  async createPaymentIntent(userId: string, data: { amount: number; orderId: string; currency?: string }) {
+    const { amount, orderId, currency = "EUR" } = data;
 
     try {
       const paymentIntent = await stripe.paymentIntents.create({
@@ -25,17 +26,15 @@ class PaymentService {
       };
     } catch (error) {
       logger.error("Stripe error:", error);
-      throw new AppError("Payment processing failed", 400);
+      throw new AppError("Error al procesar el pago", 400, "PAYMENT_FAILED");
     }
-  }
+  },
 
   async getPaymentStatus(orderId: string) {
     const order = await orderRepository.findById(orderId);
-    if (!order) {
-      throw new AppError("Order not found", 404);
-    }
+    if (!order) throw new AppError("Pedido no encontrado", 404, "ORDER_NOT_FOUND");
     return { status: order.payment_status };
-  }
+  },
 
   async refund(userId: string, paymentIntentId: string, reason: string) {
     try {
@@ -48,53 +47,51 @@ class PaymentService {
       return { refundId: refund.id, status: refund.status };
     } catch (error) {
       logger.error("Refund error:", error);
-      throw new AppError("Refund processing failed", 400);
+      throw new AppError("Error al procesar el reembolso", 400, "REFUND_FAILED");
     }
-  }
+  },
 
   async handleStripeWebhook(body: any, signature: string) {
     try {
       const event = stripe.webhooks.constructEvent(
         body,
         signature,
-        process.env.STRIPE_WEBHOOK_SECRET!,
+        env.STRIPE_WEBHOOK_SECRET || "",
       );
 
       switch (event.type) {
         case "payment_intent.succeeded":
-          await this.handlePaymentSuccess(event.data.object as any);
+          await paymentService._handlePaymentSuccess(event.data.object as any);
           break;
         case "payment_intent.payment_failed":
-          await this.handlePaymentFailure(event.data.object as any);
+          await paymentService._handlePaymentFailure(event.data.object as any);
           break;
       }
 
       return { received: true };
     } catch (error) {
       logger.error("Webhook error:", error);
-      throw new AppError("Webhook processing failed", 400);
+      throw new AppError("Error al procesar webhook", 400, "WEBHOOK_FAILED");
     }
-  }
+  },
 
-  private async handlePaymentSuccess(paymentIntent: any) {
+  async _handlePaymentSuccess(paymentIntent: any) {
     const { userId, orderId } = paymentIntent.metadata;
-    await orderRepository.update(orderId, { payment_status: "completed" });
+    await orderRepository.updatePaymentStatus(orderId, "completed", paymentIntent.id);
     await notificationService.sendNotification(userId, {
-      title: "Payment Successful",
-      message: "Your payment has been processed successfully",
+      title: "Pago confirmado",
+      message: "Tu pago ha sido procesado correctamente",
       type: "payment",
     });
-  }
+  },
 
-  private async handlePaymentFailure(paymentIntent: any) {
+  async _handlePaymentFailure(paymentIntent: any) {
     const { userId, orderId } = paymentIntent.metadata;
-    await orderRepository.update(orderId, { payment_status: "failed" });
+    await orderRepository.updatePaymentStatus(orderId, "failed");
     await notificationService.sendNotification(userId, {
-      title: "Payment Failed",
-      message: "Your payment could not be processed. Please try again.",
+      title: "Pago fallido",
+      message: "No se ha podido procesar tu pago. Inténtalo de nuevo.",
       type: "payment",
     });
-  }
-}
-
-export default new PaymentService();
+  },
+};

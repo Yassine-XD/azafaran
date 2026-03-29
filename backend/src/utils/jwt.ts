@@ -1,8 +1,9 @@
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
+import { env } from '../config/env'
 
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET!
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!
+const ACCESS_SECRET = env.JWT_ACCESS_SECRET
+const REFRESH_SECRET = env.JWT_REFRESH_SECRET
 const ACCESS_EXPIRES = '15m'
 const REFRESH_EXPIRES_DAYS = 30
 

@@ -2,82 +2,95 @@
  * Promotion Service
  */
 
+import { pool } from "../config/database";
+import { v4 as uuidv4 } from "uuid";
 import { AppError } from "../types/api";
-import promotionRepository from "../repositories/promotion.repository";
-import logger from "../utils/logger";
+import { logger } from "../utils/logger";
 
-class PromotionService {
-  async getAllPromotions(filters: any) {
-    const { page = 1, limit = 20 } = filters;
-    const skip = (page - 1) * limit;
+export const promotionService = {
+  async getAllPromotions(filters: { page: number; limit: number }) {
+    const { page, limit } = filters;
+    const offset = (page - 1) * limit;
 
-    const query = { active: true, expiry_date: { $gte: new Date() } };
-
-    const [promotions, total] = await Promise.all([
-      promotionRepository.find(query, skip, limit),
-      promotionRepository.count(query),
+    const [dataRes, countRes] = await Promise.all([
+      pool.query(
+        `SELECT * FROM promotions
+         WHERE is_active = true
+         ORDER BY created_at DESC
+         LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      ),
+      pool.query("SELECT COUNT(*) FROM promotions WHERE is_active = true"),
     ]);
 
+    const total = parseInt(countRes.rows[0].count, 10);
+
     return {
-      data: promotions,
+      data: dataRes.rows,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     };
-  }
+  },
 
   async getPromotionById(id: string) {
-    const promotion = await promotionRepository.findById(id);
-    if (!promotion) {
-      throw new AppError("Promotion not found", 404);
-    }
-    return promotion;
-  }
+    const { rows } = await pool.query(
+      "SELECT * FROM promotions WHERE id = $1",
+      [id],
+    );
+    if (!rows[0]) throw new AppError("Promoción no encontrada", 404, "PROMOTION_NOT_FOUND");
+    return rows[0];
+  },
 
-  async validatePromoCode(code: string, userId?: string) {
-    const promotion = await promotionRepository.findByCode(code);
-    if (!promotion || !promotion.active) {
-      throw new AppError("Invalid promo code", 400);
-    }
+  async validatePromoCode(code: string, _userId?: string) {
+    const { rows } = await pool.query(
+      `SELECT * FROM promo_codes
+       WHERE code = $1 AND is_active = true
+       AND (expires_at IS NULL OR expires_at > NOW())`,
+      [code.toUpperCase()],
+    );
 
-    if (promotion.expiry_date < new Date()) {
-      throw new AppError("Promo code expired", 400);
-    }
-
-    if (
-      promotion.usage_limit &&
-      promotion.usage_count >= promotion.usage_limit
-    ) {
-      throw new AppError("Promo code usage limit reached", 400);
-    }
-
-    return {
-      discount_type: promotion.discount_type,
-      discount_value: promotion.discount_value,
-      min_purchase: promotion.min_purchase,
-    };
-  }
+    if (!rows[0]) throw new AppError("Código promocional inválido", 400, "INVALID_PROMO_CODE");
+    return rows[0];
+  },
 
   async createPromotion(data: any) {
-    const promotion = await promotionRepository.create(data);
-    logger.info(`Promotion created: ${promotion.id}`);
-    return promotion;
-  }
+    const { rows } = await pool.query(
+      `INSERT INTO promotions (id, title, description, discount_type, discount_value, min_purchase, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, true)
+       RETURNING *`,
+      [uuidv4(), data.title, data.description, data.discount_type, data.discount_value, data.min_purchase || 0],
+    );
+    logger.info(`Promotion created: ${rows[0].id}`);
+    return rows[0];
+  },
 
   async updatePromotion(id: string, data: any) {
-    const promotion = await promotionRepository.update(id, data);
-    if (!promotion) {
-      throw new AppError("Promotion not found", 404);
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    for (const [key, value] of Object.entries(data)) {
+      fields.push(`${key} = $${idx++}`);
+      values.push(value);
     }
+
+    if (fields.length === 0) return promotionService.getPromotionById(id);
+
+    values.push(id);
+    const { rows } = await pool.query(
+      `UPDATE promotions SET ${fields.join(", ")} WHERE id = $${idx} RETURNING *`,
+      values,
+    );
+    if (!rows[0]) throw new AppError("Promoción no encontrada", 404, "PROMOTION_NOT_FOUND");
     logger.info(`Promotion updated: ${id}`);
-    return promotion;
-  }
+    return rows[0];
+  },
 
   async deletePromotion(id: string) {
-    const result = await promotionRepository.delete(id);
-    if (!result) {
-      throw new AppError("Promotion not found", 404);
-    }
+    const { rowCount } = await pool.query(
+      "UPDATE promotions SET is_active = false WHERE id = $1",
+      [id],
+    );
+    if (!rowCount) throw new AppError("Promoción no encontrada", 404, "PROMOTION_NOT_FOUND");
     logger.info(`Promotion deleted: ${id}`);
-  }
-}
-
-export default new PromotionService();
+  },
+};

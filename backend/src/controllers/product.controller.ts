@@ -2,11 +2,10 @@ import { Request, Response } from "express";
 import { productService } from "../services/product.service";
 import { asyncHandler } from "../utils/asyncHandler";
 import { success } from "../utils/apiResponse";
+import { listProductsSchema } from "../validators/product.schema";
 
 export const productController = {
   getAll: asyncHandler(async (req: Request, res: Response) => {
-    // Zod validates + coerces query params
-    const { listProductsSchema } = await import("../validators/product.schema");
     const input = listProductsSchema.parse(req.query);
     const result = await productService.getAll(input);
     return success(res, result.products, 200, result.meta);

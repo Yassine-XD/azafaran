@@ -1,46 +1,29 @@
-/**
- * Notification Controller
- */
-
 import { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
-import { ApiResponse } from "../utils/apiResponse";
-import notificationService from "../services/notification.service";
+import { success } from "../utils/apiResponse";
+import { notificationService } from "../services/notification.service";
 
-class NotificationController {
-  getAll = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
-    const { page = 1, limit = 20 } = req.query;
+export const notificationController = {
+  getAll: asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.sub;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
     const result = await notificationService.getUserNotifications(userId, {
-      page: Number(page),
-      limit: Number(limit),
+      page,
+      limit,
     });
-    res.json(new ApiResponse(200, result, "Notifications retrieved"));
-  });
+    return success(res, result.data, 200, result.pagination);
+  }),
 
-  getById = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const notification = await notificationService.getNotificationById(id);
-    res.json(new ApiResponse(200, notification, "Notification retrieved"));
-  });
-
-  markAsRead = asyncHandler(async (req: Request, res: Response) => {
+  markAsRead: asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     await notificationService.markAsRead(id);
-    res.json(new ApiResponse(200, {}, "Notification marked as read"));
-  });
+    return success(res, { message: "Notificación marcada como leída" });
+  }),
 
-  markAllAsRead = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
+  markAllAsRead: asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.sub;
     await notificationService.markAllAsRead(userId);
-    res.json(new ApiResponse(200, {}, "All notifications marked as read"));
-  });
-
-  delete = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    await notificationService.deleteNotification(id);
-    res.json(new ApiResponse(200, {}, "Notification deleted"));
-  });
-}
-
-export default new NotificationController();
+    return success(res, { message: "Todas las notificaciones marcadas como leídas" });
+  }),
+};
