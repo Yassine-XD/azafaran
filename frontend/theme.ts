@@ -55,7 +55,7 @@ export const lightTheme = vars({
   "--popover": "255 255 255",
   "--popover-foreground": "28 25 23",
 
-  "--primary": "234 88 12",
+  "--primary": "102 7 16",
   "--primary-foreground": "255 255 255",
 
   "--secondary": "254 243 199",
@@ -71,9 +71,9 @@ export const lightTheme = vars({
 
   "--border": "245 238 228",
   "--input": "250 248 244",
-  "--ring": "234 88 12",
+  "--ring": "102 7 16",
 
-  "--chart-1": "234 88 12",
+  "--chart-1": "102 7 16",
   "--chart-2": "180 83 9",
   "--chart-3": "120 53 15",
   "--chart-4": "251 191 36",
@@ -81,12 +81,12 @@ export const lightTheme = vars({
 
   "--sidebar": "250 248 244",
   "--sidebar-foreground": "28 25 23",
-  "--sidebar-primary": "234 88 12",
+  "--sidebar-primary": "102 7 16",
   "--sidebar-primary-foreground": "255 255 255",
   "--sidebar-accent": "254 243 199",
   "--sidebar-accent-foreground": "120 53 15",
   "--sidebar-border": "245 238 228",
-  "--sidebar-ring": "234 88 12",
+  "--sidebar-ring": "102 7 16",
 });
 
 export const darkTheme = vars({

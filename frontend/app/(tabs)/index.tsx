@@ -295,7 +295,7 @@ function CategoryProductsSection({ category, router }: { category: Category; rou
             className="w-44 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
           >
             <Image
-              source={{ uri: item.image_url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400" }}
+              source={{ uri: item.images[0].url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400" }}
               className="w-full h-32"
               resizeMode="cover"
             />

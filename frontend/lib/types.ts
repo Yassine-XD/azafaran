@@ -47,6 +47,7 @@ export type ProductVariant = {
 };
 
 export type Product = {
+  images: any;
   id: string;
   category_id: string;
   name: string;
@@ -69,6 +70,7 @@ export type Product = {
 
 // ─── Cart ──────────────────────────────────────────────────
 export type CartItem = {
+  current_price: any;
   id: string;
   cart_id: string;
   variant_id: string;

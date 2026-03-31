@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, ImageBackground } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search } from "lucide-react-native";
+import { ChevronRight, Search } from "lucide-react-native";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
@@ -71,18 +72,30 @@ export default function CategoriesScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
           <TouchableOpacity
-            className="flex-1 bg-card rounded-2xl overflow-hidden shadow-sm border border-border p-5 items-center"
+            className="flex-1 bg-card rounded-2xl overflow-hidden shadow-sm border border-border items-center"
             onPress={() => router.push({ pathname: "/shop", params: { category: item.slug, categoryName: item.name } })}
           >
-            <View className={`w-16 h-16 rounded-full ${CATEGORY_COLORS[index % CATEGORY_COLORS.length]} items-center justify-center mb-3`}>
-              <Text className="text-3xl">{CATEGORY_ICONS[item.slug] || "🥩"}</Text>
-            </View>
-            <Text className="text-foreground font-semibold text-base text-center">{item.name}</Text>
-            {item.description && (
-              <Text className="text-muted-foreground text-xs text-center mt-1" numberOfLines={2}>
-                {item.description}
-              </Text>
-            )}
+            <ImageBackground className="p-5 w-full h-40 justify-end items-center" source={"https://images.unsplash.com/photo-1587593810167-a84920ea0781?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"} resizeMode="cover">
+              
+              <LinearGradient
+        colors={["transparent", "rgba(0, 0, 0, 0.6)", "rgba(0, 0, 0, 0.85)"]}
+        className="absolute bottom-0 left-0 right-0 h-2/3 justify-end p-4"
+      >
+                {/* Frosted Glass Effect Container */}
+                <View className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-3">
+                  <Text className="text-white text-lg font-bold mb-1">{item.name}</Text>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/80 text-xs">
+                      Explore
+                    </Text>
+                    <View className="bg-primary/90 rounded-full p-1.5">
+                      <ChevronRight size={14} className="text-white" />
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+
+            </ImageBackground>
           </TouchableOpacity>
         )}
       />

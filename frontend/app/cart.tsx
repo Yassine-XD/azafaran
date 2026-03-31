@@ -12,7 +12,15 @@ const FREE_DELIVERY_THRESHOLD = 30;
 export default function CartScreen() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const { items, subtotal, itemCount, isLoading, updateItem, removeItem, applyPromo } = useCart();
+  const { items, itemCount, isLoading, updateItem, removeItem, applyPromo } = useCart();
+
+  let subtotal = 0;
+  if(!subtotal) {
+    items.forEach((item)=> {
+      subtotal = (item.quantity * item.current_price);
+    })
+  }
+
   const [promoCode, setPromoCode] = useState("");
   const [applyingPromo, setApplyingPromo] = useState(false);
 
@@ -76,14 +84,14 @@ export default function CartScreen() {
           <View key={item.id} className="mx-4 mt-4 bg-card rounded-xl border border-border p-4">
             <View className="flex-row">
               <Image
-                source={{ uri: item.product_image || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=200" }}
+                source={{ uri: item.product_images[0].url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=200" }}
                 className="w-20 h-20 rounded-xl"
                 resizeMode="cover"
               />
               <View className="flex-1 ml-3">
                 <Text className="text-foreground font-semibold" numberOfLines={2}>{item.product_name}</Text>
                 <Text className="text-muted-foreground text-xs mt-0.5">{item.weight_label}</Text>
-                <Text className="text-primary font-bold mt-1">€{item.price ? Number(item.price).toFixed(2) : "0.00"}</Text>
+                <Text className="text-primary font-bold mt-1">€{item.current_price ? Number(item.current_price).toFixed(2) : "0.00"}</Text>
               </View>
               <TouchableOpacity onPress={() => removeItem(item.id)} className="p-1">
                 <Trash2 size={18} className="text-destructive" />
