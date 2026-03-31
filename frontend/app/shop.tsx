@@ -38,7 +38,12 @@ export default function ShopScreen() {
     // Add the first available variant
     const variant = product.variants?.[0];
     if (variant) {
-      await addItem(variant.id, 1);
+      await addItem(variant.id, 1, {
+        product_name: product.name,
+        product_image: product.image_url,
+        weight_label: variant.weight_label,
+        price: Number(variant.price),
+      });
     }
   };
 
