@@ -1,62 +1,155 @@
-/**
- * Notification Service
- */
-
-import { pool } from "../config/database";
-import { v4 as uuidv4 } from "uuid";
-import { AppError } from "../types/api";
+import { notificationRepository } from "../repositories/notification.repository";
 import { logger } from "../utils/logger";
 
+function appError(message: string, statusCode: number, code: string) {
+  const err: any = new Error(message);
+  err.statusCode = statusCode;
+  err.code = code;
+  return err;
+}
+
+// Event type → user-facing notification text (Spanish)
+const ORDER_EVENT_MESSAGES: Record<string, { title: string; body: string }> = {
+  order_confirmed: {
+    title: "Pedido confirmado",
+    body: "Tu pedido ha sido confirmado y está siendo procesado.",
+  },
+  order_preparing: {
+    title: "Preparando tu pedido",
+    body: "Estamos preparando tu pedido con productos frescos.",
+  },
+  order_shipped: {
+    title: "Pedido en camino",
+    body: "Tu pedido está en camino. ¡Prepárate para recibirlo!",
+  },
+  order_delivered: {
+    title: "Pedido entregado",
+    body: "Tu pedido ha sido entregado. ¡Buen provecho!",
+  },
+  order_cancelled: {
+    title: "Pedido cancelado",
+    body: "Tu pedido ha sido cancelado.",
+  },
+};
+
 export const notificationService = {
-  async getUserNotifications(userId: string, filters: { page: number; limit: number }) {
-    const { page, limit } = filters;
-    const offset = (page - 1) * limit;
+  // ─── Push Token Management ──────────────────────────
 
-    const [dataRes, countRes] = await Promise.all([
-      pool.query(
-        `SELECT * FROM notification_log
-         WHERE user_id = $1
-         ORDER BY created_at DESC
-         LIMIT $2 OFFSET $3`,
-        [userId, limit, offset],
-      ),
-      pool.query(
-        "SELECT COUNT(*) FROM notification_log WHERE user_id = $1",
-        [userId],
-      ),
-    ]);
+  async registerToken(
+    userId: string,
+    token: string,
+    platform: "ios" | "android",
+  ) {
+    return notificationRepository.savePushToken(userId, token, platform);
+  },
 
-    const total = parseInt(countRes.rows[0].count, 10);
+  async unregisterToken(userId: string, token: string) {
+    await notificationRepository.deletePushToken(userId, token);
+  },
 
+  // ─── Notification Preferences ───────────────────────
+
+  async getPreferences(userId: string) {
+    return notificationRepository.findOrCreatePreferences(userId);
+  },
+
+  async updatePreferences(
+    userId: string,
+    data: {
+      order_updates?: boolean;
+      reorder_reminders?: boolean;
+      promotions?: boolean;
+      ai_suggestions?: boolean;
+    },
+  ) {
+    return notificationRepository.updatePreferences(userId, data);
+  },
+
+  // ─── Send Notifications ─────────────────────────────
+
+  async sendOrderNotification(
+    userId: string,
+    eventType: string,
+    orderId: string,
+  ) {
+    const template = ORDER_EVENT_MESSAGES[eventType];
+    if (!template) {
+      logger.warn(`Unknown order event type: ${eventType}`);
+      return;
+    }
+
+    // Get user's push tokens
+    const tokens = await notificationRepository.findActivePushTokens(userId);
+
+    if (tokens.length === 0) {
+      logger.debug(`No active push tokens for user ${userId}`);
+      // Still log the notification
+      await notificationRepository.createLog({
+        userId,
+        orderId,
+        eventType,
+        title: template.title,
+        body: template.body,
+        notifData: { orderId, eventType },
+      });
+      return;
+    }
+
+    // Send to each token via Expo
+    for (const pushToken of tokens) {
+      const logEntry = await notificationRepository.createLog({
+        userId,
+        pushTokenId: pushToken.id,
+        orderId,
+        eventType,
+        title: template.title,
+        body: template.body,
+        notifData: { orderId, eventType },
+      });
+
+      try {
+        // TODO: Replace with actual Expo push when expo-server-sdk is installed
+        // const ticket = await expo.sendPushNotificationsAsync([{
+        //   to: pushToken.token,
+        //   title: template.title,
+        //   body: template.body,
+        //   data: { orderId, eventType },
+        // }]);
+        // await notificationRepository.updateLogStatus(logEntry.id, 'delivered');
+        logger.info(
+          `Push notification queued for user ${userId}: ${eventType}`,
+        );
+      } catch (err) {
+        logger.error(`Failed to send push to ${pushToken.token}:`, err);
+        await notificationRepository.updateLogStatus(
+          logEntry.id,
+          "failed",
+          (err as Error).message,
+        );
+      }
+    }
+  },
+
+  // ─── Notification History ───────────────────────────
+
+  async getNotifications(userId: string, page: number, limit: number) {
+    const { rows, total } = await notificationRepository.findLogsByUserId(
+      userId,
+      page,
+      limit,
+    );
     return {
-      data: dataRes.rows,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      notifications: rows,
+      meta: {
+        total,
+        page,
+        limit,
+        total_pages: Math.ceil(total / limit),
+      },
     };
   },
 
-  async markAsRead(id: string) {
-    const { rowCount } = await pool.query(
-      "UPDATE notification_log SET read = true WHERE id = $1",
-      [id],
-    );
-    if (!rowCount) throw new AppError("Notificación no encontrada", 404, "NOTIFICATION_NOT_FOUND");
-    logger.info(`Notification marked as read: ${id}`);
-  },
-
-  async markAllAsRead(userId: string) {
-    await pool.query(
-      "UPDATE notification_log SET read = true WHERE user_id = $1",
-      [userId],
-    );
-    logger.info(`All notifications marked as read for user ${userId}`);
-  },
-
-  async sendNotification(userId: string, data: { title: string; message: string; type: string }) {
-    await pool.query(
-      `INSERT INTO notification_log (id, user_id, title, message, type, read, created_at)
-       VALUES ($1, $2, $3, $4, $5, false, NOW())`,
-      [uuidv4(), userId, data.title, data.message, data.type],
-    );
-    logger.info(`Notification sent to user ${userId}`);
+  async markOpened(logId: string) {
+    await notificationRepository.markOpened(logId);
   },
 };

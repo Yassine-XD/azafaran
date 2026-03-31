@@ -1,14 +1,15 @@
 import { Router } from "express";
 import authRoutes from "./auth.routes";
-import productRoutes from "./product.routes"; // uncomment as you build
+import productRoutes from "./product.routes";
 import categoryRoutes from "./category.routes";
 import cartRoutes from "./cart.routes";
 import orderRoutes from "./order.routes";
 import userRoutes from "./user.routes";
-// import notificationRoutes from './notification.routes'
-// import promotionRoutes from './promotion.routes'
-// import paymentRoutes from './payment.routes'
-// import adminRoutes from './admin.routes'
+import promotionRoutes from "./promotion.routes";
+import deliverySlotRoutes from "./delivery-slot.routes";
+import notificationRoutes from "./notification.routes";
+import paymentRoutes from "./payment.routes";
+import adminRoutes from "./admin.routes";
 
 const router = Router();
 
@@ -31,9 +32,10 @@ router.use("/categories", categoryRoutes);
 router.use("/cart", cartRoutes);
 router.use("/orders", orderRoutes);
 router.use("/users", userRoutes);
-// router.use('/notifications', notificationRoutes)
-// router.use('/promotions', promotionRoutes)
-// router.use('/payments', paymentRoutes)
-// router.use('/admin', adminRoutes)
+router.use("/promotions", promotionRoutes);
+router.use("/delivery-slots", deliverySlotRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/payments", paymentRoutes);
+router.use("/admin", adminRoutes);
 
 export default router;

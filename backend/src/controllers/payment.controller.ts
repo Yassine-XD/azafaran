@@ -1,36 +1,32 @@
 import { Request, Response } from "express";
+import { paymentService } from "../services/payment.service";
 import { asyncHandler } from "../utils/asyncHandler";
 import { success } from "../utils/apiResponse";
-import { paymentService } from "../services/payment.service";
 
 export const paymentController = {
-  createPaymentIntent: asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.sub;
-    const { amount, orderId, currency } = req.body;
-    const result = await paymentService.createPaymentIntent(userId, {
-      amount,
+  createIntent: asyncHandler(async (req: Request, res: Response) => {
+    const { orderId, amount, currency } = req.body;
+    const result = await paymentService.createPaymentIntent(
+      req.user!.sub,
       orderId,
+      amount,
       currency,
-    });
+    );
     return success(res, result);
   }),
 
-  getPaymentStatus: asyncHandler(async (req: Request, res: Response) => {
-    const { orderId } = req.params;
-    const status = await paymentService.getPaymentStatus(orderId);
-    return success(res, status);
-  }),
-
-  refund: asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.sub;
-    const { paymentIntentId, reason } = req.body;
-    const result = await paymentService.refund(userId, paymentIntentId, reason);
+  getStatus: asyncHandler(async (req: Request, res: Response) => {
+    const result = await paymentService.getPaymentStatus(
+      req.params.orderId,
+      req.user!.sub,
+    );
     return success(res, result);
   }),
 
   handleWebhook: asyncHandler(async (req: Request, res: Response) => {
     const sig = req.headers["stripe-signature"] as string;
-    const result = await paymentService.handleStripeWebhook(req.body, sig);
+    // req.body is raw Buffer thanks to express.raw() middleware on this route
+    const result = await paymentService.handleWebhook(req.body, sig);
     return success(res, result);
   }),
 };

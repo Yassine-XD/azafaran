@@ -1,35 +1,25 @@
 import { Router } from "express";
 import { promotionController } from "../controllers/promotion.controller";
 import { authenticate } from "../middleware/authenticate";
-import { requireAdmin } from "../middleware/requireAdmin";
 import { validateBody } from "../middleware/validate";
-import {
-  createPromotionSchema,
-  updatePromotionSchema,
-} from "../validators/promotion.schema";
+import { z } from "zod";
+
+const validateCodeSchema = z.object({
+  code: z.string().min(1).max(50),
+});
 
 const router = Router();
 
-// Public
-router.get("/", promotionController.getAll);
-router.get("/:id", promotionController.getById);
-router.get("/validate/:code", promotionController.validateCode);
+// Public endpoints
+router.get("/active", promotionController.getActive);
+router.get("/banners", promotionController.getBanners);
 
-// Admin operations
+// Validate promo — optionally authed (userId checked if logged in)
 router.post(
-  "/",
+  "/validate-code",
   authenticate,
-  requireAdmin,
-  validateBody(createPromotionSchema),
-  promotionController.create,
+  validateBody(validateCodeSchema),
+  promotionController.validateCode,
 );
-router.put(
-  "/:id",
-  authenticate,
-  requireAdmin,
-  validateBody(updatePromotionSchema),
-  promotionController.update,
-);
-router.delete("/:id", authenticate, requireAdmin, promotionController.delete);
 
 export default router;

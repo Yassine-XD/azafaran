@@ -3,6 +3,7 @@ import { connectDatabase, pool } from "./config/database";
 import { env } from "./config/env";
 import { logger } from "./utils/logger";
 import app from "./app";
+import { startScheduler } from "./jobs/scheduler";
 
 const PORT = parseInt(env.PORT, 10);
 
@@ -14,7 +15,12 @@ async function startServer() {
     // 2. Connect to database
     await connectDatabase();
 
-    // 3. Start HTTP server
+    // 3. Start cron jobs (only in non-test environments)
+    if (env.NODE_ENV !== "test") {
+      startScheduler();
+    }
+
+    // 4. Start HTTP server
     const server = app.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
       logger.info(`📍 Environment: ${env.NODE_ENV}`);
