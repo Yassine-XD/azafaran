@@ -1,265 +1,161 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  FlatList,
-} from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Image, TextInput, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Trash2,
-  Plus,
-  Minus,
-  ShoppingBag,
-  ArrowRight,
-} from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag, Tag } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 
-// Mock Data
-const CART_ITEMS = [
-  {
-    id: "1",
-    name: "Pechuga de Pollo",
-    weight: "500g",
-    price: 5.5,
-    quantity: 2,
-    image:
-      "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "2",
-    name: "Chuletón de Ternera",
-    weight: "1kg",
-    price: 24.9,
-    quantity: 1,
-    image:
-      "https://images.unsplash.com/photo-1558030006-450675393462?w=400&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "3",
-    name: "Salchichas Ibéricas",
-    weight: "400g",
-    price: 8.5,
-    quantity: 1,
-    image:
-      "https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=400&auto=format&fit=crop&q=60",
-  },
-];
-
-type CartItem = (typeof CART_ITEMS)[0];
+const DELIVERY_FEE = 2.99;
+const FREE_DELIVERY_THRESHOLD = 30;
 
 export default function CartScreen() {
   const router = useRouter();
-  const [items, setItems] = useState<CartItem[]>(CART_ITEMS);
+  const { isAuthenticated } = useAuth();
+  const { items, subtotal, itemCount, isLoading, updateItem, removeItem, applyPromo } = useCart();
+  const [promoCode, setPromoCode] = useState("");
+  const [applyingPromo, setApplyingPromo] = useState(false);
 
-  const updateQuantity = (id: string, delta: number) => {
-    setItems((prevItems) =>
-      prevItems.map((item) => {
-        if (item.id === id) {
-          const newQuantity = Math.max(1, item.quantity + delta);
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
-      })
-    );
-  };
-
-  const removeItem = (id: string) => {
-    setItems((prevItems) => prevItems.filter((item) => item.id !== id));
-  };
-
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const deliveryFee = subtotal > 30 ? 0 : 2.99;
+  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const total = subtotal + deliveryFee;
 
-  const renderCartItem = ({ item }: { item: CartItem }) => (
-    <View className="bg-card rounded-2xl p-4 mb-4 flex-row items-center border border-border">
-      {/* Product Image */}
-      <Image
-        source={{ uri: item.image }}
-        className="w-20 h-20 rounded-xl"
-        resizeMode="cover"
-      />
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setApplyingPromo(true);
+    const result = await applyPromo(promoCode.trim().toUpperCase());
+    setApplyingPromo(false);
+    if (result.success) {
+      Alert.alert("Código aplicado", "Descuento aplicado correctamente");
+    } else {
+      Alert.alert("Error", result.error || "Código no válido");
+    }
+  };
 
-      {/* Product Details */}
-      <View className="flex-1 ml-4 justify-between h-20">
-        <View>
-          <Text
-            className="text-foreground font-semibold text-base mb-1"
-            numberOfLines={1}
-          >
-            {item.name}
-          </Text>
-          <Text className="text-muted-foreground text-sm">{item.weight}</Text>
-        </View>
-        <Text className="text-primary font-bold text-lg">
-          €{(item.price * item.quantity).toFixed(2)}
-        </Text>
-      </View>
+  const handleCheckout = () => {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+    router.push("/payment");
+  };
 
-      {/* Quantity & Actions */}
-      <View className="ml-4 items-end justify-between h-20">
-        <TouchableOpacity onPress={() => removeItem(item.id)} className="p-2">
-          <Trash2 size={18} className="text-muted-foreground" />
-        </TouchableOpacity>
-
-        <View className="flex-row items-center bg-input rounded-lg px-2 py-1">
-          <TouchableOpacity
-            onPress={() => updateQuantity(item.id, -1)}
-            className="p-1"
-            disabled={item.quantity <= 1}
-          >
-            <Minus
-              size={16}
-              className={
-                item.quantity <= 1
-                  ? "text-muted-foreground/50"
-                  : "text-foreground"
-              }
-            />
-          </TouchableOpacity>
-          <Text className="text-foreground font-semibold mx-3 min-w-[20px] text-center">
-            {item.quantity}
-          </Text>
-          <TouchableOpacity
-            onPress={() => updateQuantity(item.id, 1)}
-            className="p-1"
-          >
-            <Plus size={16} className="text-foreground" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-
-  const EmptyCart = () => (
-    <View className="flex-1 items-center justify-center px-6">
-      <View className="bg-muted rounded-full p-6 mb-4">
-        <ShoppingBag size={48} className="text-muted-foreground" />
-      </View>
-      <Text className="text-xl font-bold text-foreground mb-2">
-        Tu carrito está vacío
-      </Text>
-      <Text className="text-muted-foreground text-center mb-6">
-        Añade algunos productos frescos para empezar tu pedido.
-      </Text>
-      <TouchableOpacity className="bg-primary rounded-xl px-6 py-3">
-        <Text className="text-primary-foreground font-semibold">
-          Empezar a comprar
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  if (items.length === 0) {
+  if (items.length === 0 && !isLoading) {
     return (
-      <SafeAreaView
-        className="flex-1 bg-background"
-        edges={["top", "left", "right"]}
-      >
-        <View className="px-6 py-4 border-b border-border">
-          <Text className="text-2xl font-bold text-foreground">Mi Carrito</Text>
+      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+        <View className="px-4 py-3 flex-row items-center border-b border-border">
+          <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
+            <ArrowLeft size={24} className="text-foreground" />
+          </TouchableOpacity>
+          <Text className="text-xl font-bold text-foreground ml-2">Carrito</Text>
         </View>
-        <EmptyCart />
+        <View className="flex-1 items-center justify-center px-6">
+          <ShoppingBag size={64} className="text-muted-foreground mb-4" />
+          <Text className="text-xl font-bold text-foreground mb-2">Tu carrito está vacío</Text>
+          <Text className="text-muted-foreground text-center mb-6">Añade productos para empezar tu pedido</Text>
+          <TouchableOpacity onPress={() => router.push("/(tabs)")} className="bg-primary px-8 py-3 rounded-xl">
+            <Text className="text-primary-foreground font-bold">Explorar Productos</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-background"
-      edges={["top", "left", "right"]}
-    >
+    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
       {/* Header */}
-      <View className="px-6 py-4 border-b border-border">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-2xl font-bold text-foreground">Mi Carrito</Text>
-          <Text className="text-sm text-muted-foreground">
-            {items.length} artículos
-          </Text>
-        </View>
+      <View className="px-4 py-3 flex-row items-center border-b border-border">
+        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
+          <ArrowLeft size={24} className="text-foreground" />
+        </TouchableOpacity>
+        <Text className="text-xl font-bold text-foreground ml-2">Carrito ({itemCount})</Text>
       </View>
 
-      {/* Cart Items */}
-      <FlatList
-        data={items}
-        renderItem={renderCartItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 24, paddingBottom: 300 }}
-        showsVerticalScrollIndicator={false}
-      />
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 200 }} showsVerticalScrollIndicator={false}>
+        {/* Cart Items */}
+        {items.map((item) => (
+          <View key={item.id} className="mx-4 mt-4 bg-card rounded-xl border border-border p-4">
+            <View className="flex-row">
+              <Image
+                source={{ uri: item.product_image || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=200" }}
+                className="w-20 h-20 rounded-xl"
+                resizeMode="cover"
+              />
+              <View className="flex-1 ml-3">
+                <Text className="text-foreground font-semibold" numberOfLines={2}>{item.product_name}</Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">{item.weight_label}</Text>
+                <Text className="text-primary font-bold mt-1">€{item.price ? Number(item.price).toFixed(2) : "0.00"}</Text>
+              </View>
+              <TouchableOpacity onPress={() => removeItem(item.id)} className="p-1">
+                <Trash2 size={18} className="text-destructive" />
+              </TouchableOpacity>
+            </View>
+            <View className="flex-row items-center justify-end mt-3 gap-3">
+              <TouchableOpacity
+                onPress={() => updateItem(item.id, Math.max(0, item.quantity - 1))}
+                className="w-8 h-8 bg-muted rounded-full items-center justify-center"
+              >
+                <Minus size={14} className="text-foreground" />
+              </TouchableOpacity>
+              <Text className="text-foreground font-bold text-base w-6 text-center">{item.quantity}</Text>
+              <TouchableOpacity
+                onPress={() => updateItem(item.id, item.quantity + 1)}
+                className="w-8 h-8 bg-primary rounded-full items-center justify-center"
+              >
+                <Plus size={14} className="text-primary-foreground" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
 
-      {/* Order Summary - Fixed at bottom */}
-      <View className="absolute bottom-0 left-0 right-0 bg-card border-t border-border p-6 rounded-t-3xl shadow-lg">
         {/* Promo Code */}
-        <View className="flex-row items-center bg-input rounded-xl px-4 py-3 mb-4">
-          <Text className="text-muted-foreground flex-1">
-            Código promocional
-          </Text>
-          <TouchableOpacity>
-            <Text className="text-primary font-semibold">Aplicar</Text>
+        <View className="mx-4 mt-4 flex-row items-center bg-card rounded-xl border border-border px-4 py-3">
+          <Tag size={18} className="text-muted-foreground mr-3" />
+          <TextInput
+            className="flex-1 text-foreground text-base"
+            placeholder="Código promocional"
+            placeholderTextColor="#a8a29e"
+            value={promoCode}
+            onChangeText={setPromoCode}
+            autoCapitalize="characters"
+          />
+          <TouchableOpacity onPress={handleApplyPromo} disabled={applyingPromo} className="bg-primary px-4 py-2 rounded-lg">
+            {applyingPromo ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text className="text-primary-foreground font-semibold text-sm">Aplicar</Text>
+            )}
           </TouchableOpacity>
         </View>
 
-        {/* Totals */}
-        <View className="space-y-2 mb-4">
-          <View className="flex-row justify-between">
+        {/* Order Summary */}
+        <View className="mx-4 mt-4 bg-card rounded-xl border border-border p-4">
+          <Text className="text-foreground font-bold text-lg mb-3">Resumen</Text>
+          <View className="flex-row justify-between mb-2">
             <Text className="text-muted-foreground">Subtotal</Text>
-            <Text className="text-foreground font-medium">
-              €{subtotal.toFixed(2)}
-            </Text>
+            <Text className="text-foreground font-medium">€{subtotal.toFixed(2)}</Text>
           </View>
-          <View className="flex-row justify-between">
+          <View className="flex-row justify-between mb-2">
             <Text className="text-muted-foreground">Envío</Text>
-            <Text className="text-foreground font-medium">
-              {deliveryFee === 0 ? (
-                <Text className="text-primary">Gratis</Text>
-              ) : (
-                `€${deliveryFee.toFixed(2)}`
-              )}
+            <Text className={deliveryFee === 0 ? "text-green-600 font-medium" : "text-foreground font-medium"}>
+              {deliveryFee === 0 ? "GRATIS" : `€${deliveryFee.toFixed(2)}`}
             </Text>
           </View>
-          {subtotal < 30 && (
-            <Text className="text-xs text-muted-foreground">
-              Añade €{(30 - subtotal).toFixed(2)} más para envío gratis
+          {deliveryFee > 0 && (
+            <Text className="text-xs text-muted-foreground mb-2">
+              Envío gratis a partir de €{FREE_DELIVERY_THRESHOLD}
             </Text>
           )}
-          <View className="h-px bg-border my-2" />
-          <View className="flex-row justify-between">
-            <Text className="text-lg font-bold text-foreground">Total</Text>
-            <Text className="text-lg font-bold text-primary">
-              €{total.toFixed(2)}
-            </Text>
+          <View className="border-t border-border mt-2 pt-3 flex-row justify-between">
+            <Text className="text-foreground font-bold text-lg">Total</Text>
+            <Text className="text-primary font-bold text-lg">€{total.toFixed(2)}</Text>
           </View>
         </View>
+      </ScrollView>
 
-        {/* Checkout Button */}
-        <TouchableOpacity
-          onPress={() => router.push("/payment")}
-          className="rounded-2xl overflow-hidden shadow-lg"
-        >
-          <LinearGradient
-            colors={["#ea580c", "#c2410c"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{
-              padding: 16,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text className="text-white font-bold text-lg mr-2">
-              Finalizar Pedido
-            </Text>
-            <ArrowRight size={20} className="text-white" />
-          </LinearGradient>
+      {/* Checkout Button */}
+      <View className="absolute bottom-0 left-0 right-0 bg-card border-t border-border px-6 py-4">
+        <TouchableOpacity onPress={handleCheckout} className="bg-primary py-4 rounded-xl items-center">
+          <Text className="text-primary-foreground font-bold text-lg">Finalizar Pedido · €{total.toFixed(2)}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

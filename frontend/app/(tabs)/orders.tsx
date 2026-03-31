@@ -1,171 +1,115 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Package, Clock, Truck, CheckCircle, RotateCcw } from 'lucide-react-native';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import React, { useEffect, useState, useCallback } from "react";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Package, Clock, Truck, CheckCircle, RotateCcw, XCircle } from "lucide-react-native";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "expo-router";
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Order, OrderStatus } from "@/lib/types";
 
-
-// Mock Data for Orders
-const ORDERS = [
-  {
-    id: 'ORD-2847',
-    date: '15 Ene 2024',
-    status: 'delivered',
-    total: 45.50,
-    items: [
-      { name: 'Pollo Entero', qty: 1, price: 12.00, image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=100&auto=format&fit=crop&q=80' },
-      { name: 'Chuletas de Ternera', qty: 2, price: 16.75, image: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=100&auto=format&fit=crop&q=80' },
-      { name: 'Salchichas Ibéricas', qty: 1, price: 6.50, image: 'https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=100&auto=format&fit=crop&q=80' },
-    ]
-  },
-  {
-    id: 'ORD-2912',
-    date: '18 Ene 2024',
-    status: 'out_for_delivery',
-    total: 32.00,
-    items: [
-      { name: 'Hamburguesas Premium', qty: 4, price: 8.00, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&auto=format&fit=crop&q=80' },
-    ]
-  },
-  {
-    id: 'ORD-2955',
-    date: '20 Ene 2024',
-    status: 'preparing',
-    total: 28.90,
-    items: [
-      { name: 'Costillas de Cerdo', qty: 1, price: 28.90, image: 'https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=100&auto=format&fit=crop&q=80' },
-    ]
-  },
-  {
-    id: 'ORD-3010',
-    date: '22 Ene 2024',
-    status: 'pending',
-    total: 15.75,
-    items: [
-      { name: 'Alitas de Pollo', qty: 2, price: 7.85, image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=100&auto=format&fit=crop&q=80' },
-    ]
-  },
-];
-
-type OrderItem = {
-  name: string;
-  qty: number;
-  price: number;
-  image: string;
-};
-
-type Order = {
-  id: string;
-  date: string;
-  status: 'pending' | 'preparing' | 'out_for_delivery' | 'delivered';
-  total: number;
-  items: OrderItem[];
-};
-
-// Status Configuration
-const getStatusConfig = (status: Order['status']) => {
-  switch (status) {
-    case 'delivered':
-      return { 
-        label: 'Entregado', 
-        bgColor: 'bg-green-100 dark:bg-green-900/30', 
-        textColor: 'text-green-700 dark:text-green-400', 
-        icon: CheckCircle 
-      };
-    case 'out_for_delivery':
-      return { 
-        label: 'En camino', 
-        bgColor: 'bg-blue-100 dark:bg-blue-900/30', 
-        textColor: 'text-blue-700 dark:text-blue-400', 
-        icon: Truck 
-      };
-    case 'preparing':
-      return { 
-        label: 'Preparando', 
-        bgColor: 'bg-orange-100 dark:bg-orange-900/30', 
-        textColor: 'text-orange-700 dark:text-orange-400', 
-        icon: Clock 
-      };
-    default:
-      return { 
-        label: 'Pendiente', 
-        bgColor: 'bg-gray-100 dark:bg-gray-800', 
-        textColor: 'text-gray-700 dark:text-gray-400', 
-        icon: Package 
-      };
-  }
+const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; bgColor: string; icon: any }> = {
+  pending: { label: "Pendiente", color: "text-yellow-600", bgColor: "bg-yellow-100", icon: Clock },
+  confirmed: { label: "Confirmado", color: "text-blue-600", bgColor: "bg-blue-100", icon: Package },
+  preparing: { label: "Preparando", color: "text-orange-600", bgColor: "bg-orange-100", icon: Package },
+  shipped: { label: "En camino", color: "text-purple-600", bgColor: "bg-purple-100", icon: Truck },
+  delivered: { label: "Entregado", color: "text-green-600", bgColor: "bg-green-100", icon: CheckCircle },
+  cancelled: { label: "Cancelado", color: "text-red-600", bgColor: "bg-red-100", icon: XCircle },
 };
 
 export default function OrdersScreen() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchOrders = useCallback(async () => {
+    if (!isAuthenticated) { setIsLoading(false); return; }
+    const res = await api.get<Order[]>("/orders/");
+    if (res.success && res.data) setOrders(res.data);
+    setIsLoading(false);
+  }, [isAuthenticated]);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchOrders();
+    setRefreshing(false);
+  }, [fetchOrders]);
+
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView className="flex-1 bg-background items-center justify-center px-6">
+        <Package size={64} className="text-muted-foreground mb-4" />
+        <Text className="text-xl font-bold text-foreground mb-2">Inicia sesión</Text>
+        <Text className="text-muted-foreground text-center mb-6">Inicia sesión para ver tus pedidos</Text>
+        <TouchableOpacity onPress={() => router.push("/login")} className="bg-primary px-8 py-3 rounded-xl">
+          <Text className="text-primary-foreground font-bold">Iniciar Sesión</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-background items-center justify-center">
+        <ActivityIndicator size="large" color="#ea580c" />
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View className="px-6 py-4 border-b border-border">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-2xl font-bold text-foreground">Mis Pedidos</Text>
-          <ThemeToggle />
-        </View>
+    <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
+      <View className="px-6 py-4 border-b border-border flex-row items-center justify-between">
+        <Text className="text-2xl font-bold text-foreground">Mis Pedidos</Text>
+        <ThemeToggle />
       </View>
 
-      {/* Orders List */}
-      <ScrollView 
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 128, gap: 16 }}
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 128, padding: 16 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ea580c" />}
       >
-        {ORDERS.map((order) => {
-          const statusConfig = getStatusConfig(order.status);
-          const StatusIcon = statusConfig.icon;
-
-          return (
-            <View  key={order.id} className="bg-card rounded-2xl p-4 shadow-sm border border-border" >
-              {/* Order Header: ID, Date & Status */}
-              <View className="flex-row items-start justify-between mb-4"
-                
+        {orders.length === 0 ? (
+          <View className="items-center justify-center py-20">
+            <Package size={48} className="text-muted-foreground mb-4" />
+            <Text className="text-lg font-semibold text-foreground mb-1">Sin pedidos</Text>
+            <Text className="text-muted-foreground text-center">Aún no has realizado ningún pedido</Text>
+          </View>
+        ) : (
+          orders.map((order) => {
+            const config = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+            const StatusIcon = config.icon;
+            return (
+              <TouchableOpacity
+                key={order.id}
+                onPress={() => router.push({ pathname: "/order-details", params: { id: order.id } })}
+                className="bg-card rounded-2xl border border-border p-4 mb-3"
               >
-                <View >
-                  <Text className="text-sm font-semibold text-foreground">{order.id}</Text>
-                  <Text className="text-xs text-muted-foreground mt-0.5">{order.date}</Text>
-                </View>
-                <View className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full ${statusConfig.bgColor} ${statusConfig.textColor}`}>
-                  <StatusIcon size={14} strokeWidth={2.5} />
-                  <Text className="text-xs font-semibold">{statusConfig.label}</Text>
-                </View>
-              </View>
-
-              {/* Order Items Preview */}
-              <View className="flex-row gap-2 mb-4">
-                {order.items.slice(0, 3).map((item, idx) => (
-                  <Image 
-                    key={idx}
-                    source={{ uri: item.image }} 
-                    className="w-14 h-14 rounded-xl bg-muted"
-                    resizeMode="cover"
-                  />
-                ))}
-                {order.items.length > 3 && (
-                  <View className="w-14 h-14 rounded-xl bg-muted items-center justify-center border border-border">
-                    <Text className="text-xs font-medium text-muted-foreground">+{order.items.length - 3}</Text>
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text className="text-foreground font-semibold">#{order.id.slice(0, 8)}</Text>
+                  <View className={`flex-row items-center gap-1.5 px-3 py-1 rounded-full ${config.bgColor}`}>
+                    <StatusIcon size={14} className={config.color} />
+                    <Text className={`text-xs font-semibold ${config.color}`}>{config.label}</Text>
                   </View>
-                )}
-              </View>
-
-              {/* Order Footer: Total & Reorder Button */}
-              <View className="flex-row items-center justify-between pt-3 border-t border-border">
-                <View>
-                  <Text className="text-xs text-muted-foreground">Total</Text>
-                  <Text className="text-lg font-bold text-foreground">€{order.total.toFixed(2)}</Text>
                 </View>
-                
-                <TouchableOpacity className="flex-row items-center gap-2 bg-primary px-4 py-2.5 rounded-full active:opacity-80">
-                  <RotateCcw size={16} className="text-primary-foreground" strokeWidth={2.5} />
-                  <Text className="text-sm font-semibold text-primary-foreground">Repetir</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        })}
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-muted-foreground text-sm">
+                    {new Date(order.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                  </Text>
+                  <Text className="text-foreground font-bold text-lg">€{Number(order.total).toFixed(2)}</Text>
+                </View>
+                {order.items && order.items.length > 0 && (
+                  <Text className="text-muted-foreground text-xs mt-2">
+                    {order.items.length} {order.items.length === 1 ? "producto" : "productos"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          })
+        )}
       </ScrollView>
     </SafeAreaView>
   );

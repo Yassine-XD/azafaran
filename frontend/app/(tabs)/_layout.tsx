@@ -1,71 +1,71 @@
-import { Tabs } from 'expo-router';
-import { Home, Grid, Tag, ShoppingBag, Menu } from 'lucide-react-native';
-import { cssInterop, useColorScheme } from 'nativewind';
+import { Tabs } from "expo-router";
+import { Home, Grid, Tag, ShoppingBag, User } from "lucide-react-native";
+import { cssInterop, useColorScheme } from "nativewind";
 
-cssInterop(Home, { className: { target: 'style', nativeStyleToProp: { color: true } } });
-cssInterop(Grid, { className: { target: 'style', nativeStyleToProp: { color: true } } });
-cssInterop(Tag, { className: { target: 'style', nativeStyleToProp: { color: true } } });
-cssInterop(ShoppingBag, { className: { target: 'style', nativeStyleToProp: { color: true } } });
-cssInterop(Menu, { className: { target: 'style', nativeStyleToProp: { color: true } } });
+cssInterop(Home, { className: { target: "style", nativeStyleToProp: { color: true } } });
+cssInterop(Grid, { className: { target: "style", nativeStyleToProp: { color: true } } });
+cssInterop(Tag, { className: { target: "style", nativeStyleToProp: { color: true } } });
+cssInterop(ShoppingBag, { className: { target: "style", nativeStyleToProp: { color: true } } });
+cssInterop(User, { className: { target: "style", nativeStyleToProp: { color: true } } });
 
 export default function TabsLayout() {
   const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const isDark = colorScheme === "dark";
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: isDark ? '#1c1917' : '#fffbf7',
-          borderTopColor: isDark ? '#44403c' : '#f5ebe6',
+          backgroundColor: isDark ? "#1c1917" : "#fffbf7",
+          borderTopColor: isDark ? "#44403c" : "#f5ebe6",
         },
-        tabBarActiveTintColor: isDark ? '#ea580c' : '#ea580c',
-        tabBarInactiveTintColor: isDark ? '#a8a29e' : '#78716c',
+        tabBarActiveTintColor: "#ea580c",
+        tabBarInactiveTintColor: isDark ? "#a8a29e" : "#78716c",
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: "Inicio",
           tabBarIcon: ({ focused }) => (
-            <Home className={focused ? 'text-primary' : 'text-muted-foreground'} size={24} />
+            <Home className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
           ),
         }}
       />
       <Tabs.Screen
         name="categories"
         options={{
-          title: 'Categories',
+          title: "Categorías",
           tabBarIcon: ({ focused }) => (
-            <Grid className={focused ? 'text-primary' : 'text-muted-foreground'} size={24} />
+            <Grid className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
           ),
         }}
       />
       <Tabs.Screen
         name="deals"
         options={{
-          title: 'Deals',
+          title: "Ofertas",
           tabBarIcon: ({ focused }) => (
-            <Tag className={focused ? 'text-primary' : 'text-muted-foreground'} size={24} />
+            <Tag className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
           ),
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
-          title: 'Orders',
+          title: "Pedidos",
           tabBarIcon: ({ focused }) => (
-            <ShoppingBag className={focused ? 'text-primary' : 'text-muted-foreground'} size={24} />
+            <ShoppingBag className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
           ),
         }}
       />
       <Tabs.Screen
-        name="menu"
+        name="profile"
         options={{
-          title: 'Menu',
+          title: "Perfil",
           tabBarIcon: ({ focused }) => (
-            <Menu className={focused ? 'text-primary' : 'text-muted-foreground'} size={24} />
+            <User className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
           ),
         }}
       />

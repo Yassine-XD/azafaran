@@ -1,169 +1,110 @@
-import React from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-} from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { View, Text, ScrollView, FlatList, Image, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  ChevronRight,
-  MapPin,
-  Clock,
-  Star,
-  ShoppingCart,
-  Search,
-} from "lucide-react-native";
+import { ChevronRight, MapPin, Clock, Star, ShoppingCart, Search } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "expo-router";
+import { api } from "@/lib/api";
+import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Category, Product, Banner } from "@/lib/types";
 
-const { width } = Dimensions.get("window");
+const CATEGORY_ICONS: Record<string, string> = {
+  ternera: "🥩",
+  cordero: "🍖",
+  pollo: "🐔",
+  conejo: "🐰",
+  elaborados: "🌭",
+  "bbq-packs": "🔥",
+};
 
-// Mock Data
-const PROMOS = [
-  {
-    id: "1",
-    title: "50% OFF Pollo",
-    subtitle: "Fresh chicken breast",
-    color: ["#ea580c", "#f97316"],
-    image:
-      "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=800&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "2",
-    title: "Free Delivery",
-    subtitle: "On orders over €30",
-    color: ["#059669", "#10b981"],
-    image:
-      "https://images.unsplash.com/photo-1544025162-d76690b67f11?w=800&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "3",
-    title: "BBQ Pack",
-    subtitle: "Weekend special",
-    color: ["#dc2626", "#ef4444"],
-    image:
-      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&auto=format&fit=crop&q=60",
-  },
+const BANNER_GRADIENTS: string[][] = [
+  ["#ea580c", "#f97316"],
+  ["#059669", "#10b981"],
+  ["#dc2626", "#ef4444"],
+  ["#7c3aed", "#a78bfa"],
 ];
-
-const CATEGORIES = [
-  { id: "1", name: "Pollo", icon: "🐔", color: "bg-orange-100" },
-  { id: "2", name: "Ternera", icon: "🥩", color: "bg-red-100" },
-  { id: "3", name: "Cerdo", icon: "🥓", color: "bg-pink-100" },
-  { id: "4", name: "Cordero", icon: "🍖", color: "bg-amber-100" },
-  { id: "5", name: "Conejo", icon: "🐰", color: "bg-stone-100" },
-  { id: "6", name: "Embutidos", icon: "🌭", color: "bg-yellow-100" },
-];
-
-const PRODUCTS = [
-  {
-    id: "1",
-    name: "Pechuga de Pollo",
-    weight: "500g",
-    price: 5.5,
-    originalPrice: 7.0,
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400&auto=format&fit=crop&q=60",
-    badge: "OFERTA",
-  },
-  {
-    id: "2",
-    name: "Chuletón de Ternera",
-    weight: "1kg",
-    price: 24.9,
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1558030006-450675393462?w=400&auto=format&fit=crop&q=60",
-    badge: "PREMIUM",
-  },
-  {
-    id: "3",
-    name: "Costillas BBQ",
-    weight: "800g",
-    price: 12.99,
-    rating: 4.7,
-    image:
-      "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=400&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "4",
-    name: "Salchichas Ibéricas",
-    weight: "400g",
-    price: 8.5,
-    rating: 4.6,
-    image:
-      "https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=400&auto=format&fit=crop&q=60",
-  },
-];
-
-type PromoItem = (typeof PROMOS)[0];
-type CategoryItem = (typeof CATEGORIES)[0];
-type ProductItem = (typeof PRODUCTS)[0];
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { itemCount } = useCart();
+  const { user, isAuthenticated } = useAuth();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [featured, setFeatured] = useState<Product[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const renderPromoItem = ({ item }: { item: PromoItem }) => (
+  const fetchData = useCallback(async () => {
+    const [catRes, featRes, bannerRes] = await Promise.all([
+      api.get<Category[]>("/categories/", false),
+      api.get<Product[]>("/products/featured", false),
+      api.get("/promotions/banners", false),
+    ]);
+    if (catRes.success && catRes.data) setCategories(catRes.data);
+    if (featRes.success && featRes.data) setFeatured(featRes.data);
+    if (bannerRes.success && bannerRes.data) setBanners(bannerRes.data);
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, [fetchData]);
+
+  const renderBanner = ({ item, index }: { item: Banner; index: number }) => (
     <TouchableOpacity className="w-[85%] mr-4 rounded-2xl overflow-hidden shadow-lg">
       <LinearGradient
-        colors={item.color}
-        style={{
-          height: 180,
-          borderRadius: 16,
-          padding: 20,
-          justifyContent: "space-between",
-        }}
+        colors={item.bg_color ? [item.bg_color, item.bg_color] : BANNER_GRADIENTS[index % BANNER_GRADIENTS.length]}
+        style={{ height: 180, borderRadius: 16, padding: 20, justifyContent: "space-between" }}
       >
         <View>
           <Text className="text-white text-2xl font-bold">{item.title}</Text>
-          <Text className="text-white/80 text-sm mt-1">{item.subtitle}</Text>
+          {item.subtitle && <Text className="text-white/80 text-sm mt-1">{item.subtitle}</Text>}
         </View>
-        <Image
-          source={{ uri: item.image }}
-          className="w-24 h-24 rounded-full absolute bottom-2 right-2 border-2 border-white/30"
-          resizeMode="cover"
-        />
+        {item.image_url && (
+          <Image
+            source={{ uri: item.image_url }}
+            className="w-24 h-24 rounded-full absolute bottom-2 right-2 border-2 border-white/30"
+            resizeMode="cover"
+          />
+        )}
       </LinearGradient>
     </TouchableOpacity>
   );
 
-  const renderCategoryItem = ({ item }: { item: CategoryItem }) => (
-    <TouchableOpacity className="items-center mr-4" onPress={() =>
-        router.push({ pathname: "/shop", params: { category: item.name } })
-      }>
-      <View
-        className={`w-16 h-16 rounded-full ${item.color} items-center justify-center mb-2`}
-      >
-        <Text className="text-2xl">{item.icon}</Text>
+  const renderCategory = ({ item }: { item: Category }) => (
+    <TouchableOpacity
+      className="items-center mr-4"
+      onPress={() => router.push({ pathname: "/shop", params: { category: item.slug, categoryName: item.name } })}
+    >
+      <View className="w-16 h-16 rounded-full bg-orange-100 items-center justify-center mb-2">
+        <Text className="text-2xl">{CATEGORY_ICONS[item.slug] || "🥩"}</Text>
       </View>
       <Text className="text-xs text-foreground font-medium">{item.name}</Text>
     </TouchableOpacity>
   );
 
-  const renderProductItem = ({ item }: { item: ProductItem }) => (
+  const renderProduct = ({ item }: { item: Product }) => (
     <TouchableOpacity
-      onPress={() =>
-        router.push({ pathname: "/product-detail", params: { id: item.id } })
-      }
-      className="flex-1 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
+      onPress={() => router.push({ pathname: "/product-detail", params: { id: item.id } })}
+      className="w-44 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
     >
       <View className="relative">
         <Image
-          source={{ uri: item.image }}
+          source={{ uri: item.image_url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400" }}
           className="w-full h-32"
           resizeMode="cover"
         />
-        {item.badge && (
+        {item.is_featured && (
           <View className="absolute top-2 left-2 bg-primary px-2 py-1 rounded-md">
-            <Text className="text-primary-foreground text-xs font-bold">
-              {item.badge}
-            </Text>
+            <Text className="text-primary-foreground text-xs font-bold">DESTACADO</Text>
           </View>
         )}
         <TouchableOpacity className="absolute bottom-2 right-2 bg-background rounded-full p-2 shadow-md">
@@ -171,44 +112,41 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
       <View className="p-3">
-        <Text
-          className="text-foreground font-semibold text-sm mb-1"
-          numberOfLines={1}
-        >
+        <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>
           {item.name}
         </Text>
         <View className="flex-row items-center mb-2">
-          <Clock size={12} className="text-muted-foreground mr-1" />
-          <Text className="text-xs text-muted-foreground">30 min</Text>
-          <Star
-            size={12}
-            className="text-yellow-500 ml-2 mr-1"
-            fill="#eab308"
-          />
-          <Text className="text-xs text-muted-foreground">{item.rating}</Text>
+          {item.avg_rating ? (
+            <>
+              <Star size={12} className="text-yellow-500 mr-1" fill="#eab308" />
+              <Text className="text-xs text-muted-foreground">{Number(item.avg_rating).toFixed(1)}</Text>
+            </>
+          ) : (
+            <Text className="text-xs text-muted-foreground">Nuevo</Text>
+          )}
         </View>
         <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-primary font-bold">
-              €{item.price.toFixed(2)}
-            </Text>
-            {item.originalPrice && (
-              <Text className="text-muted-foreground text-xs line-through">
-                €{item.originalPrice.toFixed(2)}
-              </Text>
-            )}
-          </View>
-          <Text className="text-xs text-muted-foreground">{item.weight}</Text>
+          <Text className="text-primary font-bold">
+            {item.min_price ? `€${Number(item.min_price).toFixed(2)}` : ""}
+          </Text>
+          {item.category_name && (
+            <Text className="text-xs text-muted-foreground">{item.category_name}</Text>
+          )}
         </View>
       </View>
     </TouchableOpacity>
   );
 
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-background items-center justify-center">
+        <ActivityIndicator size="large" color="#ea580c" />
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView
-      className="flex-1 bg-background"
-      edges={["top", "left", "right"]}
-    >
+    <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       {/* Header */}
       <View className="px-6 py-4">
         <View className="flex-row items-center justify-between mb-4">
@@ -218,20 +156,17 @@ export default function HomeScreen() {
               <Text className="text-sm text-muted-foreground">Entregar en</Text>
             </View>
             <Text className="text-lg font-bold text-foreground">
-              Calle Granada 12, Madrid
+              {user ? `${user.first_name}, Barcelona` : "Barcelona"}
             </Text>
           </View>
           <View className="flex-row items-center gap-3">
-            <TouchableOpacity
-              onPress={() => router.push("/cart")}
-              className="relative"
-            >
+            <TouchableOpacity onPress={() => router.push("/cart")} className="relative">
               <ShoppingCart size={24} className="text-foreground" />
-              <View className="absolute -top-1 -right-1 bg-primary w-4 h-4 rounded-full items-center justify-center">
-                <Text className="text-primary-foreground text-[10px] font-bold">
-                  2
-                </Text>
-              </View>
+              {itemCount > 0 && (
+                <View className="absolute -top-1 -right-1 bg-primary w-5 h-5 rounded-full items-center justify-center">
+                  <Text className="text-primary-foreground text-[10px] font-bold">{itemCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
             <ThemeToggle />
           </View>
@@ -240,130 +175,82 @@ export default function HomeScreen() {
         {/* Search Bar */}
         <TouchableOpacity className="flex-row items-center bg-input rounded-xl px-4 py-3">
           <Search size={20} className="text-muted-foreground mr-3" />
-          <Text className="text-muted-foreground">
-            Buscar carnes, ofertas...
-          </Text>
+          <Text className="text-muted-foreground">Buscar carnes, ofertas...</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 128 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ea580c" />}
       >
-        {/* Promo Carousel */}
-        <View className="mb-6">
-          <FlatList
-            data={PROMOS}
-            renderItem={renderPromoItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24 }}
-            pagingEnabled
-          />
-        </View>
+        {/* Banner Carousel */}
+        {banners.length > 0 && (
+          <View className="mb-6">
+            <FlatList
+              data={banners}
+              renderItem={renderBanner}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 24 }}
+            />
+          </View>
+        )}
 
         {/* Categories */}
-        <View className="mb-6">
-          <View className="px-6 flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-bold text-foreground">
-              Categorías
-            </Text>
-            <TouchableOpacity className="flex-row items-center">
-              <Text className="text-sm text-primary font-medium">Ver todo</Text>
-              <ChevronRight size={16} className="text-primary" />
-            </TouchableOpacity>
+        {categories.length > 0 && (
+          <View className="mb-6">
+            <View className="px-6 flex-row items-center justify-between mb-4">
+              <Text className="text-xl font-bold text-foreground">Categorías</Text>
+              <TouchableOpacity onPress={() => router.push("/(tabs)/categories")} className="flex-row items-center">
+                <Text className="text-sm text-primary font-medium">Ver todo</Text>
+                <ChevronRight size={16} className="text-primary" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={categories}
+              renderItem={renderCategory}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 24 }}
+            />
           </View>
-          <FlatList
-            data={CATEGORIES}
-            renderItem={renderCategoryItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24 }}
-          />
-        </View>
+        )}
 
-        
-
-        {/* Popular Products */}
-        <View className="mb-6">
-          <View className="px-6 flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-bold text-foreground">Popular</Text>
-            <TouchableOpacity className="flex-row items-center">
-              <Text className="text-sm text-primary font-medium">Ver todo</Text>
-              <ChevronRight size={16} className="text-primary" />
-            </TouchableOpacity>
+        {/* Featured Products */}
+        {featured.length > 0 && (
+          <View className="mb-6">
+            <View className="px-6 flex-row items-center justify-between mb-4">
+              <Text className="text-xl font-bold text-foreground">Destacados</Text>
+            </View>
+            <FlatList
+              data={featured}
+              renderItem={renderProduct}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 24 }}
+            />
           </View>
-          <FlatList
-            data={PRODUCTS}
-            renderItem={renderProductItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24 }}
-          />
-        </View>
+        )}
 
-        {/*Chicken Products*/}
-        <View className="mb-6">
-          <View className="px-6 flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-bold text-foreground">Pollo</Text>
-            <TouchableOpacity className="flex-row items-center">
-              <Text className="text-sm text-primary font-medium">Ver todo</Text>
-              <ChevronRight size={16} className="text-primary" />
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={PRODUCTS}
-            renderItem={renderProductItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24 }}
-          />
-        </View>
+        {/* Products by Category */}
+        {categories.slice(0, 3).map((cat) => (
+          <CategoryProductsSection key={cat.id} category={cat} router={router} />
+        ))}
 
-        {/*Meat Products*/}
-        <View className="mb-6">
-          <View className="px-6 flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-bold text-foreground">Ternera</Text>
-            <TouchableOpacity className="flex-row items-center">
-              <Text className="text-sm text-primary font-medium">Ver todo</Text>
-              <ChevronRight size={16} className="text-primary" />
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={PRODUCTS}
-            renderItem={renderProductItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24 }}
-          />
-        </View>
-
-
-        {/* Fresh Halal Banner */}
+        {/* Halal Banner */}
         <View className="px-6 mb-6">
           <LinearGradient
             colors={["#ea580c", "#c2410c"]}
-            style={{
-              borderRadius: 16,
-              padding: 20,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
+            style={{ borderRadius: 16, padding: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
           >
             <View>
-              <Text className="text-white text-2xl font-bold tracking-tight">
-                FRESCA
-              </Text>
+              <Text className="text-white text-2xl font-bold tracking-tight">FRESCA</Text>
               <Text className="text-white/90 text-lg">· HALAL ·</Text>
-              <Text className="text-white text-xl font-bold tracking-tight">
-                CERTIFICADA
-              </Text>
+              <Text className="text-white text-xl font-bold tracking-tight">CERTIFICADA</Text>
             </View>
             <View className="bg-white/20 rounded-full p-3">
               <Text className="text-3xl">🏆</Text>
@@ -372,5 +259,59 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// Sub-component to load products per category
+function CategoryProductsSection({ category, router }: { category: Category; router: any }) {
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const res = await api.get<Product[]>(`/categories/${category.slug}/products?limit=6`, false);
+      if (res.success && res.data) setProducts(res.data);
+    })();
+  }, [category.slug]);
+
+  if (products.length === 0) return null;
+
+  return (
+    <View className="mb-6">
+      <View className="px-6 flex-row items-center justify-between mb-4">
+        <Text className="text-xl font-bold text-foreground">{category.name}</Text>
+        <TouchableOpacity
+          onPress={() => router.push({ pathname: "/shop", params: { category: category.slug, categoryName: category.name } })}
+          className="flex-row items-center"
+        >
+          <Text className="text-sm text-primary font-medium">Ver todo</Text>
+          <ChevronRight size={16} className="text-primary" />
+        </TouchableOpacity>
+      </View>
+      <FlatList
+        data={products}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: "/product-detail", params: { id: item.id } })}
+            className="w-44 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
+          >
+            <Image
+              source={{ uri: item.image_url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400" }}
+              className="w-full h-32"
+              resizeMode="cover"
+            />
+            <View className="p-3">
+              <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>{item.name}</Text>
+              <Text className="text-primary font-bold">
+                {item.min_price ? `€${Number(item.min_price).toFixed(2)}` : ""}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        keyExtractor={(item) => item.id}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 24 }}
+      />
+    </View>
   );
 }
