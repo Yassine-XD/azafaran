@@ -1,83 +1,63 @@
-/**
- * Promotion Service
- */
+import { promotionRepository } from "../repositories/promotion.repository";
+import { orderRepository } from "../repositories/order.repository";
 
-import { AppError } from "../types/api";
-import promotionRepository from "../repositories/promotion.repository";
-import logger from "../utils/logger";
-
-class PromotionService {
-  async getAllPromotions(filters: any) {
-    const { page = 1, limit = 20 } = filters;
-    const skip = (page - 1) * limit;
-
-    const query = { active: true, expiry_date: { $gte: new Date() } };
-
-    const [promotions, total] = await Promise.all([
-      promotionRepository.find(query, skip, limit),
-      promotionRepository.count(query),
-    ]);
-
-    return {
-      data: promotions,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-    };
-  }
-
-  async getPromotionById(id: string) {
-    const promotion = await promotionRepository.findById(id);
-    if (!promotion) {
-      throw new AppError("Promotion not found", 404);
-    }
-    return promotion;
-  }
-
-  async validatePromoCode(code: string, userId?: string) {
-    const promotion = await promotionRepository.findByCode(code);
-    if (!promotion || !promotion.active) {
-      throw new AppError("Invalid promo code", 400);
-    }
-
-    if (promotion.expiry_date < new Date()) {
-      throw new AppError("Promo code expired", 400);
-    }
-
-    if (
-      promotion.usage_limit &&
-      promotion.usage_count >= promotion.usage_limit
-    ) {
-      throw new AppError("Promo code usage limit reached", 400);
-    }
-
-    return {
-      discount_type: promotion.discount_type,
-      discount_value: promotion.discount_value,
-      min_purchase: promotion.min_purchase,
-    };
-  }
-
-  async createPromotion(data: any) {
-    const promotion = await promotionRepository.create(data);
-    logger.info(`Promotion created: ${promotion.id}`);
-    return promotion;
-  }
-
-  async updatePromotion(id: string, data: any) {
-    const promotion = await promotionRepository.update(id, data);
-    if (!promotion) {
-      throw new AppError("Promotion not found", 404);
-    }
-    logger.info(`Promotion updated: ${id}`);
-    return promotion;
-  }
-
-  async deletePromotion(id: string) {
-    const result = await promotionRepository.delete(id);
-    if (!result) {
-      throw new AppError("Promotion not found", 404);
-    }
-    logger.info(`Promotion deleted: ${id}`);
-  }
+function appError(message: string, statusCode: number, code: string) {
+  const err: any = new Error(message);
+  err.statusCode = statusCode;
+  err.code = code;
+  return err;
 }
 
-export default new PromotionService();
+function formatPromotion(promo: any) {
+  return {
+    ...promo,
+    discount_value: promo.discount_value
+      ? parseFloat(promo.discount_value)
+      : null,
+  };
+}
+
+export const promotionService = {
+  async getActivePromotions() {
+    const rows = await promotionRepository.findHomePromotions();
+    return rows.map(formatPromotion);
+  },
+
+  async getBanners() {
+    return promotionRepository.findActiveBanners();
+  },
+
+  async validatePromoCode(code: string, userId?: string) {
+    const promo = await orderRepository.findPromoCode(code);
+    if (!promo) {
+      throw appError(
+        "Código promocional inválido o expirado",
+        400,
+        "INVALID_PROMO_CODE",
+      );
+    }
+
+    if (userId) {
+      const usageCount = await orderRepository.findPromoUsageByUser(
+        promo.id,
+        userId,
+      );
+      if (usageCount >= promo.max_uses_per_user) {
+        throw appError(
+          "Ya has utilizado este código promocional",
+          400,
+          "PROMO_ALREADY_USED",
+        );
+      }
+    }
+
+    return {
+      id: promo.id,
+      code: promo.code,
+      type: promo.type,
+      value: parseFloat(promo.value),
+      min_order_amount: parseFloat(promo.min_order_amount),
+      free_delivery: promo.type === "free_delivery",
+    };
+  },
+};

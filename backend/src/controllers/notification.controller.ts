@@ -1,46 +1,51 @@
-/**
- * Notification Controller
- */
-
 import { Request, Response } from "express";
+import { notificationService } from "../services/notification.service";
 import { asyncHandler } from "../utils/asyncHandler";
-import { ApiResponse } from "../utils/apiResponse";
-import notificationService from "../services/notification.service";
+import { success } from "../utils/apiResponse";
 
-class NotificationController {
-  getAll = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
-    const { page = 1, limit = 20 } = req.query;
-    const result = await notificationService.getUserNotifications(userId, {
-      page: Number(page),
-      limit: Number(limit),
-    });
-    res.json(new ApiResponse(200, result, "Notifications retrieved"));
-  });
+export const notificationController = {
+  registerToken: asyncHandler(async (req: Request, res: Response) => {
+    const { token, platform } = req.body;
+    const result = await notificationService.registerToken(
+      req.user!.sub,
+      token,
+      platform,
+    );
+    return success(res, result, 201);
+  }),
 
-  getById = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const notification = await notificationService.getNotificationById(id);
-    res.json(new ApiResponse(200, notification, "Notification retrieved"));
-  });
+  unregisterToken: asyncHandler(async (req: Request, res: Response) => {
+    const { token } = req.body;
+    await notificationService.unregisterToken(req.user!.sub, token);
+    return success(res, { message: "Token eliminado" });
+  }),
 
-  markAsRead = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    await notificationService.markAsRead(id);
-    res.json(new ApiResponse(200, {}, "Notification marked as read"));
-  });
+  getPreferences: asyncHandler(async (req: Request, res: Response) => {
+    const prefs = await notificationService.getPreferences(req.user!.sub);
+    return success(res, prefs);
+  }),
 
-  markAllAsRead = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
-    await notificationService.markAllAsRead(userId);
-    res.json(new ApiResponse(200, {}, "All notifications marked as read"));
-  });
+  updatePreferences: asyncHandler(async (req: Request, res: Response) => {
+    const prefs = await notificationService.updatePreferences(
+      req.user!.sub,
+      req.body,
+    );
+    return success(res, prefs);
+  }),
 
-  delete = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    await notificationService.deleteNotification(id);
-    res.json(new ApiResponse(200, {}, "Notification deleted"));
-  });
-}
+  getNotifications: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await notificationService.getNotifications(
+      req.user!.sub,
+      page,
+      limit,
+    );
+    return success(res, result.notifications, 200, result.meta);
+  }),
 
-export default new NotificationController();
+  markOpened: asyncHandler(async (req: Request, res: Response) => {
+    await notificationService.markOpened(req.params.logId);
+    return success(res, { message: "Notificación marcada como abierta" });
+  }),
+};

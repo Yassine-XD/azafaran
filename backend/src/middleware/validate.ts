@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from 'express'
-import { ZodSchema } from 'zod'
+import { z } from 'zod'
 import { error } from '../utils/apiResponse'
 
-export function validateBody(schema: ZodSchema) {
+export function validateBody(schema: z.ZodType) {
   return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.body)
     if (!result.success) {
-      const messages = result.error.errors.map(e => ({
+      const messages = result.error.issues.map((e: any) => ({
         field: e.path.join('.'),
         message: e.message,
       }))
@@ -20,13 +20,13 @@ export function validateBody(schema: ZodSchema) {
   }
 }
 
-export function validateParams(schema: ZodSchema) {
+export function validateParams(schema: z.ZodType) {
   return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.params)
     if (!result.success) {
       return error(res, 'Parámetros inválidos', 400, 'INVALID_PARAMS')
     }
-    req.params = result.data
+    req.params = result.data as any
     next()
   }
 }

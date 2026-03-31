@@ -1,100 +1,118 @@
-/**
- * Payment Service
- */
-
-import { AppError } from "../types/api";
 import stripe from "../config/stripe";
-import orderRepository from "../repositories/order.repository";
-import notificationService from "./notification.service";
-import logger from "../utils/logger";
+import { orderRepository } from "../repositories/order.repository";
+import { notificationService } from "./notification.service";
+import { env } from "../config/env";
+import { logger } from "../utils/logger";
 
-class PaymentService {
-  async createPaymentIntent(userId: string, data: any) {
-    const { amount, orderId, currency = "USD" } = data;
-
-    try {
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount * 100),
-        currency: currency.toLowerCase(),
-        metadata: { userId, orderId },
-      });
-
-      return {
-        clientSecret: paymentIntent.client_secret,
-        id: paymentIntent.id,
-      };
-    } catch (error) {
-      logger.error("Stripe error:", error);
-      throw new AppError("Payment processing failed", 400);
-    }
-  }
-
-  async getPaymentStatus(orderId: string) {
-    const order = await orderRepository.findById(orderId);
-    if (!order) {
-      throw new AppError("Order not found", 404);
-    }
-    return { status: order.payment_status };
-  }
-
-  async refund(userId: string, paymentIntentId: string, reason: string) {
-    try {
-      const refund = await stripe.refunds.create({
-        payment_intent: paymentIntentId,
-        metadata: { userId, reason },
-      });
-
-      logger.info(`Refund processed: ${refund.id}`);
-      return { refundId: refund.id, status: refund.status };
-    } catch (error) {
-      logger.error("Refund error:", error);
-      throw new AppError("Refund processing failed", 400);
-    }
-  }
-
-  async handleStripeWebhook(body: any, signature: string) {
-    try {
-      const event = stripe.webhooks.constructEvent(
-        body,
-        signature,
-        process.env.STRIPE_WEBHOOK_SECRET!,
-      );
-
-      switch (event.type) {
-        case "payment_intent.succeeded":
-          await this.handlePaymentSuccess(event.data.object as any);
-          break;
-        case "payment_intent.payment_failed":
-          await this.handlePaymentFailure(event.data.object as any);
-          break;
-      }
-
-      return { received: true };
-    } catch (error) {
-      logger.error("Webhook error:", error);
-      throw new AppError("Webhook processing failed", 400);
-    }
-  }
-
-  private async handlePaymentSuccess(paymentIntent: any) {
-    const { userId, orderId } = paymentIntent.metadata;
-    await orderRepository.update(orderId, { payment_status: "completed" });
-    await notificationService.sendNotification(userId, {
-      title: "Payment Successful",
-      message: "Your payment has been processed successfully",
-      type: "payment",
-    });
-  }
-
-  private async handlePaymentFailure(paymentIntent: any) {
-    const { userId, orderId } = paymentIntent.metadata;
-    await orderRepository.update(orderId, { payment_status: "failed" });
-    await notificationService.sendNotification(userId, {
-      title: "Payment Failed",
-      message: "Your payment could not be processed. Please try again.",
-      type: "payment",
-    });
-  }
+function appError(message: string, statusCode: number, code: string) {
+  const err: any = new Error(message);
+  err.statusCode = statusCode;
+  err.code = code;
+  return err;
 }
 
-export default new PaymentService();
+export const paymentService = {
+  async createPaymentIntent(
+    userId: string,
+    orderId: string,
+    amount: number,
+    currency = "eur",
+  ) {
+    // Verify order belongs to user and is pending payment
+    const order = await orderRepository.findById(orderId, userId);
+    if (!order) {
+      throw appError("Pedido no encontrado", 404, "ORDER_NOT_FOUND");
+    }
+    if (order.payment_status === "paid") {
+      throw appError("Este pedido ya está pagado", 400, "ALREADY_PAID");
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100), // Stripe uses cents
+      currency: currency.toLowerCase(),
+      metadata: { userId, orderId },
+    });
+
+    // Store the payment intent ID on the order
+    await orderRepository.updatePaymentStatus(
+      orderId,
+      "pending",
+      paymentIntent.id,
+    );
+
+    return {
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    };
+  },
+
+  async getPaymentStatus(orderId: string, userId: string) {
+    const order = await orderRepository.findById(orderId, userId);
+    if (!order) {
+      throw appError("Pedido no encontrado", 404, "ORDER_NOT_FOUND");
+    }
+    return {
+      payment_status: order.payment_status,
+      payment_ref: order.payment_ref,
+    };
+  },
+
+  async handleWebhook(rawBody: Buffer, signature: string) {
+    const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      throw appError(
+        "Webhook secret not configured",
+        500,
+        "WEBHOOK_NOT_CONFIGURED",
+      );
+    }
+
+    const event = stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      webhookSecret,
+    );
+
+    logger.info(`Stripe webhook received: ${event.type}`);
+
+    switch (event.type) {
+      case "payment_intent.succeeded": {
+        const pi = event.data.object;
+        const { userId, orderId } = pi.metadata;
+        if (orderId) {
+          await orderRepository.updatePaymentStatus(
+            orderId,
+            "paid",
+            pi.id,
+          );
+          await orderRepository.updateStatus(orderId, "confirmed");
+          if (userId) {
+            await notificationService.sendOrderNotification(
+              userId,
+              "order_confirmed",
+              orderId,
+            );
+          }
+        }
+        break;
+      }
+      case "payment_intent.payment_failed": {
+        const pi = event.data.object;
+        const { userId, orderId } = pi.metadata;
+        if (orderId) {
+          await orderRepository.updatePaymentStatus(orderId, "failed", pi.id);
+          if (userId) {
+            await notificationService.sendOrderNotification(
+              userId,
+              "order_cancelled",
+              orderId,
+            );
+          }
+        }
+        break;
+      }
+    }
+
+    return { received: true };
+  },
+};

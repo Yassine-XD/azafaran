@@ -8,3 +8,10 @@ declare global {
     }
   }
 }
+
+// Fix Express 5 params type — route params are always single strings
+declare module 'express' {
+  interface Request {
+    params: Record<string, string>
+  }
+}

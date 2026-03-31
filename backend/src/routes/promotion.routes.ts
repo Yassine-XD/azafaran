@@ -1,32 +1,25 @@
-/**
- * Promotion Routes
- */
-
 import { Router } from "express";
-import promotionController from "../controllers/promotion.controller";
+import { promotionController } from "../controllers/promotion.controller";
 import { authenticate } from "../middleware/authenticate";
-import { validate } from "../middleware/validate";
-import { promotionSchema } from "../validators/promotion.schema";
+import { validateBody } from "../middleware/validate";
+import { z } from "zod";
+
+const validateCodeSchema = z.object({
+  code: z.string().min(1).max(50),
+});
 
 const router = Router();
 
-router.get("/", promotionController.getAll);
-router.get("/:id", promotionController.getById);
-router.get("/validate/:code", promotionController.validateCode);
+// Public endpoints
+router.get("/active", promotionController.getActive);
+router.get("/banners", promotionController.getBanners);
 
-// Admin operations require authentication and admin role
+// Validate promo — optionally authed (userId checked if logged in)
 router.post(
-  "/",
+  "/validate-code",
   authenticate,
-  validate(promotionSchema.create),
-  promotionController.create,
+  validateBody(validateCodeSchema),
+  promotionController.validateCode,
 );
-router.put(
-  "/:id",
-  authenticate,
-  validate(promotionSchema.update),
-  promotionController.update,
-);
-router.delete("/:id", authenticate, promotionController.delete);
 
 export default router;

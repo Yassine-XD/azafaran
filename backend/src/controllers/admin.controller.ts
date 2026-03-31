@@ -1,66 +1,246 @@
-/**
- * Admin Controller
- */
-
 import { Request, Response } from "express";
+import { adminService } from "../services/admin.service";
 import { asyncHandler } from "../utils/asyncHandler";
-import { ApiResponse } from "../utils/apiResponse";
-import adminService from "../services/admin.service";
+import { success } from "../utils/apiResponse";
 
-class AdminController {
-  getDashboard = asyncHandler(async (req: Request, res: Response) => {
-    const dashboard = await adminService.getDashboard();
-    res.json(new ApiResponse(200, dashboard, "Dashboard data retrieved"));
-  });
+export const adminController = {
+  // ─── Dashboard ──────────────────────────────────────
 
-  getUsers = asyncHandler(async (req: Request, res: Response) => {
-    const { page = 1, limit = 20, search } = req.query;
-    const result = await adminService.getAllUsers({
-      page: Number(page),
-      limit: Number(limit),
-      search: search as string,
+  getDashboard: asyncHandler(async (req: Request, res: Response) => {
+    const data = await adminService.getDashboard();
+    return success(res, data);
+  }),
+
+  // ─── Products ───────────────────────────────────────
+
+  getProducts: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const search = req.query.search as string | undefined;
+    const category = req.query.category as string | undefined;
+    const active =
+      req.query.active !== undefined
+        ? req.query.active === "true"
+        : undefined;
+    const result = await adminService.getProducts({
+      page,
+      limit,
+      search,
+      category,
+      active,
     });
-    res.json(new ApiResponse(200, result, "Users retrieved"));
-  });
+    return success(res, result.data, 200, result.meta);
+  }),
 
-  getOrders = asyncHandler(async (req: Request, res: Response) => {
-    const { page = 1, limit = 20, status, userId } = req.query;
-    const result = await adminService.getAllOrders({
-      page: Number(page),
-      limit: Number(limit),
-      status: status as string,
-      userId: userId as string,
-    });
-    res.json(new ApiResponse(200, result, "Orders retrieved"));
-  });
+  createProduct: asyncHandler(async (req: Request, res: Response) => {
+    const product = await adminService.createProduct(req.body, req.user!.sub);
+    return success(res, product, 201);
+  }),
 
-  updateOrderStatus = asyncHandler(async (req: Request, res: Response) => {
-    const { orderId } = req.params;
-    const { status } = req.body;
-    const order = await adminService.updateOrderStatus(orderId, status);
-    res.json(new ApiResponse(200, order, "Order status updated"));
-  });
-
-  getAnalytics = asyncHandler(async (req: Request, res: Response) => {
-    const { startDate, endDate } = req.query;
-    const analytics = await adminService.getAnalytics(
-      startDate as string,
-      endDate as string,
+  updateProduct: asyncHandler(async (req: Request, res: Response) => {
+    const product = await adminService.updateProduct(
+      req.params.id,
+      req.body,
+      req.user!.sub,
     );
-    res.json(new ApiResponse(200, analytics, "Analytics retrieved"));
-  });
+    return success(res, product);
+  }),
 
-  getReports = asyncHandler(async (req: Request, res: Response) => {
-    const { type = "sales" } = req.query;
-    const reports = await adminService.getReports(type as string);
-    res.json(new ApiResponse(200, reports, "Reports retrieved"));
-  });
+  deleteProduct: asyncHandler(async (req: Request, res: Response) => {
+    await adminService.deleteProduct(req.params.id, req.user!.sub);
+    return success(res, { message: "Producto desactivado" });
+  }),
 
-  sendBroadcast = asyncHandler(async (req: Request, res: Response) => {
-    const { message, title, targetUsers } = req.body;
-    await adminService.sendBroadcastNotification(message, title, targetUsers);
-    res.json(new ApiResponse(200, {}, "Broadcast sent"));
-  });
-}
+  addVariant: asyncHandler(async (req: Request, res: Response) => {
+    const variant = await adminService.addVariant(
+      req.params.id,
+      req.body,
+      req.user!.sub,
+    );
+    return success(res, variant, 201);
+  }),
 
-export default new AdminController();
+  updateVariant: asyncHandler(async (req: Request, res: Response) => {
+    const variant = await adminService.updateVariant(
+      req.params.id,
+      req.params.vid,
+      req.body,
+      req.user!.sub,
+    );
+    return success(res, variant);
+  }),
+
+  // ─── Orders ─────────────────────────────────────────
+
+  getOrders: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await adminService.getOrders({
+      page,
+      limit,
+      status: req.query.status as string | undefined,
+      userId: req.query.userId as string | undefined,
+      dateFrom: req.query.dateFrom as string | undefined,
+      dateTo: req.query.dateTo as string | undefined,
+    });
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  updateOrderStatus: asyncHandler(async (req: Request, res: Response) => {
+    const { status } = req.body;
+    const order = await adminService.updateOrderStatus(
+      req.params.id,
+      status,
+      req.user!.sub,
+    );
+    return success(res, order);
+  }),
+
+  // ─── Users ──────────────────────────────────────────
+
+  getUsers: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const search = req.query.search as string | undefined;
+    const result = await adminService.getUsers({ page, limit, search });
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  getUserDetail: asyncHandler(async (req: Request, res: Response) => {
+    const user = await adminService.getUserDetail(req.params.id);
+    return success(res, user);
+  }),
+
+  // ─── Promotions ─────────────────────────────────────
+
+  getPromotions: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await adminService.getPromotions(page, limit);
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  createPromotion: asyncHandler(async (req: Request, res: Response) => {
+    const promo = await adminService.createPromotion(req.body, req.user!.sub);
+    return success(res, promo, 201);
+  }),
+
+  updatePromotion: asyncHandler(async (req: Request, res: Response) => {
+    const promo = await adminService.updatePromotion(
+      req.params.id,
+      req.body,
+      req.user!.sub,
+    );
+    return success(res, promo);
+  }),
+
+  deletePromotion: asyncHandler(async (req: Request, res: Response) => {
+    await adminService.deletePromotion(req.params.id, req.user!.sub);
+    return success(res, { message: "Promoción desactivada" });
+  }),
+
+  // ─── Banners ────────────────────────────────────────
+
+  getBanners: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await adminService.getBanners(page, limit);
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  createBanner: asyncHandler(async (req: Request, res: Response) => {
+    const banner = await adminService.createBanner(req.body, req.user!.sub);
+    return success(res, banner, 201);
+  }),
+
+  updateBanner: asyncHandler(async (req: Request, res: Response) => {
+    const banner = await adminService.updateBanner(
+      req.params.id,
+      req.body,
+      req.user!.sub,
+    );
+    return success(res, banner);
+  }),
+
+  deleteBanner: asyncHandler(async (req: Request, res: Response) => {
+    await adminService.deleteBanner(req.params.id, req.user!.sub);
+    return success(res, { message: "Banner desactivado" });
+  }),
+
+  // ─── Promo Codes ────────────────────────────────────
+
+  getPromoCodes: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await adminService.getPromoCodes(page, limit);
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  createPromoCode: asyncHandler(async (req: Request, res: Response) => {
+    const code = await adminService.createPromoCode(req.body, req.user!.sub);
+    return success(res, code, 201);
+  }),
+
+  updatePromoCode: asyncHandler(async (req: Request, res: Response) => {
+    const code = await adminService.updatePromoCode(
+      req.params.id,
+      req.body,
+      req.user!.sub,
+    );
+    return success(res, code);
+  }),
+
+  // ─── Delivery Slots ─────────────────────────────────
+
+  getDeliverySlots: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const result = await adminService.getDeliverySlots(page, limit);
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  createDeliverySlots: asyncHandler(async (req: Request, res: Response) => {
+    const { slots } = req.body;
+    const created = await adminService.bulkCreateSlots(slots, req.user!.sub);
+    return success(res, created, 201);
+  }),
+
+  // ─── Audit & Reviews ───────────────────────────────
+
+  getAuditLog: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const result = await adminService.getAuditLogs({
+      page,
+      limit,
+      adminId: req.query.adminId as string | undefined,
+      action: req.query.action as string | undefined,
+      entity: req.query.entity as string | undefined,
+    });
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  getReviews: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await adminService.getReviews(page, limit);
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  // ─── Notification Campaigns ─────────────────────────
+
+  getCampaigns: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await adminService.getCampaigns(page, limit);
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  createCampaign: asyncHandler(async (req: Request, res: Response) => {
+    const campaign = await adminService.createCampaign(
+      req.body,
+      req.user!.sub,
+    );
+    return success(res, campaign, 201);
+  }),
+};

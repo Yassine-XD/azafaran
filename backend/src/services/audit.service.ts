@@ -2,50 +2,82 @@
  * Audit Service
  */
 
-import { AppError } from "../types/api";
-import auditRepository from "../repositories/audit.repository";
-import logger from "../utils/logger";
+import { pool } from "../config/database";
+import { v4 as uuidv4 } from "uuid";
+import { logger } from "../utils/logger";
 
-class AuditService {
+export const auditService = {
   async logAction(
     userId: string,
     action: string,
     resource: string,
-    details: any,
+    details: { ip?: string; userAgent?: string; [key: string]: any },
   ) {
-    const audit = await auditRepository.create({
-      user_id: userId,
-      action,
-      resource,
-      details,
-      timestamp: new Date(),
-      ip_address: details.ip,
-      user_agent: details.userAgent,
-    });
+    const { rows } = await pool.query(
+      `INSERT INTO audit_log (id, user_id, action, resource, details, ip_address, user_agent, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       RETURNING *`,
+      [
+        uuidv4(),
+        userId,
+        action,
+        resource,
+        JSON.stringify(details),
+        details.ip || null,
+        details.userAgent || null,
+      ],
+    );
 
     logger.info(`Audit logged: ${action} on ${resource} by user ${userId}`);
-    return audit;
-  }
+    return rows[0];
+  },
 
-  async getAuditLogs(filters: any) {
+  async getAuditLogs(filters: {
+    page?: number;
+    limit?: number;
+    userId?: string;
+    action?: string;
+    resource?: string;
+  }) {
     const { page = 1, limit = 50, userId, action, resource } = filters;
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
-    const query: any = {};
-    if (userId) query.user_id = userId;
-    if (action) query.action = action;
-    if (resource) query.resource = resource;
+    const conditions: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
 
-    const [logs, total] = await Promise.all([
-      auditRepository.find(query, skip, limit),
-      auditRepository.count(query),
+    if (userId) {
+      conditions.push(`user_id = $${idx++}`);
+      values.push(userId);
+    }
+    if (action) {
+      conditions.push(`action = $${idx++}`);
+      values.push(action);
+    }
+    if (resource) {
+      conditions.push(`resource = $${idx++}`);
+      values.push(resource);
+    }
+
+    const where = conditions.length
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
+
+    const [dataRes, countRes] = await Promise.all([
+      pool.query(
+        `SELECT * FROM audit_log ${where}
+         ORDER BY created_at DESC
+         LIMIT $${idx} OFFSET $${idx + 1}`,
+        [...values, limit, offset],
+      ),
+      pool.query(`SELECT COUNT(*) FROM audit_log ${where}`, values),
     ]);
 
+    const total = parseInt(countRes.rows[0].count, 10);
+
     return {
-      data: logs,
+      data: dataRes.rows,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     };
-  }
-}
-
-export default new AuditService();
+  },
+};

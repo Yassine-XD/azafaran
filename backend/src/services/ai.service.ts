@@ -1,57 +1,26 @@
 /**
- * AI Service - Anthropic Proxy
+ * AI Service - Product description generation and feedback analysis
+ * TODO: Install @anthropic-ai/sdk and add ANTHROPIC_API_KEY to env when ready
  */
 
-import Anthropic from '@anthropic-ai/sdk';
-import logger from '../utils/logger';
+import { logger } from "../utils/logger";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+export const aiService = {
+  async generateProductDescription(productData: any): Promise<string> {
+    logger.warn("AI service not configured — skipping description generation");
+    return "";
+  },
 
-class AIService {
-  async generateProductDescription(productData: any) {
-    try {
-      const message = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: `Generate a compelling product description for: ${JSON.stringify(productData)}`,
-          },
-        ],
-      });
+  async analyzeProductFeedback(feedback: string): Promise<string> {
+    logger.warn("AI service not configured — skipping feedback analysis");
+    return "";
+  },
 
-      return message.content[0].type === 'text' ? message.content[0].text : '';
-    } catch (error) {
-      logger.error('AI generation error:', error);
-      throw error;
-    }
-  }
-
-  async analyzeProductFeedback(feedback: string) {
-    try {
-      const message = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 512,
-        messages: [
-          {
-            role: 'user',
-            content: `Analyze this product feedback and provide sentiment and key points: ${feedback}`,
-          },
-        ],
-      });
-
-      return message.content[0].type === 'text' ? message.content[0].text : '';
-    } catch (error) {
-      logger.error('AI analysis error:', error);
-      throw error;
-    }
-  }
-
-  async generateRecommendations(userId: string, purchaseHistory: any[]) {
-    try {
-      const message = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 1024,
+  async generateRecommendations(
+    userId: string,
+    purchaseHistory: any[],
+  ): Promise<string> {
+    logger.warn("AI service not configured — skipping recommendations");
+    return "";
+  },
+};

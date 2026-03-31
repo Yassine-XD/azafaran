@@ -1,20 +1,40 @@
-/**
- * Notification Routes
- */
-
 import { Router } from "express";
-import notificationController from "../controllers/notification.controller";
+import { notificationController } from "../controllers/notification.controller";
 import { authenticate } from "../middleware/authenticate";
+import { validateBody } from "../middleware/validate";
+import {
+  registerTokenSchema,
+  unregisterTokenSchema,
+  updatePreferencesSchema,
+} from "../validators/notification.schema";
 
 const router = Router();
-
-// All notification operations require authentication
 router.use(authenticate);
 
-router.get("/", notificationController.getAll);
-router.get("/:id", notificationController.getById);
-router.put("/:id/read", notificationController.markAsRead);
-router.put("/mark-all-read", notificationController.markAllAsRead);
-router.delete("/:id", notificationController.delete);
+// Push token management
+router.post(
+  "/token",
+  validateBody(registerTokenSchema),
+  notificationController.registerToken,
+);
+router.delete(
+  "/token",
+  validateBody(unregisterTokenSchema),
+  notificationController.unregisterToken,
+);
+
+// Notification preferences
+router.get("/preferences", notificationController.getPreferences);
+router.put(
+  "/preferences",
+  validateBody(updatePreferencesSchema),
+  notificationController.updatePreferences,
+);
+
+// Notification history
+router.get("/", notificationController.getNotifications);
+
+// Track opened
+router.post("/opened/:logId", notificationController.markOpened);
 
 export default router;
