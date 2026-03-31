@@ -37,7 +37,12 @@ export default function ProductDetailScreen() {
   const handleAddToCart = async () => {
     if (!selectedVariant) return;
     setAddingToCart(true);
-    const result = await addItem(selectedVariant.id, quantity);
+    const result = await addItem(selectedVariant.id, quantity, {
+      product_name: product?.name,
+      product_image: product?.image_url,
+      weight_label: selectedVariant.weight_label,
+      price: Number(selectedVariant.price),
+    });
     setAddingToCart(false);
     if (result.success) {
       Alert.alert("Añadido", `${product?.name} añadido al carrito`);
