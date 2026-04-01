@@ -243,4 +243,30 @@ export const adminController = {
     );
     return success(res, campaign, 201);
   }),
+
+  // ─── Categories ─────────────────────────────────────
+
+  getCategories: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await adminService.getCategories(page, limit);
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  createCategory: asyncHandler(async (req: Request, res: Response) => {
+    const category = await adminService.createCategory(req.body, req.user!.sub);
+    return success(res, category, 201);
+  }),
+
+  updateCategory: asyncHandler(async (req: Request, res: Response) => {
+    const category = await adminService.updateCategory(req.params.id, req.body, req.user!.sub);
+    if (!category) return res.status(404).json({ success: false, error: { message: "Categoría no encontrada", code: "CATEGORY_NOT_FOUND" } });
+    return success(res, category);
+  }),
+
+  deleteCategory: asyncHandler(async (req: Request, res: Response) => {
+    const result = await adminService.deleteCategory(req.params.id, req.user!.sub);
+    if (!result) return res.status(404).json({ success: false, error: { message: "Categoría no encontrada", code: "CATEGORY_NOT_FOUND" } });
+    return success(res, result);
+  }),
 };

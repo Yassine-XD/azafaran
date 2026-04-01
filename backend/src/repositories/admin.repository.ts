@@ -788,4 +788,67 @@ export const adminRepository = {
     );
     return rows[0];
   },
+
+  // ─── Categories ────────────────────────────────────
+
+  async findAllCategories(page: number, limit: number) {
+    const offset = (page - 1) * limit;
+    const [dataRes, countRes] = await Promise.all([
+      pool.query(
+        `SELECT * FROM categories
+         ORDER BY display_order ASC, name ASC
+         LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      ),
+      pool.query("SELECT COUNT(*) FROM categories"),
+    ]);
+    return { rows: dataRes.rows, total: parseInt(countRes.rows[0].count, 10) };
+  },
+
+  async createCategory(data: {
+    name: string;
+    slug: string;
+    description?: string;
+    image_url?: string;
+    display_order?: number;
+  }) {
+    const { rows } = await pool.query(
+      `INSERT INTO categories (id, name, slug, description, image_url, display_order)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        uuidv4(),
+        data.name,
+        data.slug,
+        data.description || null,
+        data.image_url || null,
+        data.display_order ?? 0,
+      ],
+    );
+    return rows[0];
+  },
+
+  async updateCategory(id: string, data: Record<string, unknown>) {
+    const allowed = ["name", "slug", "description", "image_url", "display_order", "is_active"];
+    const entries = Object.entries(data).filter(([k]) => allowed.includes(k));
+    if (entries.length === 0) return null;
+
+    const sets = entries.map(([k], i) => `${k} = $${i + 2}`);
+    const values = entries.map(([, v]) => v);
+
+    const { rows } = await pool.query(
+      `UPDATE categories SET ${sets.join(", ")}, updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [id, ...values],
+    );
+    return rows[0];
+  },
+
+  async deleteCategory(id: string) {
+    const { rows } = await pool.query(
+      "UPDATE categories SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING *",
+      [id],
+    );
+    return rows[0];
+  },
 };

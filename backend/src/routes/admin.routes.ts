@@ -62,6 +62,12 @@ router.post("/notifications/send", adminController.createCampaign);
 // Audit Log
 router.get("/audit-log", adminController.getAuditLog);
 
+// Categories CRUD
+router.get("/categories", adminController.getCategories);
+router.post("/categories", adminController.createCategory);
+router.put("/categories/:id", adminController.updateCategory);
+router.delete("/categories/:id", adminController.deleteCategory);
+
 // Reviews
 router.get("/reviews", adminController.getReviews);
 

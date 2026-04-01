@@ -455,4 +455,51 @@ export const adminService = {
     });
     return campaign;
   },
+
+  // ─── Categories ─────────────────────────────────────
+
+  async getCategories(page: number, limit: number) {
+    const { rows, total } = await adminRepository.findAllCategories(page, limit);
+    return {
+      data: rows,
+      meta: { total, page, limit, total_pages: Math.ceil(total / limit) },
+    };
+  },
+
+  async createCategory(data: any, adminId: string) {
+    const category = await adminRepository.createCategory(data);
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "create",
+      entity: "category",
+      entityId: category.id,
+      after: category,
+    });
+    return category;
+  },
+
+  async updateCategory(id: string, data: any, adminId: string) {
+    const category = await adminRepository.updateCategory(id, data);
+    if (!category) return null;
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "update",
+      entity: "category",
+      entityId: id,
+      after: category,
+    });
+    return category;
+  },
+
+  async deleteCategory(id: string, adminId: string) {
+    const category = await adminRepository.deleteCategory(id);
+    if (!category) return null;
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "delete",
+      entity: "category",
+      entityId: id,
+    });
+    return { message: "Categoría desactivada" };
+  },
 };

@@ -5,6 +5,7 @@ const allowedOrigins = [
   env.CLIENT_URL,
   "http://localhost:8081", // Expo Go
   "http://localhost:19006", // Expo web
+  "http://localhost:5173", // Admin dashboard
 ];
 
 export const corsOptions = cors({
