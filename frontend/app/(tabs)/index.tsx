@@ -20,8 +20,8 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 const BANNER_GRADIENTS: string[][] = [
+  ["#52270e", "#962204"],
   ["#ea580c", "#f97316"],
-  ["#059669", "#10b981"],
   ["#dc2626", "#ef4444"],
   ["#7c3aed", "#a78bfa"],
 ];
@@ -68,13 +68,13 @@ export default function HomeScreen() {
           <Text className="text-white text-2xl font-bold">{item.title}</Text>
           {item.subtitle && <Text className="text-white/80 text-sm mt-1">{item.subtitle}</Text>}
         </View>
-        {item.image_url && (
+        {/* {item.image_url && (
           <Image
             source={{ uri: item.image_url }}
             className="w-24 h-24 rounded-full absolute bottom-2 right-2 border-2 border-white/30"
             resizeMode="cover"
           />
-        )}
+        )} */}
       </LinearGradient>
     </TouchableOpacity>
   );

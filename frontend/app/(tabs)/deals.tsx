@@ -102,6 +102,7 @@ export default function DealsScreen() {
                     )}
                   </View>
                 </View>
+                {console.log(promo)}
               </View>
             ))}
           </View>
