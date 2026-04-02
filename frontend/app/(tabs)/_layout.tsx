@@ -20,7 +20,7 @@ export default function TabsLayout() {
           backgroundColor: isDark ? "#1c1917" : "#fffbf7",
           borderTopColor: isDark ? "#44403c" : "#f5ebe6",
         },
-        tabBarActiveTintColor: "#ea580c",
+        tabBarActiveTintColor: "#660710",
         tabBarInactiveTintColor: isDark ? "#a8a29e" : "#78716c",
       }}
     >

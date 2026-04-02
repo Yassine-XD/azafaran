@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StripeProvider } from "@stripe/stripe-react-native";
@@ -13,23 +13,16 @@ const STRIPE_PUBLISHABLE_KEY = "pk_test_REPLACE_WITH_YOUR_KEY";
 
 function NavigationGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const segments = useSegments();
-  const [checkedOnboarding, setCheckedOnboarding] = useState(false);
 
   useEffect(() => {
     (async () => {
       const done = await AsyncStorage.getItem("onboarding_done");
-      if (!done && segments[0] !== "onboarding") {
+      if (!done) {
         router.replace("/onboarding");
       }
-      setCheckedOnboarding(true);
     })();
   }, []);
 
-  return <>{children}</>;
-}
-
-export default function RootLayout() {
   return (
     <ThemeProvider>
       <SafeAreaProvider>

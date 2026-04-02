@@ -35,6 +35,7 @@ export default function ShopScreen() {
     setIsLoading(false);
   }, [activeCategory]);
 
+
   useEffect(() => {
     setIsLoading(true);
     fetchProducts();
@@ -75,7 +76,7 @@ export default function ShopScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#ea580c" />
+        <ActivityIndicator size="large" color="#660710" />
       </SafeAreaView>
     );
   }
@@ -214,7 +215,7 @@ export default function ShopScreen() {
                     )}
                     <View className="flex-row items-center justify-between">
                       <Text className="text-primary font-bold text-lg">
-                        €{item.min_price ? Number(item.min_price).toFixed(2) : "0.00"}
+                        €{item.price_per_kg ? Number(item.price_per_kg).toFixed(2) : "0.00"}
                       </Text>
                       <TouchableOpacity
                         onPress={() => handleAddToCart(item)}
