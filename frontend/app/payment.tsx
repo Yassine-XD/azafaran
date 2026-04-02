@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } fr
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft, CreditCard, MapPin, Check, Truck, Wallet, Clock } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { useStripe } from "@stripe/stripe-react-native";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +18,7 @@ export default function PaymentScreen() {
   const router = useRouter();
   const { subtotal, clearCart } = useCart();
   const { user } = useAuth();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [slots, setSlots] = useState<DeliverySlot[]>([]);
@@ -66,26 +68,64 @@ export default function PaymentScreen() {
     setIsPlacing(false);
 
     if (res.success && res.data) {
-      // If card payment, create payment intent
+      const orderId = res.data.id;
+
+      // If card payment, open Stripe Payment Sheet
       if (paymentMethod === "card") {
-        const piRes = await api.post("/payments/intent", {
-          orderId: res.data.id,
+        const piRes = await api.post<{ clientSecret: string; paymentIntentId: string }>("/payments/intent", {
+          orderId,
           amount: total,
           currency: "eur",
         });
-        if (piRes.success) {
-          // In production, use Stripe SDK with piRes.data.clientSecret
-          Alert.alert(
-            "Pago",
-            "En la versión final, aquí se abrirá la pasarela de Stripe. Pedido creado correctamente.",
-            [{ text: "OK", onPress: () => { clearCart(); router.replace("/(tabs)/orders"); } }],
-          );
+
+        if (!piRes.success || !piRes.data?.clientSecret) {
+          Alert.alert("Error", "No se pudo iniciar el pago con tarjeta");
           return;
         }
+
+        // Initialize the Payment Sheet
+        const { error: initError } = await initPaymentSheet({
+          paymentIntentClientSecret: piRes.data.clientSecret,
+          merchantDisplayName: "Azafaran - Carnes Halal",
+          defaultBillingDetails: {
+            name: user ? `${user.first_name} ${user.last_name}` : undefined,
+            email: user?.email,
+          },
+          style: "automatic",
+        });
+
+        if (initError) {
+          Alert.alert("Error", initError.message);
+          return;
+        }
+
+        // Present the Payment Sheet to the user
+        const { error: payError } = await presentPaymentSheet();
+
+        if (payError) {
+          if (payError.code === "Canceled") {
+            // User cancelled - order stays pending, they can retry
+            Alert.alert("Pago Cancelado", "Puedes reintentar el pago desde tus pedidos.");
+          } else {
+            Alert.alert("Error de Pago", payError.message);
+          }
+          return;
+        }
+
+        // Payment successful! Stripe webhook will update order status to confirmed
+        clearCart();
+        Alert.alert(
+          "Pago Realizado",
+          `Tu pedido #${orderId.slice(0, 8)} ha sido pagado correctamente.`,
+          [{ text: "Ver Pedido", onPress: () => router.replace("/(tabs)/orders") }],
+        );
+        return;
       }
+
       // Cash/bizum - order placed directly
-      Alert.alert("Pedido Confirmado", `Tu pedido #${res.data.id.slice(0, 8)} ha sido realizado`, [
-        { text: "Ver Pedido", onPress: () => { clearCart(); router.replace("/(tabs)/orders"); } },
+      clearCart();
+      Alert.alert("Pedido Confirmado", `Tu pedido #${orderId.slice(0, 8)} ha sido realizado`, [
+        { text: "Ver Pedido", onPress: () => router.replace("/(tabs)/orders") },
       ]);
     } else {
       Alert.alert("Error", res.error?.message || "No se pudo realizar el pedido");
