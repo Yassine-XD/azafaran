@@ -32,14 +32,12 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-azafaran}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-azafaran}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-      CLIENT_URL: ${CLIENT_URL:-https://azafaran.es}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     networks:
       - internal
       - web
-    labels:
-      - "traefik.enable=false"
 
   nginx:
     image: nginx:alpine
