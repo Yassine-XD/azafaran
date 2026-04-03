@@ -1,15 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Stack, useRouter } from "expo-router";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StripeProvider } from "@stripe/stripe-react-native";
+import StripeProviderWrapper from "@/components/StripeProviderWrapper";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import "@/global.css";
-
-// Replace with your actual Stripe publishable key
-const STRIPE_PUBLISHABLE_KEY = "pk_test_REPLACE_WITH_YOUR_KEY";
 
 function NavigationGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -23,10 +20,14 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  return <>{children}</>;
+}
+
+export default function RootLayout() {
   return (
     <ThemeProvider>
       <SafeAreaProvider>
-        <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY} merchantIdentifier="merchant.com.azafaran">
+        <StripeProviderWrapper>
           <AuthProvider>
             <CartProvider>
               <NavigationGuard>
@@ -49,7 +50,7 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
               </NavigationGuard>
             </CartProvider>
           </AuthProvider>
-        </StripeProvider>
+        </StripeProviderWrapper>
       </SafeAreaProvider>
     </ThemeProvider>
   );
