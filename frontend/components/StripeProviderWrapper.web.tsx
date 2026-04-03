@@ -1,8 +1,14 @@
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import { STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe";
 import type { ReactNode } from "react";
 
-// On web, Stripe Elements needs a PaymentIntent clientSecret at mount time,
-// so we initialize it at the payment screen level, not at the app root.
-// This wrapper is a simple passthrough.
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
+
 export default function StripeProviderWrapper({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return (
+    <Elements stripe={stripePromise}>
+      {children}
+    </Elements>
+  );
 }
