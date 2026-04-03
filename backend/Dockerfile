@@ -23,8 +23,9 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
 COPY migrations ./migrations
 
-# Non-root user for security
-RUN addgroup -S azafaran && adduser -S azafaran -G azafaran
+# Create logs directory and non-root user
+RUN addgroup -S azafaran && adduser -S azafaran -G azafaran \
+    && mkdir -p /app/logs && chown azafaran:azafaran /app/logs
 USER azafaran
 
 EXPOSE 3000
