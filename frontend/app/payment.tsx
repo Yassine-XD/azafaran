@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft, CreditCard, MapPin, Check, Truck, Wallet, Clock } from "lucide-react-native";
 import { useRouter } from "expo-router";
-import { useStripe } from "@stripe/stripe-react-native";
+import { useStripePay } from "@/hooks/useStripePay";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,7 +18,7 @@ export default function PaymentScreen() {
   const router = useRouter();
   const { subtotal, clearCart } = useCart();
   const { user } = useAuth();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { payWithCard, CardField } = useStripePay();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [slots, setSlots] = useState<DeliverySlot[]>([]);
@@ -70,7 +70,6 @@ export default function PaymentScreen() {
     if (res.success && res.data) {
       const orderId = res.data.id;
 
-      // If card payment, open Stripe Payment Sheet
       if (paymentMethod === "card") {
         const piRes = await api.post<{ clientSecret: string; paymentIntentId: string }>("/payments/intent", {
           orderId,
@@ -83,36 +82,19 @@ export default function PaymentScreen() {
           return;
         }
 
-        // Initialize the Payment Sheet
-        const { error: initError } = await initPaymentSheet({
-          paymentIntentClientSecret: piRes.data.clientSecret,
-          merchantDisplayName: "Azafaran - Carnes Halal",
-          defaultBillingDetails: {
-            name: user ? `${user.first_name} ${user.last_name}` : undefined,
-            email: user?.email,
-          },
-          style: "automatic",
-        });
+        const result = await payWithCard(piRes.data.clientSecret, user);
 
-        if (initError) {
-          Alert.alert("Error", initError.message);
+        if (result.cancelled) {
+          Alert.alert("Pago Cancelado", "Puedes reintentar el pago desde tus pedidos.");
           return;
         }
 
-        // Present the Payment Sheet to the user
-        const { error: payError } = await presentPaymentSheet();
-
-        if (payError) {
-          if (payError.code === "Canceled") {
-            // User cancelled - order stays pending, they can retry
-            Alert.alert("Pago Cancelado", "Puedes reintentar el pago desde tus pedidos.");
-          } else {
-            Alert.alert("Error de Pago", payError.message);
-          }
+        if (!result.success) {
+          Alert.alert("Error de Pago", result.error || "El pago no se completó");
           return;
         }
 
-        // Payment successful! Stripe webhook will update order status to confirmed
+        // Payment successful — webhook will confirm the order
         clearCart();
         Alert.alert(
           "Pago Realizado",
@@ -122,7 +104,7 @@ export default function PaymentScreen() {
         return;
       }
 
-      // Cash/bizum - order placed directly
+      // Cash/bizum — order placed directly
       clearCart();
       Alert.alert("Pedido Confirmado", `Tu pedido #${orderId.slice(0, 8)} ha sido realizado`, [
         { text: "Ver Pedido", onPress: () => router.replace("/(tabs)/orders") },
@@ -238,6 +220,13 @@ export default function PaymentScreen() {
               </TouchableOpacity>
             );
           })}
+
+          {/* Web: show Stripe card input when card is selected */}
+          {Platform.OS === "web" && paymentMethod === "card" && CardField && (
+            <View className="mt-3 p-3 border border-border rounded-xl bg-muted/30">
+              <CardField />
+            </View>
+          )}
         </View>
 
         {/* Order Summary */}
