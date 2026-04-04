@@ -47,7 +47,10 @@ export default function HomeScreen() {
     if (featRes.success && featRes.data) setFeatured(featRes.data);
     if (bannerRes.success && bannerRes.data) setBanners(bannerRes.data);
     setIsLoading(false);
+  console.log(bannerRes)
+
   }, []);
+
 
   useEffect(() => {
     fetchData();
@@ -60,7 +63,7 @@ export default function HomeScreen() {
   }, [fetchData]);
 
   const renderBanner = ({ item, index }: { item: Banner; index: number }) => (
-    <TouchableOpacity className="w-[85%] mr-4 rounded-2xl overflow-hidden shadow-lg">
+    <TouchableOpacity className=" mr-4 rounded-2xl overflow-hidden shadow-lg">
       <LinearGradient
         colors={item.bg_color ? [item.bg_color, item.bg_color] : BANNER_GRADIENTS[index % BANNER_GRADIENTS.length]}
         style={{ height: 180, borderRadius: 16, padding: 20, justifyContent: "space-between" }}
@@ -303,7 +306,7 @@ function CategoryProductsSection({ category, router }: { category: Category; rou
             <View className="p-3">
               <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>{item.name}</Text>
               <Text className="text-primary font-bold">
-                €{getMinPrice(item).toFixed(2)}
+                €{getMinPrice(item)}
               </Text>
             </View>
           </TouchableOpacity>

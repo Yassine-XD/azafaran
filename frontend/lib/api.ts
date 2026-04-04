@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 //   ? "http://192.168.1.3:3000/api/v1" // Android emulator
 //   : "https://api.azafaran.es/api";
 
-const API_BASE_URL = "http://187.77.169.76:3000/api/v1";
+const API_BASE_URL = "http://187.77.169.76/api/v1";
 
 // For iOS simulator, use: http://localhost:3000/api
 // For physical device, use your local IP: http://192.168.x.x:3000/api

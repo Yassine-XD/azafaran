@@ -216,7 +216,7 @@ export default function ShopScreen() {
                     )}
                     <View className="flex-row items-center justify-between">
                       <Text className="text-primary font-bold text-lg">
-                        €{getMinPrice(item).toFixed(2)}
+                        €{getMinPrice(item)}
                       </Text>
                       <TouchableOpacity
                         onPress={() => handleAddToCart(item)}
