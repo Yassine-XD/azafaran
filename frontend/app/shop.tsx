@@ -6,6 +6,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
 import type { Product, Category } from "@/lib/types";
+import { getProductImage, getMinPrice } from "@/lib/types";
 
 export default function ShopScreen() {
   const router = useRouter();
@@ -66,9 +67,9 @@ export default function ShopScreen() {
     if (variant) {
       await addItem(variant.id, 1, {
         product_name: product.name,
-        product_image: product.image_url,
-        weight_label: variant.weight_label,
-        price: Number(variant.price),
+        product_image: product.images?.[0]?.url,
+        weight_label: variant.label,
+        price: variant.price,
       });
     }
   };
@@ -196,7 +197,7 @@ export default function ShopScreen() {
                 >
                   <View className="relative">
                     <Image
-                      source={{ uri: item.image_url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400" }}
+                      source={{ uri: getProductImage(item) }}
                       className="w-full h-36"
                       resizeMode="cover"
                     />
@@ -215,7 +216,7 @@ export default function ShopScreen() {
                     )}
                     <View className="flex-row items-center justify-between">
                       <Text className="text-primary font-bold text-lg">
-                        €{item.price_per_kg ? Number(item.price_per_kg).toFixed(2) : "0.00"}
+                        €{getMinPrice(item).toFixed(2)}
                       </Text>
                       <TouchableOpacity
                         onPress={() => handleAddToCart(item)}

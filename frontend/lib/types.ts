@@ -34,43 +34,63 @@ export type Category = {
   sort_order: number;
 };
 
+export type ProductImage = {
+  url: string;
+  alt?: string;
+};
+
 export type ProductVariant = {
   id: string;
   product_id: string;
   sku: string;
-  weight_label: string;
+  label: string;
   weight_grams: number;
   price: number;
   compare_at_price?: number;
   stock_qty: number;
   is_active: boolean;
+  sort_order?: number;
 };
 
 export type Product = {
-  images: any;
   id: string;
   category_id: string;
   name: string;
   slug: string;
   description?: string;
-  image_url?: string;
+  short_desc?: string;
+  price_per_kg: number;
+  unit_type: string;
   is_featured: boolean;
   is_active: boolean;
   halal_cert_id?: string;
+  halal_cert_body?: string;
+  images: ProductImage[];
   tags?: string[];
+  sort_order?: number;
   avg_rating?: number;
   review_count?: number;
   variants?: ProductVariant[];
   // Joined fields
   category_name?: string;
   category_slug?: string;
-  min_price?: number;
-  max_price?: number;
+  created_at?: string;
+  updated_at?: string;
 };
+
+// Helper to get the first image URL from a product
+export function getProductImage(product: Product | null | undefined): string {
+  return product?.images?.[0]?.url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400";
+}
+
+// Helper to get the cheapest variant price
+export function getMinPrice(product: Product): number {
+  if (!product.variants || product.variants.length === 0) return product.price_per_kg;
+  return Math.min(...product.variants.map((v) => v.price));
+}
 
 // ─── Cart ──────────────────────────────────────────────────
 export type CartItem = {
-  current_price: any;
   id: string;
   cart_id: string;
   variant_id: string;

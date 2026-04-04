@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Category, Product, Banner } from "@/lib/types";
+import { getProductImage, getMinPrice } from "@/lib/types";
 
 const CATEGORY_ICONS: Record<string, string> = {
   ternera: "🥩",
@@ -98,7 +99,7 @@ export default function HomeScreen() {
     >
       <View className="relative">
         <Image
-          source={{ uri: item.image_url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400" }}
+          source={{ uri: getProductImage(item) }}
           className="w-full h-32"
           resizeMode="cover"
         />
@@ -127,7 +128,7 @@ export default function HomeScreen() {
         </View>
         <View className="flex-row items-center justify-between">
           <Text className="text-primary font-bold">
-            {item.min_price ? `€${Number(item.min_price).toFixed(2)}` : ""}
+            €{getMinPrice(item).toFixed(2)}
           </Text>
           {item.category_name && (
             <Text className="text-xs text-muted-foreground">{item.category_name}</Text>
@@ -295,14 +296,14 @@ function CategoryProductsSection({ category, router }: { category: Category; rou
             className="w-44 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
           >
             <Image
-              source={{ uri: item.images[0].url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400" }}
+              source={{ uri: getProductImage(item) }}
               className="w-full h-32"
               resizeMode="cover"
             />
             <View className="p-3">
               <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>{item.name}</Text>
               <Text className="text-primary font-bold">
-                {item.min_price ? `€${Number(item.min_price).toFixed(2)}` : ""}
+                €{getMinPrice(item).toFixed(2)}
               </Text>
             </View>
           </TouchableOpacity>
