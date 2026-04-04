@@ -6,6 +6,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
 import type { Product, ProductVariant } from "@/lib/types";
+import { getProductImage } from "@/lib/types";
 
 export default function ProductDetailScreen() {
   const router = useRouter();
@@ -39,9 +40,9 @@ export default function ProductDetailScreen() {
     setAddingToCart(true);
     const result = await addItem(selectedVariant.id, quantity, {
       product_name: product?.name,
-      product_image: product?.image_url,
-      weight_label: selectedVariant.weight_label,
-      price: Number(selectedVariant.price),
+      product_image: product?.images?.[0]?.url,
+      weight_label: selectedVariant.label,
+      price: selectedVariant.price,
     });
     setAddingToCart(false);
     if (result.success) {
@@ -80,7 +81,7 @@ export default function ProductDetailScreen() {
         {/* Hero Image */}
         <View className="relative">
           <Image
-            source={{ uri: product.image_url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=800" }}
+            source={{ uri: getProductImage(product) }}
             className="w-full h-72"
             resizeMode="cover"
           />
@@ -136,7 +137,7 @@ export default function ProductDetailScreen() {
                     }`}
                   >
                     <Text className={`font-semibold text-sm ${selectedVariant?.id === v.id ? "text-primary" : "text-foreground"}`}>
-                      {v.weight_label}
+                      {v.label}
                     </Text>
                     <Text className={`text-xs mt-1 ${selectedVariant?.id === v.id ? "text-primary/80" : "text-muted-foreground"}`}>
                       €{Number(v.price).toFixed(2)}
