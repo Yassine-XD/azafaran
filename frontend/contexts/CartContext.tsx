@@ -91,12 +91,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, isLoading: true }));
     const res = await api.get("/cart/");
     if (res.success && res.data) {
-      const items: CartItem[] = res.data.items || [];
-      const subtotal = items.reduce((sum: number, i: CartItem) => sum + (i.price || 0) * i.quantity, 0);
+      const items: CartItem[] = (res.data.items || []).map((i: any) => ({
+        id: i.id,
+        cart_id: i.cart_id,
+        variant_id: i.variant_id,
+        quantity: i.quantity,
+        product_id: i.product_id,
+        product_name: i.product_name,
+        product_image: Array.isArray(i.product_images) ? i.product_images[0]?.url : i.product_image,
+        weight_label: i.variant_label || i.weight_label,
+        price: i.current_price ?? i.price,
+        compare_at_price: i.compare_at_price,
+        stock_qty: i.stock_qty,
+      }));
+      const subtotal = items.reduce((sum, i) => sum + (i.price || 0) * i.quantity, 0);
       setState({
         items,
         subtotal,
-        itemCount: items.reduce((sum: number, i: CartItem) => sum + i.quantity, 0),
+        itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
         isLoading: false,
       });
     } else {
