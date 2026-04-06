@@ -1,4 +1,5 @@
-const BASE = import.meta.env.VITE_API_URL || "/api/v1";
+const BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:3000/api/v1";
+console.log(BASE)
 
 type Tokens = { accessToken: string; refreshToken: string };
 
