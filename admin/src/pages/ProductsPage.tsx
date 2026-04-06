@@ -152,6 +152,7 @@ export default function ProductsPage() {
     },
   ];
 
+  console.log(data)
   return (
     <div>
       <div className="flex items-center justify-between mb-4">

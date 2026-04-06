@@ -47,6 +47,8 @@ export default function DealsScreen() {
     );
   }
 
+  console.log(promotions)
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <View className="px-6 py-4 border-b border-border flex-row items-center justify-between">

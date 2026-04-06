@@ -1,4 +1,4 @@
-const BASE = "http://127.0.0.1:3000/api/v1";
+const BASE = "http://187.77.169.76/api/v1";
 
 type Tokens = { accessToken: string; refreshToken: string };
 

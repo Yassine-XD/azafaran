@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  ImageBackground,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -63,8 +65,6 @@ export default function HomeScreen() {
     if (featRes.success && featRes.data) setFeatured(featRes.data);
     if (bannerRes.success && bannerRes.data) setBanners(bannerRes.data);
     setIsLoading(false);
-  console.log(bannerRes)
-
   }, []);
 
   useEffect(() => {
@@ -79,33 +79,35 @@ export default function HomeScreen() {
 
   const renderBanner = ({ item, index }: { item: Banner; index: number }) => (
     <TouchableOpacity className=" mr-4 rounded-2xl overflow-hidden shadow-lg">
-      <LinearGradient
-        colors={
-          item.bg_color
-            ? [item.bg_color, item.bg_color]
-            : BANNER_GRADIENTS[index % BANNER_GRADIENTS.length]
-        }
+      <ImageBackground
+        source={{ uri: item.image_url }}
         style={{
           height: 180,
           borderRadius: 16,
           padding: 20,
           justifyContent: "space-between",
+          backgroundColor: 'rgba(0,0,0,1)'
         }}
       >
-        <View>
+        <LinearGradient
+        colors={[ "rgba(0,0,0,0.7)","transparent"]}
+        style={{
+          ...StyleSheet.absoluteFillObject,
+        }}
+      />
+        
+        <View 
+          style={{
+            width: "90%"
+          }}
+        >
           <Text className="text-white text-2xl font-bold">{item.title}</Text>
           {item.subtitle && (
             <Text className="text-white/80 text-sm mt-1">{item.subtitle}</Text>
           )}
         </View>
-        {/* {item.image_url && (
-          <Image
-            source={{ uri: item.image_url }}
-            className="w-24 h-24 rounded-full absolute bottom-2 right-2 border-2 border-white/30"
-            resizeMode="cover"
-          />
-        )} */}
-      </LinearGradient>
+        
+      </ImageBackground>
     </TouchableOpacity>
   );
 
