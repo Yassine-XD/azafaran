@@ -254,7 +254,7 @@ export const orderRepository = {
       `SELECT * FROM delivery_slots
        WHERE id = $1 AND is_active = true
        AND booked_count < max_orders
-       AND date >= CURRENT_DATE`,
+       AND date >= CURRENT_DATE + INTERVAL '2 days'`,
       [slotId],
     );
     return rows[0] || null;

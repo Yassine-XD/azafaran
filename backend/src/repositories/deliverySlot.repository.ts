@@ -7,7 +7,7 @@ export const deliverySlotRepository = {
               (max_orders - booked_count) AS available_spots
        FROM delivery_slots
        WHERE is_active = true
-         AND date >= CURRENT_DATE
+         AND date >= CURRENT_DATE + INTERVAL '2 days'
          AND booked_count < max_orders
        ORDER BY date ASC, start_time ASC`,
     );

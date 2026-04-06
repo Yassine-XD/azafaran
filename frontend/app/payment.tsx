@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, CreditCard, MapPin, Check, Truck, Wallet, Clock } from "lucide-react-native";
+import { ArrowLeft, CreditCard, MapPin, Check, Truck, Wallet, Clock, CalendarDays } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useStripePay } from "@/hooks/useStripePay";
 import { api } from "@/lib/api";
@@ -22,6 +22,7 @@ export default function PaymentScreen() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [slots, setSlots] = useState<DeliverySlot[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<DeliverySlot | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [isPlacing, setIsPlacing] = useState(false);
@@ -29,6 +30,28 @@ export default function PaymentScreen() {
 
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const total = subtotal + deliveryFee;
+
+  // Group slots by date
+  const slotsByDate = useMemo(() => {
+    const grouped: Record<string, DeliverySlot[]> = {};
+    for (const slot of slots) {
+      const d = slot.slot_date;
+      if (!grouped[d]) grouped[d] = [];
+      grouped[d].push(slot);
+    }
+    return grouped;
+  }, [slots]);
+
+  const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
+  const timeSlotsForDate = selectedDate ? slotsByDate[selectedDate] || [] : [];
+
+  const formatDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr + "T00:00:00");
+    const weekday = date.toLocaleDateString("es-ES", { weekday: "short" });
+    const day = date.getDate();
+    const month = date.toLocaleDateString("es-ES", { month: "short" });
+    return { weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1), day, month };
+  };
 
   useEffect(() => {
     (async () => {
@@ -43,7 +66,12 @@ export default function PaymentScreen() {
       }
       if (slotRes.success && slotRes.data) {
         setSlots(slotRes.data);
-        if (slotRes.data.length > 0) setSelectedSlot(slotRes.data[0]);
+        // Auto-select first available date and its first time slot
+        if (slotRes.data.length > 0) {
+          const firstDate = slotRes.data[0].slot_date;
+          setSelectedDate(firstDate);
+          setSelectedSlot(slotRes.data[0]);
+        }
       }
       setIsLoading(false);
     })();
@@ -158,36 +186,94 @@ export default function PaymentScreen() {
           )}
         </View>
 
-        {/* Delivery Slot */}
+        {/* Delivery Date & Time */}
         <View className="bg-card rounded-2xl border border-border p-4 mb-4">
-          <View className="flex-row items-center gap-2 mb-3">
-            <Clock size={18} className="text-primary" />
-            <Text className="text-foreground font-bold">Horario de Entrega</Text>
+          <View className="flex-row items-center gap-2 mb-1">
+            <CalendarDays size={18} className="text-primary" />
+            <Text className="text-foreground font-bold">Fecha de Entrega</Text>
           </View>
-          {slots.length === 0 ? (
-            <Text className="text-muted-foreground text-sm">No hay horarios disponibles</Text>
+          <Text className="text-muted-foreground text-xs mb-3">Mínimo 2 días de preparación</Text>
+
+          {availableDates.length === 0 ? (
+            <Text className="text-muted-foreground text-sm">No hay fechas disponibles</Text>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {slots.map((slot) => {
-                const isSelected = selectedSlot?.id === slot.id;
-                const date = new Date(slot.slot_date);
-                const dayLabel = date.toLocaleDateString("es-ES", { weekday: "short", day: "numeric" });
-                return (
-                  <TouchableOpacity
-                    key={slot.id}
-                    onPress={() => setSelectedSlot(slot)}
-                    className={`mr-3 px-4 py-3 rounded-xl border ${isSelected ? "border-primary bg-primary/10" : "border-border bg-muted/50"}`}
-                  >
-                    <Text className={`text-xs font-medium ${isSelected ? "text-primary" : "text-muted-foreground"}`}>
-                      {dayLabel}
-                    </Text>
-                    <Text className={`text-sm font-bold mt-1 ${isSelected ? "text-primary" : "text-foreground"}`}>
-                      {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <>
+              {/* Date Picker */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                {availableDates.map((dateStr) => {
+                  const isSelected = selectedDate === dateStr;
+                  const { weekday, day, month } = formatDateLabel(dateStr);
+                  return (
+                    <TouchableOpacity
+                      key={dateStr}
+                      onPress={() => {
+                        setSelectedDate(dateStr);
+                        // Auto-select first time slot for this date
+                        const firstSlot = slotsByDate[dateStr]?.[0];
+                        setSelectedSlot(firstSlot || null);
+                      }}
+                      className={`mr-3 w-16 py-3 rounded-xl border items-center ${
+                        isSelected ? "border-primary bg-primary" : "border-border bg-muted/50"
+                      }`}
+                    >
+                      <Text className={`text-xs font-medium ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}>
+                        {weekday}
+                      </Text>
+                      <Text className={`text-xl font-bold my-0.5 ${isSelected ? "text-primary-foreground" : "text-foreground"}`}>
+                        {day}
+                      </Text>
+                      <Text className={`text-xs ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}>
+                        {month}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Time Slot Picker */}
+              <View className="flex-row items-center gap-2 mb-3">
+                <Clock size={16} className="text-primary" />
+                <Text className="text-foreground font-semibold text-sm">Horario</Text>
+              </View>
+
+              {timeSlotsForDate.length === 0 ? (
+                <Text className="text-muted-foreground text-sm">No hay horarios para esta fecha</Text>
+              ) : (
+                <View className="gap-2">
+                  {timeSlotsForDate.map((slot) => {
+                    const isSelected = selectedSlot?.id === slot.id;
+                    const spotsLeft = slot.max_orders - slot.booked_count;
+                    return (
+                      <TouchableOpacity
+                        key={slot.id}
+                        onPress={() => setSelectedSlot(slot)}
+                        className={`flex-row items-center justify-between px-4 py-3 rounded-xl border ${
+                          isSelected ? "border-primary bg-primary/10" : "border-border bg-muted/50"
+                        }`}
+                      >
+                        <View className="flex-row items-center gap-3">
+                          {isSelected ? (
+                            <View className="w-5 h-5 bg-primary rounded-full items-center justify-center">
+                              <Check size={12} color="white" />
+                            </View>
+                          ) : (
+                            <View className="w-5 h-5 rounded-full border-2 border-border" />
+                          )}
+                          <Text className={`text-base font-semibold ${isSelected ? "text-primary" : "text-foreground"}`}>
+                            {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
+                          </Text>
+                        </View>
+                        {spotsLeft <= 3 && (
+                          <Text className="text-xs text-red-500 font-medium">
+                            {spotsLeft === 1 ? "¡Último!" : `${spotsLeft} plazas`}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </>
           )}
         </View>
 
