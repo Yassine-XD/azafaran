@@ -197,8 +197,8 @@ export default function PaymentScreen() {
             <Wallet size={18} className="text-primary" />
             <Text className="text-foreground font-bold">Método de Pago</Text>
           </View>
-          {(["card", "cash", "bizum"] as PaymentMethod[]).map((method) => {
-            const labels: Record<PaymentMethod, string> = { card: "Tarjeta", cash: "Efectivo", bizum: "Bizum" };
+          {(["card"] as PaymentMethod[]).map((method) => {
+            const labels: Record<PaymentMethod, string> = { card: "Tarjeta"};
             const icons: Record<PaymentMethod, any> = { card: CreditCard, cash: Wallet, bizum: Wallet };
             const Icon = icons[method];
             const isSelected = paymentMethod === method;

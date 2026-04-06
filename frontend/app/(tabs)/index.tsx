@@ -1,7 +1,23 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, ScrollView, FlatList, Image, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronRight, MapPin, Clock, Star, ShoppingCart, Search } from "lucide-react-native";
+import {
+  ChevronRight,
+  MapPin,
+  Clock,
+  Star,
+  ShoppingCart,
+  Search,
+} from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "expo-router";
@@ -51,7 +67,6 @@ export default function HomeScreen() {
 
   }, []);
 
-
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -65,12 +80,23 @@ export default function HomeScreen() {
   const renderBanner = ({ item, index }: { item: Banner; index: number }) => (
     <TouchableOpacity className=" mr-4 rounded-2xl overflow-hidden shadow-lg">
       <LinearGradient
-        colors={item.bg_color ? [item.bg_color, item.bg_color] : BANNER_GRADIENTS[index % BANNER_GRADIENTS.length]}
-        style={{ height: 180, borderRadius: 16, padding: 20, justifyContent: "space-between" }}
+        colors={
+          item.bg_color
+            ? [item.bg_color, item.bg_color]
+            : BANNER_GRADIENTS[index % BANNER_GRADIENTS.length]
+        }
+        style={{
+          height: 180,
+          borderRadius: 16,
+          padding: 20,
+          justifyContent: "space-between",
+        }}
       >
         <View>
           <Text className="text-white text-2xl font-bold">{item.title}</Text>
-          {item.subtitle && <Text className="text-white/80 text-sm mt-1">{item.subtitle}</Text>}
+          {item.subtitle && (
+            <Text className="text-white/80 text-sm mt-1">{item.subtitle}</Text>
+          )}
         </View>
         {/* {item.image_url && (
           <Image
@@ -86,7 +112,12 @@ export default function HomeScreen() {
   const renderCategory = ({ item }: { item: Category }) => (
     <TouchableOpacity
       className="items-center mr-4"
-      onPress={() => router.push({ pathname: "/shop", params: { category: item.slug, categoryName: item.name } })}
+      onPress={() =>
+        router.push({
+          pathname: "/shop",
+          params: { category: item.slug, categoryName: item.name },
+        })
+      }
     >
       <View className="w-16 h-16 rounded-full bg-orange-100 items-center justify-center mb-2">
         <Text className="text-2xl">{CATEGORY_ICONS[item.slug] || "🥩"}</Text>
@@ -97,7 +128,9 @@ export default function HomeScreen() {
 
   const renderProduct = ({ item }: { item: Product }) => (
     <TouchableOpacity
-      onPress={() => router.push({ pathname: "/product-detail", params: { id: item.id } })}
+      onPress={() =>
+        router.push({ pathname: "/product-detail", params: { id: item.id } })
+      }
       className="w-44 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
     >
       <View className="relative">
@@ -108,7 +141,9 @@ export default function HomeScreen() {
         />
         {item.is_featured && (
           <View className="absolute top-2 left-2 bg-primary px-2 py-1 rounded-md">
-            <Text className="text-primary-foreground text-xs font-bold">DESTACADO</Text>
+            <Text className="text-primary-foreground text-xs font-bold">
+              DESTACADO
+            </Text>
           </View>
         )}
         <TouchableOpacity className="absolute bottom-2 right-2 bg-background rounded-full p-2 shadow-md">
@@ -116,14 +151,19 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
       <View className="p-3">
-        <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>
+        <Text
+          className="text-foreground font-semibold text-sm mb-1"
+          numberOfLines={1}
+        >
           {item.name}
         </Text>
         <View className="flex-row items-center mb-2">
           {item.avg_rating ? (
             <>
               <Star size={12} className="text-yellow-500 mr-1" fill="#eab308" />
-              <Text className="text-xs text-muted-foreground">{Number(item.avg_rating).toFixed(1)}</Text>
+              <Text className="text-xs text-muted-foreground">
+                {Number(item.avg_rating).toFixed(1)}
+              </Text>
             </>
           ) : (
             <Text className="text-xs text-muted-foreground">Nuevo</Text>
@@ -134,7 +174,9 @@ export default function HomeScreen() {
             €{getMinPrice(item).toFixed(2)}
           </Text>
           {item.category_name && (
-            <Text className="text-xs text-muted-foreground">{item.category_name}</Text>
+            <Text className="text-xs text-muted-foreground">
+              {item.category_name}
+            </Text>
           )}
         </View>
       </View>
@@ -150,7 +192,10 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
+    <SafeAreaView
+      className="flex-1 bg-background"
+      edges={["top", "left", "right"]}
+    >
       {/* Header */}
       <View className="px-6 py-4">
         <View className="flex-row items-center justify-between mb-4">
@@ -164,11 +209,16 @@ export default function HomeScreen() {
             </Text>
           </View>
           <View className="flex-row items-center gap-3">
-            <TouchableOpacity onPress={() => router.push("/cart")} className="relative">
+            <TouchableOpacity
+              onPress={() => router.push("/cart")}
+              className="relative"
+            >
               <ShoppingCart size={24} className="text-foreground" />
               {itemCount > 0 && (
                 <View className="absolute -top-1 -right-1 bg-primary w-5 h-5 rounded-full items-center justify-center">
-                  <Text className="text-primary-foreground text-[10px] font-bold">{itemCount}</Text>
+                  <Text className="text-primary-foreground text-[10px] font-bold">
+                    {itemCount}
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -179,14 +229,22 @@ export default function HomeScreen() {
         {/* Search Bar */}
         <TouchableOpacity className="flex-row items-center bg-input rounded-xl px-4 py-3">
           <Search size={20} className="text-muted-foreground mr-3" />
-          <Text className="text-muted-foreground">Buscar carnes, ofertas...</Text>
+          <Text className="text-muted-foreground">
+            Buscar carnes, ofertas...
+          </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 128 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ea580c" />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#ea580c"
+          />
+        }
       >
         {/* Banner Carousel */}
         {banners.length > 0 && (
@@ -206,9 +264,16 @@ export default function HomeScreen() {
         {categories.length > 0 && (
           <View className="mb-6">
             <View className="px-6 flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-foreground">Categorías</Text>
-              <TouchableOpacity onPress={() => router.push("/(tabs)/categories")} className="flex-row items-center">
-                <Text className="text-sm text-primary font-medium">Ver todo</Text>
+              <Text className="text-xl font-bold text-foreground">
+                Categorías
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push("/(tabs)/categories")}
+                className="flex-row items-center"
+              >
+                <Text className="text-sm text-primary font-medium">
+                  Ver todo
+                </Text>
                 <ChevronRight size={16} className="text-primary" />
               </TouchableOpacity>
             </View>
@@ -227,7 +292,9 @@ export default function HomeScreen() {
         {featured.length > 0 && (
           <View className="mb-6">
             <View className="px-6 flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-foreground">Destacados</Text>
+              <Text className="text-xl font-bold text-foreground">
+                Destacados
+              </Text>
             </View>
             <FlatList
               data={featured}
@@ -242,19 +309,33 @@ export default function HomeScreen() {
 
         {/* Products by Category */}
         {categories.slice(0, 3).map((cat) => (
-          <CategoryProductsSection key={cat.id} category={cat} router={router} />
+          <CategoryProductsSection
+            key={cat.id}
+            category={cat}
+            router={router}
+          />
         ))}
 
         {/* Halal Banner */}
         <View className="px-6 mb-6">
           <LinearGradient
             colors={["#ea580c", "#c2410c"]}
-            style={{ borderRadius: 16, padding: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+            style={{
+              borderRadius: 16,
+              padding: 20,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
           >
             <View>
-              <Text className="text-white text-2xl font-bold tracking-tight">FRESCA</Text>
+              <Text className="text-white text-2xl font-bold tracking-tight">
+                FRESCA
+              </Text>
               <Text className="text-white/90 text-lg">· HALAL ·</Text>
-              <Text className="text-white text-xl font-bold tracking-tight">CERTIFICADA</Text>
+              <Text className="text-white text-xl font-bold tracking-tight">
+                CERTIFICADA
+              </Text>
             </View>
             <View className="bg-white/20 rounded-full p-3">
               <Text className="text-3xl">🏆</Text>
@@ -267,12 +348,21 @@ export default function HomeScreen() {
 }
 
 // Sub-component to load products per category
-function CategoryProductsSection({ category, router }: { category: Category; router: any }) {
+function CategoryProductsSection({
+  category,
+  router,
+}: {
+  category: Category;
+  router: any;
+}) {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     (async () => {
-      const res = await api.get<Product[]>(`/categories/${category.slug}/products?limit=6`, false);
+      const res = await api.get<Product[]>(
+        `/categories/${category.slug}/products?limit=6`,
+        false,
+      );
       if (res.success && res.data) setProducts(res.data);
     })();
   }, [category.slug]);
@@ -282,9 +372,16 @@ function CategoryProductsSection({ category, router }: { category: Category; rou
   return (
     <View className="mb-6">
       <View className="px-6 flex-row items-center justify-between mb-4">
-        <Text className="text-xl font-bold text-foreground">{category.name}</Text>
+        <Text className="text-xl font-bold text-foreground">
+          {category.name}
+        </Text>
         <TouchableOpacity
-          onPress={() => router.push({ pathname: "/shop", params: { category: category.slug, categoryName: category.name } })}
+          onPress={() =>
+            router.push({
+              pathname: "/shop",
+              params: { category: category.slug, categoryName: category.name },
+            })
+          }
           className="flex-row items-center"
         >
           <Text className="text-sm text-primary font-medium">Ver todo</Text>
@@ -295,7 +392,12 @@ function CategoryProductsSection({ category, router }: { category: Category; rou
         data={products}
         renderItem={({ item }) => (
           <TouchableOpacity
-            onPress={() => router.push({ pathname: "/product-detail", params: { id: item.id } })}
+            onPress={() =>
+              router.push({
+                pathname: "/product-detail",
+                params: { id: item.id },
+              })
+            }
             className="w-44 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
           >
             <Image
@@ -304,7 +406,12 @@ function CategoryProductsSection({ category, router }: { category: Category; rou
               resizeMode="cover"
             />
             <View className="p-3">
-              <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>{item.name}</Text>
+              <Text
+                className="text-foreground font-semibold text-sm mb-1"
+                numberOfLines={1}
+              >
+                {item.name}
+              </Text>
               <Text className="text-primary font-bold">
                 €{getMinPrice(item)}
               </Text>
