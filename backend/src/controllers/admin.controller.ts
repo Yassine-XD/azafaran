@@ -70,6 +70,11 @@ export const adminController = {
     return success(res, variant);
   }),
 
+  deleteVariant: asyncHandler(async (req: Request, res: Response) => {
+    await adminService.deleteVariant(req.params.id, req.params.vid, req.user!.sub);
+    return success(res, { message: "Variante eliminada" });
+  }),
+
   // ─── Orders ─────────────────────────────────────────
 
   getOrders: asyncHandler(async (req: Request, res: Response) => {
@@ -108,6 +113,11 @@ export const adminController = {
 
   getUserDetail: asyncHandler(async (req: Request, res: Response) => {
     const user = await adminService.getUserDetail(req.params.id);
+    return success(res, user);
+  }),
+
+  updateUser: asyncHandler(async (req: Request, res: Response) => {
+    const user = await adminService.updateUser(req.params.id, req.body, req.user!.sub);
     return success(res, user);
   }),
 
@@ -188,6 +198,11 @@ export const adminController = {
       req.user!.sub,
     );
     return success(res, code);
+  }),
+
+  deletePromoCode: asyncHandler(async (req: Request, res: Response) => {
+    await adminService.deletePromoCode(req.params.id, req.user!.sub);
+    return success(res, { message: "Código promocional desactivado" });
   }),
 
   // ─── Delivery Slots ─────────────────────────────────

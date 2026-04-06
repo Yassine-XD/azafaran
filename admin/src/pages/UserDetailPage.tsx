@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { formatDate, formatCurrency } from "../lib/utils";
 import StatusBadge from "../components/StatusBadge";
 import { btnSecondary } from "../components/FormField";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Shield, ShieldOff, UserCheck, UserX, BadgeCheck, BadgeX } from "lucide-react";
 
 type UserDetail = {
   id: string; first_name: string; last_name: string; email: string;
@@ -18,13 +18,23 @@ export default function UserDetailPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
 
-  useEffect(() => {
+  const loadUser = useCallback(() => {
     api.get(`/admin/users/${id}`).then((r) => {
       if (r.success) setUser(r.data as any);
       setLoading(false);
     });
   }, [id]);
+
+  useEffect(() => { loadUser(); }, [loadUser]);
+
+  const updateUser = async (data: Record<string, any>) => {
+    setUpdating(true);
+    const r = await api.patch(`/admin/users/${id}`, data);
+    if (r.success) setUser(r.data as any);
+    setUpdating(false);
+  };
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gray-400" size={32} /></div>;
   if (!user) return <p className="text-gray-500 text-center py-20">Usuario no encontrado</p>;
@@ -43,6 +53,52 @@ export default function UserDetailPage() {
           <div><span className="text-gray-500">Tamaño familia:</span> {user.family_size || "—"}</div>
           <div><span className="text-gray-500">Idioma:</span> {user.preferred_lang || "—"}</div>
           <div><span className="text-gray-500">Registro:</span> {formatDate(user.created_at)}</div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t border-gray-100">
+          <button
+            disabled={updating}
+            onClick={() => updateUser({ is_active: !user.is_active })}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium ${
+              user.is_active
+                ? "bg-red-50 text-red-700 hover:bg-red-100"
+                : "bg-green-50 text-green-700 hover:bg-green-100"
+            }`}
+          >
+            {user.is_active ? <UserX size={16} /> : <UserCheck size={16} />}
+            {user.is_active ? "Desactivar" : "Activar"}
+          </button>
+
+          <button
+            disabled={updating}
+            onClick={() => updateUser({ is_verified: !user.is_verified })}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium ${
+              user.is_verified
+                ? "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+            }`}
+          >
+            {user.is_verified ? <BadgeX size={16} /> : <BadgeCheck size={16} />}
+            {user.is_verified ? "Quitar verificación" : "Verificar"}
+          </button>
+
+          <button
+            disabled={updating}
+            onClick={() => {
+              const newRole = user.role === "admin" ? "customer" : "admin";
+              if (newRole === "admin" && !confirm("¿Dar permisos de administrador a este usuario?")) return;
+              updateUser({ role: newRole });
+            }}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium ${
+              user.role === "admin"
+                ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+            }`}
+          >
+            {user.role === "admin" ? <ShieldOff size={16} /> : <Shield size={16} />}
+            {user.role === "admin" ? "Quitar admin" : "Hacer admin"}
+          </button>
         </div>
       </div>
       <div className="bg-white rounded-xl border border-gray-200">

@@ -226,6 +226,10 @@ export const adminRepository = {
     return rows[0] || null;
   },
 
+  async deleteVariant(id: string) {
+    await pool.query("DELETE FROM product_variants WHERE id = $1", [id]);
+  },
+
   // ─── Orders Management ──────────────────────────────
 
   async findAllOrders(filters: {
@@ -331,6 +335,17 @@ export const adminRepository = {
               is_active, is_verified, family_size, preferred_lang, created_at
        FROM users WHERE id = $1`,
       [userId],
+    );
+    return rows[0] || null;
+  },
+
+  async updateUser(id: string, data: Record<string, any>) {
+    const fields = Object.keys(data);
+    const sets = fields.map((f, i) => `${f} = $${i + 2}`).join(", ");
+    const values = fields.map((f) => data[f]);
+    const { rows } = await pool.query(
+      `UPDATE users SET ${sets} WHERE id = $1 RETURNING id, email, first_name, last_name, phone, role, is_active, is_verified, created_at`,
+      [id, ...values],
     );
     return rows[0] || null;
   },
@@ -565,6 +580,14 @@ export const adminRepository = {
       `UPDATE promo_codes SET ${fields.join(", ")}
        WHERE id = $${idx} RETURNING *`,
       values,
+    );
+    return rows[0] || null;
+  },
+
+  async deletePromoCode(id: string) {
+    const { rows } = await pool.query(
+      "UPDATE promo_codes SET is_active = false WHERE id = $1 RETURNING *",
+      [id],
     );
     return rows[0] || null;
   },

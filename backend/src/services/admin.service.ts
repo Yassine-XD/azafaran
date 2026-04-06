@@ -137,6 +137,21 @@ export const adminService = {
     return updated;
   },
 
+  async deleteVariant(productId: string, variantId: string, adminId: string) {
+    const variant = await productRepository.findVariantById(variantId);
+    if (!variant || variant.product_id !== productId)
+      throw appError("Variante no encontrada", 404, "VARIANT_NOT_FOUND");
+
+    await adminRepository.deleteVariant(variantId);
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "delete",
+      entity: "product_variant",
+      entityId: variantId,
+      before: variant,
+    });
+  },
+
   // ─── Orders ─────────────────────────────────────────
 
   async getOrders(filters: {
@@ -224,6 +239,32 @@ export const adminService = {
 
     const { rows: orders } = await orderRepository.findByUserId(userId, 1, 10);
     return { ...user, recent_orders: orders };
+  },
+
+  async updateUser(userId: string, data: any, adminId: string) {
+    // Only allow specific fields
+    const allowed: Record<string, any> = {};
+    if (data.role !== undefined) allowed.role = data.role;
+    if (data.is_active !== undefined) allowed.is_active = data.is_active;
+    if (data.is_verified !== undefined) allowed.is_verified = data.is_verified;
+
+    if (Object.keys(allowed).length === 0)
+      throw appError("No hay campos válidos para actualizar", 400, "NO_VALID_FIELDS");
+
+    const before = await adminRepository.findUserById(userId);
+    if (!before)
+      throw appError("Usuario no encontrado", 404, "USER_NOT_FOUND");
+
+    const updated = await adminRepository.updateUser(userId, allowed);
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "update",
+      entity: "user",
+      entityId: userId,
+      before,
+      after: updated,
+    });
+    return updated;
   },
 
   // ─── Promotions ─────────────────────────────────────
@@ -368,6 +409,19 @@ export const adminService = {
       after: updated,
     });
     return updated;
+  },
+
+  async deletePromoCode(id: string, adminId: string) {
+    const deleted = await adminRepository.deletePromoCode(id);
+    if (!deleted)
+      throw appError("Código no encontrado", 404, "PROMO_CODE_NOT_FOUND");
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "delete",
+      entity: "promo_code",
+      entityId: id,
+    });
+    return deleted;
   },
 
   // ─── Delivery Slots ─────────────────────────────────

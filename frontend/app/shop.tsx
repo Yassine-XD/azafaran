@@ -74,7 +74,7 @@ export default function ShopScreen() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && products.length === 0) {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center">
         <ActivityIndicator size="large" color="#660710" />
@@ -169,8 +169,11 @@ export default function ShopScreen() {
         </ScrollView>
 
         {/* Results count */}
-        <View className="px-4 pb-2">
+        <View className="px-4 pb-2 flex-row items-center">
           <Text className="text-muted-foreground text-xs">{filteredProducts.length} productos</Text>
+          {isLoading && products.length > 0 && (
+            <ActivityIndicator size="small" color="#660710" className="ml-2" />
+          )}
         </View>
       </View>
 
