@@ -3,7 +3,7 @@ import { pool } from "../config/database";
 export const deliverySlotRepository = {
   async findAvailable() {
     const { rows } = await pool.query(
-      `SELECT id, date, start_time, end_time, max_orders, booked_count,
+      `SELECT id, to_char(date, 'YYYY-MM-DD') AS slot_date, start_time, end_time, max_orders, booked_count,
               (max_orders - booked_count) AS available_spots
        FROM delivery_slots
        WHERE is_active = true
