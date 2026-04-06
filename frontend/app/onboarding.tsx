@@ -35,13 +35,13 @@ export default function OnboardingScreen() {
       setCurrentIndex(currentIndex + 1);
     } else {
       await AsyncStorage.setItem("onboarding_done", "true");
-      router.replace("/login");
+      router.replace("/(tabs)");
     }
   };
 
   const handleSkip = async () => {
     await AsyncStorage.setItem("onboarding_done", "true");
-    router.replace("/login");
+    router.replace("/(tabs)");
   };
 
   return (
