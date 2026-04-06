@@ -77,16 +77,22 @@ export default function PaymentScreen() {
         if (defaultAddr) setSelectedAddress(defaultAddr);
       }
       if (slotRes.success && slotRes.data) {
-        // Normalize: backend may return 'date' or 'slot_date'
-        const normalized = slotRes.data.map((s: any) => ({
-          ...s,
-          slot_date: s.slot_date || (s.date instanceof Date ? s.date.toISOString().slice(0, 10) : typeof s.date === 'string' ? s.date.slice(0, 10) : s.slot_date),
-        }));
+        // Normalize: backend may return 'date' (ISO string) or 'slot_date'
+        const minDate = new Date();
+        minDate.setDate(minDate.getDate() + 2);
+        minDate.setHours(0, 0, 0, 0);
+
+        const normalized = slotRes.data
+          .map((s: any) => {
+            const raw = s.slot_date || s.date;
+            const dateStr = typeof raw === 'string' ? raw.slice(0, 10) : '';
+            return { ...s, slot_date: dateStr };
+          })
+          .filter((s) => new Date(s.slot_date + 'T00:00:00') >= minDate);
+
         setSlots(normalized);
-        // Auto-select first available date and its first time slot
         if (normalized.length > 0) {
-          const firstDate = normalized[0].slot_date;
-          setSelectedDate(firstDate);
+          setSelectedDate(normalized[0].slot_date);
           setSelectedSlot(normalized[0]);
         }
       }
