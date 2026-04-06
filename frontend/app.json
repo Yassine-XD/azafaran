@@ -1,17 +1,18 @@
 {
   "expo": {
-    "name": "MeatMarket Pro",
-    "slug": "meatmarket-pro",
+    "name": "Azafaran",
+    "slug": "azafaran",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "exponativewind",
+    "scheme": "azafaran",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.azafaran.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/icon.png",
