@@ -22,7 +22,7 @@ type Category = { id: string; name: string };
 
 const empty = {
   name: "", slug: "", description: "", short_desc: "", category_id: "",
-  price_per_kg: "", unit_type: "kg", halal_cert_id: "", is_featured: false, images: [""], tags: "",
+  price_per_kg: "", unit_type: "kg", halal_cert_id: "", is_featured: false, is_active: true, images: [""], tags: "",
 };
 
 export default function ProductsPage() {
@@ -70,7 +70,7 @@ export default function ProductsPage() {
     setForm({
       name: p.name, slug: p.slug, description: p.description || "", short_desc: p.short_desc || "",
       category_id: p.category_id, price_per_kg: p.price_per_kg, unit_type: p.unit_type || "kg",
-      halal_cert_id: p.halal_cert_id || "", is_featured: p.is_featured,
+      halal_cert_id: p.halal_cert_id || "", is_featured: p.is_featured, is_active: p.is_active,
       images: p.images?.length ? p.images : [""], tags: (p.tags || []).join(", "),
     });
     setModal(true);
@@ -140,7 +140,20 @@ export default function ProductsPage() {
     { key: "category_name", header: "Categoría" },
     { key: "price_per_kg", header: "Precio/kg", render: (r) => formatCurrency(Number(r.price_per_kg)) },
     { key: "is_featured", header: "Destacado", render: (r) => r.is_featured ? "Sí" : "No" },
-    { key: "is_active", header: "Estado", render: (r) => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
+    { key: "is_active", header: "Estado", render: (r) => (
+      <button
+        onClick={async (e) => {
+          e.stopPropagation();
+          await api.put(`/admin/products/${r.id}`, { is_active: !r.is_active });
+          fetch();
+        }}
+        className={`px-2 py-0.5 rounded text-xs font-medium ${
+          r.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+        }`}
+      >
+        {r.is_active ? "Activo" : "Inactivo"}
+      </button>
+    ) },
     {
       key: "actions", header: "Acciones", render: (r) => (
         <div className="flex gap-1">
@@ -234,10 +247,16 @@ export default function ProductsPage() {
             ))}
             <button type="button" onClick={() => setForm({ ...form, images: [...form.images, ""] })} className="text-sm text-orange-600 hover:underline">+ Añadir imagen</button>
           </FormField>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.is_featured} onChange={(e) => setForm({ ...form, is_featured: e.target.checked })} />
-            Producto destacado
-          </label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.is_featured} onChange={(e) => setForm({ ...form, is_featured: e.target.checked })} />
+              Producto destacado
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+              Activo
+            </label>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => setModal(false)} className={btnSecondary}>Cancelar</button>
             <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Guardando..." : "Guardar"}</button>
@@ -266,8 +285,15 @@ export default function ProductsPage() {
                 <td className="px-3 py-2">{formatCurrency(Number(v.price))}</td>
                 <td className="px-3 py-2">{v.stock_qty}</td>
                 <td className="px-3 py-2">{v.sku}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 flex gap-2">
                   <button onClick={() => { setEditingVar(v); setVarForm({ label: v.label, weight_grams: String(v.weight_grams), price: v.price, stock_qty: String(v.stock_qty), sku: v.sku || "" }); }} className="text-blue-600 text-xs hover:underline">Editar</button>
+                  <button onClick={async () => {
+                    if (!confirm("¿Eliminar esta variante?")) return;
+                    await api.del(`/admin/products/${varProduct!.id}/variants/${v.id}`);
+                    const r: any = await api.get(`/products/${varProduct!.id}`);
+                    if (r.success && r.data?.variants) setVariants(r.data.variants);
+                    else setVariants([]);
+                  }} className="text-red-600 text-xs hover:underline">Eliminar</button>
                 </td>
               </tr>
             ))}

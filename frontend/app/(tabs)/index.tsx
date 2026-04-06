@@ -229,7 +229,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Search Bar */}
-        <TouchableOpacity className="flex-row items-center bg-input rounded-xl px-4 py-3">
+        <TouchableOpacity onPress={() => router.push("/search")} className="flex-row items-center bg-input rounded-xl px-4 py-3">
           <Search size={20} className="text-muted-foreground mr-3" />
           <Text className="text-muted-foreground">
             Buscar carnes, ofertas...

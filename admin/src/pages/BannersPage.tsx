@@ -13,7 +13,7 @@ type Banner = {
   is_active: boolean; starts_at: string; ends_at: string;
 };
 
-const empty = { title: "", subtitle: "", image_url: "", cta_text: "", cta_link: "", display_order: "0", starts_at: "", ends_at: "" };
+const empty = { title: "", subtitle: "", image_url: "", cta_text: "", cta_link: "", display_order: "0", is_active: true, starts_at: "", ends_at: "" };
 
 export default function BannersPage() {
   const [data, setData] = useState<Banner[]>([]);
@@ -41,7 +41,7 @@ export default function BannersPage() {
     setForm({
       title: b.title, subtitle: b.subtitle || "", image_url: b.image_url || "",
       cta_text: b.cta_text || "", cta_link: b.cta_link || "",
-      display_order: String(b.display_order), starts_at: b.starts_at?.slice(0, 16) || "", ends_at: b.ends_at?.slice(0, 16) || "",
+      display_order: String(b.display_order), is_active: b.is_active, starts_at: b.starts_at?.slice(0, 16) || "", ends_at: b.ends_at?.slice(0, 16) || "",
     });
     setModal(true);
   };
@@ -72,7 +72,20 @@ export default function BannersPage() {
         : <span className="text-gray-400 text-xs">—</span>,
     },
     { key: "display_order", header: "Orden" },
-    { key: "is_active", header: "Estado", render: (r) => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
+    { key: "is_active", header: "Estado", render: (r) => (
+      <button
+        onClick={async (e) => {
+          e.stopPropagation();
+          await api.put(`/admin/banners/${r.id}`, { is_active: !r.is_active });
+          load();
+        }}
+        className={`px-2 py-0.5 rounded text-xs font-medium ${
+          r.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+        }`}
+      >
+        {r.is_active ? "Activo" : "Inactivo"}
+      </button>
+    ) },
     { key: "starts_at", header: "Inicio", render: (r) => r.starts_at ? formatDate(r.starts_at) : "—" },
     {
       key: "actions", header: "", render: (r) => (
@@ -107,6 +120,10 @@ export default function BannersPage() {
             <FormField label="Inicio"><input type="datetime-local" className={inputClass} value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} /></FormField>
             <FormField label="Fin"><input type="datetime-local" className={inputClass} value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} /></FormField>
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+            Activo
+          </label>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => setModal(false)} className={btnSecondary}>Cancelar</button>
             <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Guardando..." : "Guardar"}</button>

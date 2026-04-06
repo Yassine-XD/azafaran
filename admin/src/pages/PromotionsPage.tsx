@@ -17,7 +17,7 @@ type Promotion = {
 const empty = {
   title: "", subtitle: "", type: "deal", scope: "all", product_id: "", category_id: "",
   discount_type: "percentage", discount_value: "", image_url: "", badge_text: "",
-  show_on_home: true, show_on_product: true, priority: "0", starts_at: "", ends_at: "",
+  show_on_home: true, show_on_product: true, priority: "0", is_active: true, starts_at: "", ends_at: "",
 };
 
 export default function PromotionsPage() {
@@ -49,7 +49,7 @@ export default function PromotionsPage() {
       discount_type: p.discount_type, discount_value: p.discount_value,
       image_url: p.image_url || "", badge_text: p.badge_text || "",
       show_on_home: p.show_on_home, show_on_product: p.show_on_product,
-      priority: String(p.priority), starts_at: p.starts_at?.slice(0, 16) || "", ends_at: p.ends_at?.slice(0, 16) || "",
+      priority: String(p.priority), is_active: p.is_active, starts_at: p.starts_at?.slice(0, 16) || "", ends_at: p.ends_at?.slice(0, 16) || "",
     });
     setModal(true);
   };
@@ -77,7 +77,20 @@ export default function PromotionsPage() {
     { key: "scope", header: "Alcance" },
     { key: "discount_value", header: "Descuento", render: (r) => `${r.discount_value}${r.discount_type === "percentage" ? "%" : "€"}` },
     { key: "priority", header: "Prioridad" },
-    { key: "is_active", header: "Estado", render: (r) => <StatusBadge status={r.is_active ? "active" : "inactive"} /> },
+    { key: "is_active", header: "Estado", render: (r) => (
+      <button
+        onClick={async (e) => {
+          e.stopPropagation();
+          await api.put(`/admin/promotions/${r.id}`, { is_active: !r.is_active });
+          load();
+        }}
+        className={`px-2 py-0.5 rounded text-xs font-medium ${
+          r.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+        }`}
+      >
+        {r.is_active ? "Activo" : "Inactivo"}
+      </button>
+    ) },
     { key: "starts_at", header: "Inicio", render: (r) => r.starts_at ? formatDate(r.starts_at) : "—" },
     { key: "ends_at", header: "Fin", render: (r) => r.ends_at ? formatDate(r.ends_at) : "—" },
     {
@@ -139,6 +152,7 @@ export default function PromotionsPage() {
           <div className="flex gap-4">
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.show_on_home} onChange={(e) => setForm({ ...form, show_on_home: e.target.checked })} /> Mostrar en inicio</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.show_on_product} onChange={(e) => setForm({ ...form, show_on_product: e.target.checked })} /> Mostrar en producto</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Activo</label>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => setModal(false)} className={btnSecondary}>Cancelar</button>

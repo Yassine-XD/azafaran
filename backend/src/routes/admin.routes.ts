@@ -21,6 +21,7 @@ router.put("/products/:id", adminController.updateProduct);
 router.delete("/products/:id", adminController.deleteProduct);
 router.post("/products/:id/variants", adminController.addVariant);
 router.put("/products/:id/variants/:vid", adminController.updateVariant);
+router.delete("/products/:id/variants/:vid", adminController.deleteVariant);
 
 // Orders management
 router.get("/orders", adminController.getOrders);
@@ -33,6 +34,7 @@ router.patch(
 // Users
 router.get("/users", adminController.getUsers);
 router.get("/users/:id", adminController.getUserDetail);
+router.patch("/users/:id", adminController.updateUser);
 
 // Promotions
 router.get("/promotions", adminController.getPromotions);
@@ -50,6 +52,7 @@ router.delete("/banners/:id", adminController.deleteBanner);
 router.get("/promo-codes", adminController.getPromoCodes);
 router.post("/promo-codes", adminController.createPromoCode);
 router.put("/promo-codes/:id", adminController.updatePromoCode);
+router.delete("/promo-codes/:id", adminController.deletePromoCode);
 
 // Delivery Slots
 router.get("/delivery-slots", adminController.getDeliverySlots);

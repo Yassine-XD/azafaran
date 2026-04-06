@@ -67,7 +67,7 @@ export default function CategoriesScreen() {
           <Text className="text-2xl font-bold text-foreground">Categorías</Text>
           <ThemeToggle />
         </View>
-        <TouchableOpacity className="flex-row items-center bg-input rounded-xl px-4 py-3">
+        <TouchableOpacity onPress={() => router.push("/search")} className="flex-row items-center bg-input rounded-xl px-4 py-3">
           <Search size={20} className="text-muted-foreground mr-3" />
           <Text className="text-muted-foreground">Buscar categoría...</Text>
         </TouchableOpacity>
