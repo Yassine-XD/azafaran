@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || "/api/v1";
+const BASE = "http://127.0.0.1:3000/api/v1";
 
 type Tokens = { accessToken: string; refreshToken: string };
 
@@ -26,9 +26,15 @@ async function refreshAccessToken(): Promise<string | null> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken: t.refreshToken }),
     });
-    if (!res.ok) { clearTokens(); return null; }
+    if (!res.ok) {
+      clearTokens();
+      return null;
+    }
     const json = await res.json();
-    setTokens({ accessToken: json.data.accessToken, refreshToken: json.data.refreshToken });
+    setTokens({
+      accessToken: json.data.accessToken,
+      refreshToken: json.data.refreshToken,
+    });
     return json.data.accessToken;
   } catch {
     clearTokens();
@@ -39,9 +45,16 @@ async function refreshAccessToken(): Promise<string | null> {
 export async function api<T = any>(
   path: string,
   opts: { method?: string; body?: unknown; auth?: boolean } = {},
-): Promise<{ success: boolean; data?: T; meta?: any; error?: { message: string; code: string } }> {
+): Promise<{
+  success: boolean;
+  data?: T;
+  meta?: any;
+  error?: { message: string; code: string };
+}> {
   const { method = "GET", body, auth = true } = opts;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
 
   if (auth) {
     const t = getTokens();
@@ -55,11 +68,18 @@ export async function api<T = any>(
   });
 
   if (res.status === 401 && auth) {
-    if (!refreshing) refreshing = refreshAccessToken().finally(() => { refreshing = null; });
+    if (!refreshing)
+      refreshing = refreshAccessToken().finally(() => {
+        refreshing = null;
+      });
     const newToken = await refreshing;
     if (newToken) {
       headers["Authorization"] = `Bearer ${newToken}`;
-      res = await fetch(`${BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+      res = await fetch(`${BASE}${path}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
     }
   }
 
@@ -67,7 +87,10 @@ export async function api<T = any>(
 }
 
 api.get = <T = any>(path: string) => api<T>(path);
-api.post = <T = any>(path: string, body?: unknown) => api<T>(path, { method: "POST", body });
-api.put = <T = any>(path: string, body?: unknown) => api<T>(path, { method: "PUT", body });
-api.patch = <T = any>(path: string, body?: unknown) => api<T>(path, { method: "PATCH", body });
+api.post = <T = any>(path: string, body?: unknown) =>
+  api<T>(path, { method: "POST", body });
+api.put = <T = any>(path: string, body?: unknown) =>
+  api<T>(path, { method: "PUT", body });
+api.patch = <T = any>(path: string, body?: unknown) =>
+  api<T>(path, { method: "PATCH", body });
 api.del = <T = any>(path: string) => api<T>(path, { method: "DELETE" });
