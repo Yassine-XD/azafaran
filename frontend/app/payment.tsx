@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, CreditCard, MapPin, Check, Truck, Wallet, Clock, CalendarDays } from "lucide-react-native";
+import { ArrowLeft, CreditCard, MapPin, Check, Truck, Wallet, Clock, CalendarDays, Sun, Sunset } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useStripePay } from "@/hooks/useStripePay";
 import { api } from "@/lib/api";
@@ -52,6 +52,18 @@ export default function PaymentScreen() {
     const month = date.toLocaleDateString("es-ES", { month: "short" });
     return { weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1), day, month };
   };
+
+  // Group time slots by period (morning < 14:00, afternoon >= 14:00)
+  const { morning, afternoon } = useMemo(() => {
+    const m: DeliverySlot[] = [];
+    const a: DeliverySlot[] = [];
+    for (const slot of timeSlotsForDate) {
+      const hour = parseInt(slot.start_time.slice(0, 2), 10);
+      if (hour < 14) m.push(slot);
+      else a.push(slot);
+    }
+    return { morning: m, afternoon: a };
+  }, [timeSlotsForDate]);
 
   useEffect(() => {
     (async () => {
@@ -231,46 +243,75 @@ export default function PaymentScreen() {
               </ScrollView>
 
               {/* Time Slot Picker */}
-              <View className="flex-row items-center gap-2 mb-3">
-                <Clock size={16} className="text-primary" />
-                <Text className="text-foreground font-semibold text-sm">Horario</Text>
-              </View>
-
               {timeSlotsForDate.length === 0 ? (
                 <Text className="text-muted-foreground text-sm">No hay horarios para esta fecha</Text>
               ) : (
-                <View className="gap-2">
-                  {timeSlotsForDate.map((slot) => {
-                    const isSelected = selectedSlot?.id === slot.id;
-                    const spotsLeft = slot.max_orders - slot.booked_count;
-                    return (
-                      <TouchableOpacity
-                        key={slot.id}
-                        onPress={() => setSelectedSlot(slot)}
-                        className={`flex-row items-center justify-between px-4 py-3 rounded-xl border ${
-                          isSelected ? "border-primary bg-primary/10" : "border-border bg-muted/50"
-                        }`}
-                      >
-                        <View className="flex-row items-center gap-3">
-                          {isSelected ? (
-                            <View className="w-5 h-5 bg-primary rounded-full items-center justify-center">
-                              <Check size={12} color="white" />
-                            </View>
-                          ) : (
-                            <View className="w-5 h-5 rounded-full border-2 border-border" />
-                          )}
-                          <Text className={`text-base font-semibold ${isSelected ? "text-primary" : "text-foreground"}`}>
-                            {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
-                          </Text>
-                        </View>
-                        {spotsLeft <= 3 && (
-                          <Text className="text-xs text-red-500 font-medium">
-                            {spotsLeft === 1 ? "¡Último!" : `${spotsLeft} plazas`}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
+                <View className="gap-4">
+                  {morning.length > 0 && (
+                    <View>
+                      <View className="flex-row items-center gap-2 mb-2">
+                        <Sun size={14} className="text-amber-500" />
+                        <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Mañana</Text>
+                      </View>
+                      <View className="flex-row flex-wrap gap-2">
+                        {morning.map((slot) => {
+                          const isSelected = selectedSlot?.id === slot.id;
+                          const spotsLeft = slot.max_orders - slot.booked_count;
+                          return (
+                            <TouchableOpacity
+                              key={slot.id}
+                              onPress={() => setSelectedSlot(slot)}
+                              className={`px-4 py-2.5 rounded-full border ${
+                                isSelected ? "border-primary bg-primary" : "border-border bg-muted/50"
+                              }`}
+                            >
+                              <Text className={`text-sm font-semibold ${isSelected ? "text-primary-foreground" : "text-foreground"}`}>
+                                {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
+                              </Text>
+                              {spotsLeft <= 3 && (
+                                <Text className={`text-[10px] text-center mt-0.5 ${isSelected ? "text-primary-foreground/70" : "text-red-500"}`}>
+                                  {spotsLeft === 1 ? "¡Último!" : `${spotsLeft} plazas`}
+                                </Text>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {afternoon.length > 0 && (
+                    <View>
+                      <View className="flex-row items-center gap-2 mb-2">
+                        <Sunset size={14} className="text-orange-500" />
+                        <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Tarde</Text>
+                      </View>
+                      <View className="flex-row flex-wrap gap-2">
+                        {afternoon.map((slot) => {
+                          const isSelected = selectedSlot?.id === slot.id;
+                          const spotsLeft = slot.max_orders - slot.booked_count;
+                          return (
+                            <TouchableOpacity
+                              key={slot.id}
+                              onPress={() => setSelectedSlot(slot)}
+                              className={`px-4 py-2.5 rounded-full border ${
+                                isSelected ? "border-primary bg-primary" : "border-border bg-muted/50"
+                              }`}
+                            >
+                              <Text className={`text-sm font-semibold ${isSelected ? "text-primary-foreground" : "text-foreground"}`}>
+                                {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
+                              </Text>
+                              {spotsLeft <= 3 && (
+                                <Text className={`text-[10px] text-center mt-0.5 ${isSelected ? "text-primary-foreground/70" : "text-red-500"}`}>
+                                  {spotsLeft === 1 ? "¡Último!" : `${spotsLeft} plazas`}
+                                </Text>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
                 </View>
               )}
             </>
