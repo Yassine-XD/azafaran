@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "exponativewind",
+    "scheme": "azafaran",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -13,6 +13,7 @@
       "bundleIdentifier": "es.azafaran.app"
     },
     "android": {
+      "package": "com.azafaran.app",
       "adaptiveIcon": {
         "backgroundColor": "#fffbf7",
         "foregroundImage": "./assets/images/icon.png",
