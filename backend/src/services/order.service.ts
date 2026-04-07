@@ -155,11 +155,24 @@ export const orderService = {
     return formatOrder({ ...order, items: orderItems });
   },
 
-  async getOrders(userId: string, page: number, limit: number) {
+  async getOrders(userId: string, page: number, limit: number, period?: string) {
+    // Calculate dateFrom based on period filter
+    let dateFrom: string | undefined;
+    if (period) {
+      const now = new Date();
+      const days: Record<string, number> = { "3d": 3, "7d": 7, "30d": 30 };
+      const d = days[period];
+      if (d) {
+        now.setDate(now.getDate() - d);
+        dateFrom = now.toISOString();
+      }
+    }
+
     const { rows, total } = await orderRepository.findByUserId(
       userId,
       page,
       limit,
+      dateFrom,
     );
     return {
       orders: rows.map(formatOrder),

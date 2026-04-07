@@ -151,22 +151,49 @@ export const orderRepository = {
     userId: string,
     page: number,
     limit: number,
+    dateFrom?: string,
   ): Promise<{ rows: OrderRow[]; total: number }> {
     const offset = (page - 1) * limit;
 
+    const dateFilter = dateFrom ? " AND created_at >= $2" : "";
+    const countParams = dateFrom ? [userId, dateFrom] : [userId];
+
     const { rows: countRows } = await pool.query(
-      "SELECT COUNT(*) FROM orders WHERE user_id = $1",
-      [userId],
+      `SELECT COUNT(*) FROM orders WHERE user_id = $1${dateFilter}`,
+      countParams,
     );
     const total = parseInt(countRows[0].count, 10);
 
+    const orderParams = dateFrom
+      ? [userId, dateFrom, limit, offset]
+      : [userId, limit, offset];
+    const limitIdx = dateFrom ? "$3" : "$2";
+    const offsetIdx = dateFrom ? "$4" : "$3";
+
     const { rows } = await pool.query(
       `SELECT * FROM orders
-       WHERE user_id = $1
+       WHERE user_id = $1${dateFilter}
        ORDER BY created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [userId, limit, offset],
+       LIMIT ${limitIdx} OFFSET ${offsetIdx}`,
+      orderParams,
     );
+
+    // Fetch items for all orders in one query
+    if (rows.length > 0) {
+      const orderIds = rows.map((r) => r.id);
+      const { rows: items } = await pool.query(
+        `SELECT * FROM order_items WHERE order_id = ANY($1) ORDER BY id`,
+        [orderIds],
+      );
+      const itemsByOrder: Record<string, OrderItemRow[]> = {};
+      for (const item of items) {
+        if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
+        itemsByOrder[item.order_id].push(item);
+      }
+      for (const order of rows) {
+        (order as any).items = itemsByOrder[order.id] || [];
+      }
+    }
 
     return { rows, total };
   },
