@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  ImageBackground,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -109,9 +111,21 @@ export default function HomeScreen() {
           borderRadius: 16,
           padding: 20,
           justifyContent: "space-between",
+          backgroundColor: 'rgba(0,0,0,1)'
         }}
       >
-        <View>
+        <LinearGradient
+        colors={[ "rgba(0,0,0,0.7)","transparent"]}
+        style={{
+          ...StyleSheet.absoluteFillObject,
+        }}
+      />
+        
+        <View 
+          style={{
+            width: "90%"
+          }}
+        >
           <Text className="text-white text-2xl font-bold">{item.title}</Text>
           {item.subtitle && (
             <Text className="text-white/80 text-sm mt-1">{item.subtitle}</Text>

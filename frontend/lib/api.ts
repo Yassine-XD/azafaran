@@ -1,8 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = __DEV__
-  ? "http://192.168.1.3:3000/api/v1"
-  : "http://187.77.169.76/api/v1";
+const API_BASE_URL = "http://187.77.169.76/api/v1";
 
 type RequestOptions = {
   method?: string;

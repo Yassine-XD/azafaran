@@ -7,7 +7,7 @@ import StatusBadge from "../components/StatusBadge";
 import { Users, ShoppingCart, DollarSign, Clock } from "lucide-react";
 
 type Stats = { total_users: number; orders_today: number; total_revenue: number; pending_orders: number };
-type Order = { id: string; first_name: string; last_name: string; total_amount: string; status: string; created_at: string };
+type Order = { id: string; first_name: string; last_name: string; total: string; status: string; created_at: string };
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -25,10 +25,12 @@ export default function DashboardPage() {
     });
   }, []);
 
+  console.log(orders)
+
   const cols: Column<Order>[] = [
     { key: "id", header: "Pedido", render: (r) => r.id.slice(0, 8) + "..." },
     { key: "customer", header: "Cliente", render: (r) => `${r.first_name} ${r.last_name}` },
-    { key: "total_amount", header: "Total", render: (r) => formatCurrency(Number(r.total_amount)) },
+    { key: "total", header: "Total", render: (r) => formatCurrency(Number(r.total)) },
     { key: "status", header: "Estado", render: (r) => <StatusBadge status={r.status} /> },
     { key: "created_at", header: "Fecha", render: (r) => formatDate(r.created_at) },
   ];
