@@ -8,6 +8,8 @@ export type User = {
   role: "customer" | "admin";
   family_size?: number;
   preferred_lang?: string;
+  gender?: "male" | "female" | "other" | "prefer_not_to_say" | null;
+  date_of_birth?: string | null;
   created_at: string;
 };
 

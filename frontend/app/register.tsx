@@ -42,7 +42,7 @@ export default function RegisterScreen() {
     setIsLoading(false);
 
     if (result.success) {
-      router.replace("/(tabs)");
+      router.replace("/profile-setup");
     } else {
       Alert.alert("Error", result.error || "No se pudo crear la cuenta");
     }
