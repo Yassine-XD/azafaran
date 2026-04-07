@@ -128,12 +128,19 @@ export type OrderItem = {
   id: string;
   order_id: string;
   variant_id: string;
-  product_name: string;
-  weight_label: string;
+  product_name?: string;
+  weight_label?: string;
   quantity: number;
   unit_price: number;
   line_total: number;
   product_image?: string;
+  product_snapshot?: {
+    name?: string;
+    variant_label?: string;
+    weight_grams?: number;
+    halal_cert_id?: string;
+    images?: ProductImage[];
+  };
 };
 
 export type Order = {

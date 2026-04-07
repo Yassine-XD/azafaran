@@ -17,7 +17,15 @@ import {
   Star,
   ShoppingCart,
   Search,
+  Beef,
+  Drumstick,
+  Bird,
+  Rabbit,
+  Sandwich,
+  Flame,
+  BookOpen,
 } from "lucide-react-native";
+import { Linking } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "expo-router";
@@ -27,13 +35,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Category, Product, Banner } from "@/lib/types";
 import { getProductImage, getMinPrice } from "@/lib/types";
 
-const CATEGORY_ICONS: Record<string, string> = {
-  ternera: "🥩",
-  cordero: "🍖",
-  pollo: "🐔",
-  conejo: "🐰",
-  elaborados: "🌭",
-  "bbq-packs": "🔥",
+const CATEGORY_ICONS: Record<string, any> = {
+  ternera: Beef,
+  cordero: Drumstick,
+  pollo: Bird,
+  conejo: Rabbit,
+  elaborados: Sandwich,
+  "bbq-packs": Flame,
 };
 
 const BANNER_GRADIENTS: string[][] = [
@@ -61,10 +69,8 @@ export default function HomeScreen() {
     ]);
     if (catRes.success && catRes.data) setCategories(catRes.data);
     if (featRes.success && featRes.data) setFeatured(featRes.data);
-    if (bannerRes.success && bannerRes.data) setBanners(bannerRes.data);
+    if (bannerRes.success && bannerRes.data) setBanners(bannerRes.data as Banner[]);
     setIsLoading(false);
-  console.log(bannerRes)
-
   }, []);
 
   useEffect(() => {
@@ -77,8 +83,21 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [fetchData]);
 
+  const handleBannerPress = (banner: Banner) => {
+    if (!banner.link_value) return;
+    if (banner.link_type === "internal" || banner.link_value.startsWith("/")) {
+      router.push(banner.link_value as any);
+    } else if (banner.link_type === "external" || banner.link_value.startsWith("http")) {
+      Linking.openURL(banner.link_value);
+    }
+  };
+
   const renderBanner = ({ item, index }: { item: Banner; index: number }) => (
-    <TouchableOpacity className=" mr-4 rounded-2xl overflow-hidden shadow-lg">
+    <TouchableOpacity
+      className="mr-4 rounded-2xl overflow-hidden shadow-lg"
+      onPress={() => handleBannerPress(item)}
+      activeOpacity={item.link_value ? 0.7 : 1}
+    >
       <LinearGradient
         colors={
           item.bg_color
@@ -98,33 +117,29 @@ export default function HomeScreen() {
             <Text className="text-white/80 text-sm mt-1">{item.subtitle}</Text>
           )}
         </View>
-        {/* {item.image_url && (
-          <Image
-            source={{ uri: item.image_url }}
-            className="w-24 h-24 rounded-full absolute bottom-2 right-2 border-2 border-white/30"
-            resizeMode="cover"
-          />
-        )} */}
       </LinearGradient>
     </TouchableOpacity>
   );
 
-  const renderCategory = ({ item }: { item: Category }) => (
-    <TouchableOpacity
-      className="items-center mr-4"
-      onPress={() =>
-        router.push({
-          pathname: "/shop",
-          params: { category: item.slug, categoryName: item.name },
-        })
-      }
-    >
-      <View className="w-16 h-16 rounded-full bg-orange-100 items-center justify-center mb-2">
-        <Text className="text-2xl">{CATEGORY_ICONS[item.slug] || "🥩"}</Text>
-      </View>
-      <Text className="text-xs text-foreground font-medium">{item.name}</Text>
-    </TouchableOpacity>
-  );
+  const renderCategory = ({ item }: { item: Category }) => {
+    const IconComponent = CATEGORY_ICONS[item.slug] || Beef;
+    return (
+      <TouchableOpacity
+        className="items-center mr-4"
+        onPress={() =>
+          router.push({
+            pathname: "/shop",
+            params: { category: item.slug, categoryName: item.name },
+          })
+        }
+      >
+        <View className="w-16 h-16 rounded-full bg-orange-100 items-center justify-center mb-2">
+          <IconComponent size={28} color="#ea580c" />
+        </View>
+        <Text className="text-xs text-foreground font-medium">{item.name}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   const renderProduct = ({ item }: { item: Product }) => (
     <TouchableOpacity
@@ -316,34 +331,129 @@ export default function HomeScreen() {
           />
         ))}
 
-        {/* Halal Banner */}
-        <View className="px-6 mb-6">
-          <LinearGradient
-            colors={["#ea580c", "#c2410c"]}
-            style={{
-              borderRadius: 16,
-              padding: 20,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View>
-              <Text className="text-white text-2xl font-bold tracking-tight">
-                FRESCA
-              </Text>
-              <Text className="text-white/90 text-lg">· HALAL ·</Text>
-              <Text className="text-white text-xl font-bold tracking-tight">
-                CERTIFICADA
-              </Text>
-            </View>
-            <View className="bg-white/20 rounded-full p-3">
-              <Text className="text-3xl">🏆</Text>
-            </View>
-          </LinearGradient>
-        </View>
+        {/* Packs Section */}
+        <PacksSection router={router} />
+
+        {/* Recipes Section */}
+        <RecipesSection banners={banners} onPress={handleBannerPress} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// Packs section — fetches bbq-packs category products
+function PacksSection({ router }: { router: any }) {
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const res = await api.get<Product[]>("/categories/bbq-packs/products?limit=6", false);
+      if (res.success && res.data) setProducts(res.data);
+    })();
+  }, []);
+
+  if (products.length === 0) return null;
+
+  return (
+    <View className="mb-6">
+      <View className="px-6 flex-row items-center justify-between mb-4">
+        <View className="flex-row items-center gap-2">
+          <Flame size={22} color="#ea580c" />
+          <Text className="text-xl font-bold text-foreground">Packs</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() =>
+            router.push({ pathname: "/shop", params: { category: "bbq-packs", categoryName: "Packs" } })
+          }
+          className="flex-row items-center"
+        >
+          <Text className="text-sm text-primary font-medium">Ver todo</Text>
+          <ChevronRight size={16} className="text-primary" />
+        </TouchableOpacity>
+      </View>
+      <FlatList
+        data={products}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: "/product-detail", params: { id: item.id } })}
+            className="w-44 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
+          >
+            <Image
+              source={{ uri: getProductImage(item) }}
+              className="w-full h-32"
+              resizeMode="cover"
+            />
+            <View className="p-3">
+              <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text className="text-primary font-bold">€{getMinPrice(item).toFixed(2)}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        keyExtractor={(item) => item.id}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 24 }}
+      />
+    </View>
+  );
+}
+
+// Recipes section — filters banners with link_type "recipe"
+function RecipesSection({
+  banners,
+  onPress,
+}: {
+  banners: Banner[];
+  onPress: (b: Banner) => void;
+}) {
+  const recipes = banners.filter((b) => b.link_type === "recipe");
+  if (recipes.length === 0) return null;
+
+  return (
+    <View className="mb-6">
+      <View className="px-6 flex-row items-center justify-between mb-4">
+        <View className="flex-row items-center gap-2">
+          <BookOpen size={22} color="#ea580c" />
+          <Text className="text-xl font-bold text-foreground">Recetas</Text>
+        </View>
+      </View>
+      <FlatList
+        data={recipes}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            onPress={() => onPress(item)}
+            className="w-64 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
+          >
+            {item.image_url ? (
+              <Image source={{ uri: item.image_url }} className="w-full h-36" resizeMode="cover" />
+            ) : (
+              <LinearGradient
+                colors={["#ea580c", "#c2410c"]}
+                style={{ height: 144, justifyContent: "center", alignItems: "center" }}
+              >
+                <BookOpen size={40} color="#fff" />
+              </LinearGradient>
+            )}
+            <View className="p-3">
+              <Text className="text-foreground font-semibold text-sm" numberOfLines={2}>
+                {item.title}
+              </Text>
+              {item.subtitle && (
+                <Text className="text-muted-foreground text-xs mt-1" numberOfLines={1}>
+                  {item.subtitle}
+                </Text>
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
+        keyExtractor={(item) => item.id}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 24 }}
+      />
+    </View>
   );
 }
 
