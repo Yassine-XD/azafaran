@@ -12,7 +12,8 @@ export const orderController = {
   getOrders: asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const result = await orderService.getOrders(req.user!.sub, page, limit);
+    const period = req.query.period as string | undefined;
+    const result = await orderService.getOrders(req.user!.sub, page, limit, period);
     return success(res, result.orders, 200, result.meta);
   }),
 

@@ -15,25 +15,6 @@ import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import type { Category } from "@/lib/types";
 
-const CATEGORY_ICONS: Record<string, string> = {
-  ternera: "🥩",
-  cordero: "🍖",
-  pollo: "🐔",
-  conejo: "🐰",
-  elaborados: "🌭",
-  "bbq-packs": "🔥",
-};
-
-const CATEGORY_COLORS = [
-  "bg-orange-100",
-  "bg-red-100",
-  "bg-amber-100",
-  "bg-pink-100",
-  "bg-stone-100",
-  "bg-yellow-100",
-  "bg-emerald-100",
-  "bg-cyan-100",
-];
 
 export default function CategoriesScreen() {
   const router = useRouter();

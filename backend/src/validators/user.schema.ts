@@ -5,7 +5,9 @@ export const updateProfileSchema = z.object({
   last_name: z.string().min(2).max(100).optional(),
   phone: z.string().max(20).optional().nullable(),
   family_size: z.number().int().min(1).max(20).optional().nullable(),
-  preferred_lang: z.enum(["es", "fr", "ar", "en"]).optional(),
+  preferred_lang: z.enum(["es", "ca", "en"]).optional(),
+  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional().nullable(),
+  date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format: YYYY-MM-DD").optional().nullable(),
 });
 
 export const createAddressSchema = z.object({

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, CreditCard, MapPin, Check, Truck, Wallet, Clock, CalendarDays, Sun, Sunset } from "lucide-react-native";
+import { ArrowLeft, CreditCard, MapPin, Check, Wallet, CalendarDays } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { useStripePay } from "@/hooks/useStripePay";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
@@ -31,19 +32,17 @@ export default function PaymentScreen() {
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const total = subtotal + deliveryFee;
 
-  // Group slots by date
+  // Group slots by date — pick first slot per date (user only chooses date)
   const slotsByDate = useMemo(() => {
-    const grouped: Record<string, DeliverySlot[]> = {};
+    const grouped: Record<string, DeliverySlot> = {};
     for (const slot of slots) {
       const d = slot.slot_date;
-      if (!grouped[d]) grouped[d] = [];
-      grouped[d].push(slot);
+      if (!grouped[d]) grouped[d] = slot;
     }
     return grouped;
   }, [slots]);
 
   const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
-  const timeSlotsForDate = selectedDate ? slotsByDate[selectedDate] || [] : [];
 
   const formatDateLabel = (dateStr: string) => {
     const date = new Date(dateStr + "T00:00:00");
@@ -53,31 +52,27 @@ export default function PaymentScreen() {
     return { weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1), day, month };
   };
 
-  // Group time slots by period (morning < 14:00, afternoon >= 14:00)
-  const { morning, afternoon } = useMemo(() => {
-    const m: DeliverySlot[] = [];
-    const a: DeliverySlot[] = [];
-    for (const slot of timeSlotsForDate) {
-      const hour = parseInt(slot.start_time.slice(0, 2), 10);
-      if (hour < 14) m.push(slot);
-      else a.push(slot);
-    }
-    return { morning: m, afternoon: a };
-  }, [timeSlotsForDate]);
+  // Refresh addresses every time screen is focused (e.g. returning from address picker)
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        const res = await api.get<Address[]>("/users/addresses");
+        if (res.success && res.data) {
+          setAddresses(res.data);
+          if (!selectedAddress) {
+            const defaultAddr = res.data.find((a) => a.is_default) || res.data[0];
+            if (defaultAddr) setSelectedAddress(defaultAddr);
+          }
+        }
+      })();
+    }, [])
+  );
 
+  // Load delivery slots once on mount
   useEffect(() => {
     (async () => {
-      const [addrRes, slotRes] = await Promise.all([
-        api.get<Address[]>("/users/addresses"),
-        api.get<DeliverySlot[]>("/delivery-slots/available"),
-      ]);
-      if (addrRes.success && addrRes.data) {
-        setAddresses(addrRes.data);
-        const defaultAddr = addrRes.data.find((a) => a.is_default) || addrRes.data[0];
-        if (defaultAddr) setSelectedAddress(defaultAddr);
-      }
+      const slotRes = await api.get<DeliverySlot[]>("/delivery-slots/available");
       if (slotRes.success && slotRes.data) {
-        // Normalize: backend may return 'date' (ISO string) or 'slot_date'
         const minDate = new Date();
         minDate.setDate(minDate.getDate() + 2);
         minDate.setHours(0, 0, 0, 0);
@@ -106,7 +101,7 @@ export default function PaymentScreen() {
       return;
     }
     if (!selectedSlot) {
-      Alert.alert("Error", "Selecciona un horario de entrega");
+      Alert.alert("Error", "Selecciona una fecha de entrega");
       return;
     }
 
@@ -145,7 +140,6 @@ export default function PaymentScreen() {
           return;
         }
 
-        // Payment successful — webhook will confirm the order
         clearCart();
         Alert.alert(
           "Pago Realizado",
@@ -155,7 +149,6 @@ export default function PaymentScreen() {
         return;
       }
 
-      // Cash/bizum — order placed directly
       clearCart();
       Alert.alert("Pedido Confirmado", `Tu pedido #${orderId.slice(0, 8)} ha sido realizado`, [
         { text: "Ver Pedido", onPress: () => router.replace("/(tabs)/orders") },
@@ -209,7 +202,7 @@ export default function PaymentScreen() {
           )}
         </View>
 
-        {/* Delivery Date & Time */}
+        {/* Delivery Date */}
         <View className="bg-card rounded-2xl border border-border p-4 mb-4">
           <View className="flex-row items-center gap-2 mb-1">
             <CalendarDays size={18} className="text-primary" />
@@ -220,112 +213,34 @@ export default function PaymentScreen() {
           {availableDates.length === 0 ? (
             <Text className="text-muted-foreground text-sm">No hay fechas disponibles</Text>
           ) : (
-            <>
-              {/* Date Picker */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-                {availableDates.map((dateStr) => {
-                  const isSelected = selectedDate === dateStr;
-                  const { weekday, day, month } = formatDateLabel(dateStr);
-                  return (
-                    <TouchableOpacity
-                      key={dateStr}
-                      onPress={() => {
-                        setSelectedDate(dateStr);
-                        // Auto-select first time slot for this date
-                        const firstSlot = slotsByDate[dateStr]?.[0];
-                        setSelectedSlot(firstSlot || null);
-                      }}
-                      className={`mr-3 w-16 py-3 rounded-xl border items-center ${
-                        isSelected ? "border-primary bg-primary" : "border-border bg-muted/50"
-                      }`}
-                    >
-                      <Text className={`text-xs font-medium ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}>
-                        {weekday}
-                      </Text>
-                      <Text className={`text-xl font-bold my-0.5 ${isSelected ? "text-primary-foreground" : "text-foreground"}`}>
-                        {day}
-                      </Text>
-                      <Text className={`text-xs ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}>
-                        {month}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-
-              {/* Time Slot Picker */}
-              {timeSlotsForDate.length === 0 ? (
-                <Text className="text-muted-foreground text-sm">No hay horarios para esta fecha</Text>
-              ) : (
-                <View className="gap-4">
-                  {morning.length > 0 && (
-                    <View>
-                      <View className="flex-row items-center gap-2 mb-2">
-                        <Sun size={14} className="text-amber-500" />
-                        <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Mañana</Text>
-                      </View>
-                      <View className="flex-row flex-wrap gap-2">
-                        {morning.map((slot) => {
-                          const isSelected = selectedSlot?.id === slot.id;
-                          const spotsLeft = slot.max_orders - slot.booked_count;
-                          return (
-                            <TouchableOpacity
-                              key={slot.id}
-                              onPress={() => setSelectedSlot(slot)}
-                              className={`px-4 py-2.5 rounded-full border ${
-                                isSelected ? "border-primary bg-primary" : "border-border bg-muted/50"
-                              }`}
-                            >
-                              <Text className={`text-sm font-semibold ${isSelected ? "text-primary-foreground" : "text-foreground"}`}>
-                                {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
-                              </Text>
-                              {spotsLeft <= 3 && (
-                                <Text className={`text-[10px] text-center mt-0.5 ${isSelected ? "text-primary-foreground/70" : "text-red-500"}`}>
-                                  {spotsLeft === 1 ? "¡Último!" : `${spotsLeft} plazas`}
-                                </Text>
-                              )}
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  )}
-
-                  {afternoon.length > 0 && (
-                    <View>
-                      <View className="flex-row items-center gap-2 mb-2">
-                        <Sunset size={14} className="text-orange-500" />
-                        <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Tarde</Text>
-                      </View>
-                      <View className="flex-row flex-wrap gap-2">
-                        {afternoon.map((slot) => {
-                          const isSelected = selectedSlot?.id === slot.id;
-                          const spotsLeft = slot.max_orders - slot.booked_count;
-                          return (
-                            <TouchableOpacity
-                              key={slot.id}
-                              onPress={() => setSelectedSlot(slot)}
-                              className={`px-4 py-2.5 rounded-full border ${
-                                isSelected ? "border-primary bg-primary" : "border-border bg-muted/50"
-                              }`}
-                            >
-                              <Text className={`text-sm font-semibold ${isSelected ? "text-primary-foreground" : "text-foreground"}`}>
-                                {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
-                              </Text>
-                              {spotsLeft <= 3 && (
-                                <Text className={`text-[10px] text-center mt-0.5 ${isSelected ? "text-primary-foreground/70" : "text-red-500"}`}>
-                                  {spotsLeft === 1 ? "¡Último!" : `${spotsLeft} plazas`}
-                                </Text>
-                              )}
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  )}
-                </View>
-              )}
-            </>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {availableDates.map((dateStr) => {
+                const isSelected = selectedDate === dateStr;
+                const { weekday, day, month } = formatDateLabel(dateStr);
+                return (
+                  <TouchableOpacity
+                    key={dateStr}
+                    onPress={() => {
+                      setSelectedDate(dateStr);
+                      setSelectedSlot(slotsByDate[dateStr] || null);
+                    }}
+                    className={`mr-3 w-16 py-3 rounded-xl border items-center ${
+                      isSelected ? "border-primary bg-primary" : "border-border bg-muted/50"
+                    }`}
+                  >
+                    <Text className={`text-xs font-medium ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}>
+                      {weekday}
+                    </Text>
+                    <Text className={`text-xl font-bold my-0.5 ${isSelected ? "text-primary-foreground" : "text-foreground"}`}>
+                      {day}
+                    </Text>
+                    <Text className={`text-xs ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}>
+                      {month}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           )}
         </View>
 
@@ -336,8 +251,8 @@ export default function PaymentScreen() {
             <Text className="text-foreground font-bold">Método de Pago</Text>
           </View>
           {(["card"] as PaymentMethod[]).map((method) => {
-            const labels: Record<PaymentMethod, string> = { card: "Tarjeta"};
-            const icons: Record<PaymentMethod, any> = { card: CreditCard, cash: Wallet, bizum: Wallet };
+            const labels: Record<string, string> = { card: "Tarjeta", cash: "Efectivo", bizum: "Bizum" };
+            const icons: Record<string, any> = { card: CreditCard, cash: Wallet, bizum: Wallet };
             const Icon = icons[method];
             const isSelected = paymentMethod === method;
             return (
@@ -359,7 +274,6 @@ export default function PaymentScreen() {
             );
           })}
 
-          {/* Web: show Stripe card input when card is selected */}
           {Platform.OS === "web" && paymentMethod === "card" && CardField && (
             <View className="mt-3 p-3 border border-border rounded-xl bg-muted/30">
               <CardField />
