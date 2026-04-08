@@ -16,7 +16,7 @@ type Promotion = {
 
 const empty = {
   title: "", subtitle: "", type: "deal", scope: "all", product_id: "", category_id: "",
-  discount_type: "percentage", discount_value: "", image_url: "", badge_text: "",
+  discount_type: "percent", discount_value: "", image_url: "", badge_text: "",
   show_on_home: true, show_on_product: true, priority: "0", is_active: true, starts_at: "", ends_at: "",
 };
 
@@ -57,7 +57,13 @@ export default function PromotionsPage() {
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const body = { ...form, discount_value: Number(form.discount_value), priority: Number(form.priority) };
+    const body = {
+      ...form,
+      discount_value: Number(form.discount_value),
+      priority: Number(form.priority),
+      starts_at: form.starts_at || undefined,
+      ends_at: form.ends_at || null,
+    };
     const res = editing
       ? await api.put(`/admin/promotions/${editing.id}`, body)
       : await api.post("/admin/promotions", body);
@@ -75,7 +81,7 @@ export default function PromotionsPage() {
     { key: "title", header: "Título" },
     { key: "type", header: "Tipo" },
     { key: "scope", header: "Alcance" },
-    { key: "discount_value", header: "Descuento", render: (r) => `${r.discount_value}${r.discount_type === "percentage" ? "%" : "€"}` },
+    { key: "discount_value", header: "Descuento", render: (r) => `${r.discount_value}${r.discount_type === "percent" ? "%" : "€"}` },
     { key: "priority", header: "Prioridad" },
     { key: "is_active", header: "Estado", render: (r) => (
       <button
@@ -121,7 +127,7 @@ export default function PromotionsPage() {
           <div className="grid grid-cols-3 gap-4">
             <FormField label="Tipo">
               <select className={selectClass} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                <option value="deal">Deal</option><option value="bundle">Bundle</option><option value="flash_sale">Flash Sale</option>
+                <option value="deal">Deal</option><option value="bundle">Bundle</option><option value="flash">Flash Sale</option>
               </select>
             </FormField>
             <FormField label="Alcance">
@@ -136,7 +142,7 @@ export default function PromotionsPage() {
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Tipo descuento">
               <select className={selectClass} value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value })}>
-                <option value="percentage">Porcentaje</option><option value="fixed">Fijo (€)</option>
+                <option value="percent">Porcentaje</option><option value="fixed">Fijo (€)</option>
               </select>
             </FormField>
             <FormField label="Valor descuento"><input type="number" step="0.01" className={inputClass} required value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: e.target.value })} /></FormField>
