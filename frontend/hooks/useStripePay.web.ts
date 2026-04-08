@@ -7,13 +7,14 @@ export function useStripePay() {
   const stripe = useStripe();
   const elements = useElements();
 
-  const payWithCard = async (_clientSecret: string, _user: User): Promise<PayResult> => {
+  const payWithCard = async (clientSecret: string, _user: User): Promise<PayResult> => {
     if (!stripe || !elements) {
       return { success: false, error: "Stripe not loaded" };
     }
 
     const { error } = await stripe.confirmPayment({
       elements,
+      clientSecret,
       confirmParams: {
         return_url: window.location.origin + "/orders",
       },

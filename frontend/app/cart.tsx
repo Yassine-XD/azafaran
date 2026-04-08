@@ -6,8 +6,8 @@ import { useRouter } from "expo-router";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 
-const DELIVERY_FEE = 2.99;
-const FREE_DELIVERY_THRESHOLD = 30;
+const DELIVERY_FEE = 3.99;
+const FREE_DELIVERY_THRESHOLD = 40;
 
 export default function CartScreen() {
   const router = useRouter();
