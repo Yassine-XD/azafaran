@@ -13,15 +13,14 @@
       "bundleIdentifier": "es.azafaran.app"
     },
     "android": {
-      "package": "com.azafaran.app",
+      "package": "es.azafaran.app",
       "adaptiveIcon": {
         "backgroundColor": "#fffbf7",
         "foregroundImage": "./assets/images/icon.png",
         "monochromeImage": "./assets/images/icon.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "es.azafaran.app"
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "bundler": "metro",
@@ -53,6 +52,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b1397258-874e-4dd2-8efa-63131827657a"
+      }
     }
   }
 }
