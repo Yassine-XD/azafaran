@@ -48,6 +48,7 @@ export default function OrdersScreen() {
   }, [fetchOrders, period]);
 
   const handlePeriodChange = (p: string) => {
+    setOrders([]);
     setPeriod(p);
     setIsLoading(true);
   };

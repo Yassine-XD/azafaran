@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image, TextInput, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag, Tag } from "lucide-react-native";
+import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag, Tag, X } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,15 +12,16 @@ const FREE_DELIVERY_THRESHOLD = 30;
 export default function CartScreen() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const { items, itemCount, isLoading, updateItem, removeItem, applyPromo } = useCart();
+  const { items, itemCount, isLoading, updateItem, removeItem, applyPromo, appliedPromo, clearPromo } = useCart();
 
   const subtotal = items.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
 
   const [promoCode, setPromoCode] = useState("");
   const [applyingPromo, setApplyingPromo] = useState(false);
 
-  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const total = subtotal + deliveryFee;
+  const discount = appliedPromo?.free_delivery ? 0 : (appliedPromo?.discount_amount || 0);
+  const deliveryFee = (subtotal >= FREE_DELIVERY_THRESHOLD || appliedPromo?.free_delivery) ? 0 : DELIVERY_FEE;
+  const total = subtotal - discount + deliveryFee;
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -111,24 +112,42 @@ export default function CartScreen() {
         ))}
 
         {/* Promo Code */}
-        <View className="mx-4 mt-4 flex-row items-center bg-card rounded-xl border border-border px-4 py-3">
-          <Tag size={18} className="text-muted-foreground mr-3" />
-          <TextInput
-            className="flex-1 text-foreground text-base"
-            placeholder="Código promocional"
-            placeholderTextColor="#a8a29e"
-            value={promoCode}
-            onChangeText={setPromoCode}
-            autoCapitalize="characters"
-          />
-          <TouchableOpacity onPress={handleApplyPromo} disabled={applyingPromo} className="bg-primary px-4 py-2 rounded-lg">
-            {applyingPromo ? (
-              <ActivityIndicator color="white" size="small" />
-            ) : (
-              <Text className="text-primary-foreground font-semibold text-sm">Aplicar</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        {!appliedPromo && (
+          <View className="mx-4 mt-4 flex-row items-center bg-card rounded-xl border border-border px-4 py-3">
+            <Tag size={18} className="text-muted-foreground mr-3" />
+            <TextInput
+              className="flex-1 text-foreground text-base"
+              placeholder="Código promocional"
+              placeholderTextColor="#a8a29e"
+              value={promoCode}
+              onChangeText={setPromoCode}
+              autoCapitalize="characters"
+            />
+            <TouchableOpacity onPress={handleApplyPromo} disabled={applyingPromo} className="bg-primary px-4 py-2 rounded-lg">
+              {applyingPromo ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text className="text-primary-foreground font-semibold text-sm">Aplicar</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Applied Promo Badge */}
+        {appliedPromo && (
+          <View className="mx-4 mt-4 flex-row items-center bg-green-50 rounded-xl border border-green-200 px-4 py-3">
+            <Tag size={16} color="#16a34a" />
+            <Text className="flex-1 text-green-700 font-medium text-sm ml-2">
+              "{appliedPromo.code}" —{" "}
+              {appliedPromo.free_delivery
+                ? "Envío gratis"
+                : `-€${appliedPromo.discount_amount.toFixed(2)}`}
+            </Text>
+            <TouchableOpacity onPress={clearPromo} className="p-1">
+              <X size={16} color="#16a34a" />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Order Summary */}
         <View className="mx-4 mt-4 bg-card rounded-xl border border-border p-4">
@@ -137,6 +156,12 @@ export default function CartScreen() {
             <Text className="text-muted-foreground">Subtotal</Text>
             <Text className="text-foreground font-medium">€{subtotal.toFixed(2)}</Text>
           </View>
+          {discount > 0 && (
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-green-600">Descuento</Text>
+              <Text className="text-green-600 font-medium">-€{discount.toFixed(2)}</Text>
+            </View>
+          )}
           <View className="flex-row justify-between mb-2">
             <Text className="text-muted-foreground">Envío</Text>
             <Text className={deliveryFee === 0 ? "text-green-600 font-medium" : "text-foreground font-medium"}>

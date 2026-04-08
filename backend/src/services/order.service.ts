@@ -29,6 +29,9 @@ function formatOrder(order: any) {
       ...item,
       unit_price: parseFloat(item.unit_price),
       line_total: parseFloat(item.line_total),
+      product_name: item.product_snapshot?.name,
+      weight_label: item.product_snapshot?.variant_label,
+      product_image: item.product_snapshot?.images?.[0]?.url || null,
     })),
   };
 }
