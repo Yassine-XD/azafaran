@@ -57,7 +57,13 @@ export default function PromotionsPage() {
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const body = { ...form, discount_value: Number(form.discount_value), priority: Number(form.priority) };
+    const body = {
+      ...form,
+      discount_value: Number(form.discount_value),
+      priority: Number(form.priority),
+      starts_at: form.starts_at || undefined,
+      ends_at: form.ends_at || null,
+    };
     const res = editing
       ? await api.put(`/admin/promotions/${editing.id}`, body)
       : await api.post("/admin/promotions", body);

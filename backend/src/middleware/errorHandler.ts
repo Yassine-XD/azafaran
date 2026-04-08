@@ -30,6 +30,14 @@ export function errorHandler(
     })
   }
 
+  // Postgres invalid datetime / enum value
+  if (err.code === '22007' || err.code === '22P02' || err.code === '22008') {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Valor de campo inválido', code: 'INVALID_FIELD_VALUE' },
+    })
+  }
+
   const statusCode = err.statusCode || 500
   const message = statusCode === 500 ? 'Error interno del servidor' : err.message
 
