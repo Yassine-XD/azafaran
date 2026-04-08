@@ -94,12 +94,9 @@ export default function HomeScreen() {
       onPress={() => handleBannerPress(item)}
       activeOpacity={0.7}
     >
-      <LinearGradient
-        colors={
-          item.bg_color
-            ? [item.bg_color, item.bg_color]
-            : BANNER_GRADIENTS[index % BANNER_GRADIENTS.length]
-        }
+      <ImageBackground
+        source={{uri: item.image_url}}
+        
         style={{
           height: 180,
           borderRadius: 16,
@@ -125,7 +122,7 @@ export default function HomeScreen() {
             <Text className="text-white/80 text-sm mt-1">{item.subtitle}</Text>
           )}
         </View>
-      </LinearGradient>
+      </ImageBackground>
     </TouchableOpacity>
   );
 
