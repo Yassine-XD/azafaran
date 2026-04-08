@@ -91,6 +91,11 @@ export const adminController = {
     return success(res, result.data, 200, result.meta);
   }),
 
+  getOrderDetail: asyncHandler(async (req: Request, res: Response) => {
+    const order = await adminService.getOrderDetail(req.params.id);
+    return success(res, order);
+  }),
+
   updateOrderStatus: asyncHandler(async (req: Request, res: Response) => {
     const { status } = req.body;
     const order = await adminService.updateOrderStatus(

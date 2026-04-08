@@ -286,6 +286,27 @@ export const adminRepository = {
     };
   },
 
+  async findOrderById(orderId: string) {
+    const { rows: orderRows } = await pool.query(
+      `SELECT o.*,
+              u.first_name, u.last_name, u.email, u.phone,
+              ds.date AS slot_date, ds.start_time AS slot_start, ds.end_time AS slot_end
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       LEFT JOIN delivery_slots ds ON ds.id = o.delivery_slot_id
+       WHERE o.id = $1`,
+      [orderId],
+    );
+    if (!orderRows[0]) return null;
+
+    const { rows: items } = await pool.query(
+      "SELECT * FROM order_items WHERE order_id = $1 ORDER BY id",
+      [orderId],
+    );
+
+    return { ...orderRows[0], items };
+  },
+
   // ─── Users ──────────────────────────────────────────
 
   async findAllUsers(filters: {

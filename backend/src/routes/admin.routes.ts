@@ -25,6 +25,7 @@ router.delete("/products/:id/variants/:vid", adminController.deleteVariant);
 
 // Orders management
 router.get("/orders", adminController.getOrders);
+router.get("/orders/:id", adminController.getOrderDetail);
 router.patch(
   "/orders/:id/status",
   validateBody(updateOrderStatusSchema),

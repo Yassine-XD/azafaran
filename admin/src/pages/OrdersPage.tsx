@@ -3,11 +3,12 @@ import { api } from "../lib/api";
 import { formatCurrency, formatDate } from "../lib/utils";
 import DataTable, { type Column } from "../components/DataTable";
 import StatusBadge from "../components/StatusBadge";
+import OrderDetailModal from "../components/OrderDetailModal";
 import { selectClass, inputClass } from "../components/FormField";
 
 type Order = {
   id: string; first_name: string; last_name: string; email: string;
-  total_amount: string; status: string; created_at: string;
+  total: string; status: string; created_at: string;
 };
 
 const STATUSES = ["pending", "confirmed", "preparing", "shipped", "delivered", "cancelled"];
@@ -20,6 +21,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -35,29 +37,13 @@ export default function OrdersPage() {
 
   useEffect(() => { load(); }, [page, statusFilter, dateFrom, dateTo]);
 
-  const updateStatus = async (id: string, status: string) => {
-    await api.patch(`/admin/orders/${id}/status`, { status });
-    load();
-  };
-
   const cols: Column<Order>[] = [
-    { key: "id", header: "ID", render: (r) => r.id.slice(0, 8) + "..." },
+    { key: "id", header: "ID", render: (r) => r.id.slice(0, 8).toUpperCase() + "..." },
     { key: "customer", header: "Cliente", render: (r) => `${r.first_name} ${r.last_name}` },
     { key: "email", header: "Email" },
-    { key: "total_amount", header: "Total", render: (r) => formatCurrency(Number(r.total_amount)) },
+    { key: "total", header: "Total", render: (r) => formatCurrency(Number(r.total)) },
     { key: "status", header: "Estado", render: (r) => <StatusBadge status={r.status} /> },
     { key: "created_at", header: "Fecha", render: (r) => formatDate(r.created_at) },
-    {
-      key: "actions", header: "Cambiar estado", render: (r) => (
-        <select
-          value={r.status}
-          onChange={(e) => updateStatus(r.id, e.target.value)}
-          className="border border-gray-300 rounded px-2 py-1 text-xs"
-        >
-          {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-      ),
-    },
   ];
 
   return (
@@ -72,8 +58,22 @@ export default function OrdersPage() {
         <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className={`${inputClass} max-w-xs`} />
       </div>
       <div className="bg-white rounded-xl border border-gray-200">
-        <DataTable columns={cols} data={data} loading={loading} page={page} totalPages={totalPages} onPageChange={setPage} />
+        <DataTable
+          columns={cols}
+          data={data}
+          loading={loading}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onRowClick={(row) => setSelectedOrderId(row.id)}
+        />
       </div>
+
+      <OrderDetailModal
+        orderId={selectedOrderId}
+        onClose={() => setSelectedOrderId(null)}
+        onStatusChange={load}
+      />
     </div>
   );
 }

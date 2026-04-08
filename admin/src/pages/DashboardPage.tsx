@@ -4,6 +4,7 @@ import { formatCurrency, formatDate } from "../lib/utils";
 import StatsCard from "../components/StatsCard";
 import DataTable, { type Column } from "../components/DataTable";
 import StatusBadge from "../components/StatusBadge";
+import OrderDetailModal from "../components/OrderDetailModal";
 import { Users, ShoppingCart, DollarSign, Clock } from "lucide-react";
 
 type Stats = { total_users: number; orders_today: number; total_revenue: number; pending_orders: number };
@@ -13,8 +14,9 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
     Promise.all([
       api.get<Stats>("/admin/dashboard"),
       api.get<Order[]>("/admin/orders?limit=10&page=1"),
@@ -23,12 +25,12 @@ export default function DashboardPage() {
       if (o.success) setOrders(Array.isArray(o.data) ? o.data : []);
       setLoading(false);
     });
-  }, []);
+  };
 
-  console.log(orders)
+  useEffect(() => { load(); }, []);
 
   const cols: Column<Order>[] = [
-    { key: "id", header: "Pedido", render: (r) => r.id.slice(0, 8) + "..." },
+    { key: "id", header: "Pedido", render: (r) => r.id.slice(0, 8).toUpperCase() + "..." },
     { key: "customer", header: "Cliente", render: (r) => `${r.first_name} ${r.last_name}` },
     { key: "total", header: "Total", render: (r) => formatCurrency(Number(r.total)) },
     { key: "status", header: "Estado", render: (r) => <StatusBadge status={r.status} /> },
@@ -50,8 +52,19 @@ export default function DashboardPage() {
         <div className="px-4 py-3 border-b border-gray-200">
           <h3 className="font-semibold">Pedidos recientes</h3>
         </div>
-        <DataTable columns={cols} data={orders} loading={loading} />
+        <DataTable
+          columns={cols}
+          data={orders}
+          loading={loading}
+          onRowClick={(row) => setSelectedOrderId(row.id)}
+        />
       </div>
+
+      <OrderDetailModal
+        orderId={selectedOrderId}
+        onClose={() => setSelectedOrderId(null)}
+        onStatusChange={load}
+      />
     </div>
   );
 }

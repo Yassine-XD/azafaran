@@ -180,6 +180,23 @@ export const adminService = {
     };
   },
 
+  async getOrderDetail(orderId: string) {
+    const order = await adminRepository.findOrderById(orderId);
+    if (!order) throw appError("Pedido no encontrado", 404, "ORDER_NOT_FOUND");
+    return {
+      ...order,
+      subtotal: parseFloat(order.subtotal),
+      delivery_fee: parseFloat(order.delivery_fee),
+      discount_amount: parseFloat(order.discount_amount),
+      total: parseFloat(order.total),
+      items: (order.items || []).map((item: any) => ({
+        ...item,
+        unit_price: parseFloat(item.unit_price),
+        line_total: parseFloat(item.line_total),
+      })),
+    };
+  },
+
   async updateOrderStatus(
     orderId: string,
     status: string,
