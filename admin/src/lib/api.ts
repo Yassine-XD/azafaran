@@ -1,8 +1,8 @@
-const BASE = "http://187.77.169.76/api/v1";
+export const BASE = "http://187.77.169.76/api/v1";
 
 type Tokens = { accessToken: string; refreshToken: string };
 
-function getTokens(): Tokens | null {
+export function getTokens(): Tokens | null {
   const raw = localStorage.getItem("admin_tokens");
   return raw ? JSON.parse(raw) : null;
 }

@@ -4,12 +4,31 @@ import { authenticate } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { validateBody } from "../middleware/validate";
 import { updateOrderStatusSchema } from "../validators/order.schema";
+import { sseClients } from "../utils/sseClients";
 
 const router = Router();
 
 // All admin routes require authentication + admin role
 router.use(authenticate);
 router.use(requireAdmin);
+
+// Real-time admin alerts (Server-Sent Events)
+router.get("/events", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  sseClients.add(res);
+
+  // Keep-alive heartbeat every 30 s
+  const heartbeat = setInterval(() => res.write(": heartbeat\n\n"), 30_000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    sseClients.remove(res);
+  });
+});
 
 // Dashboard
 router.get("/dashboard", adminController.getDashboard);
