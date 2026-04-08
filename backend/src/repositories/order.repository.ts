@@ -45,7 +45,6 @@ export const orderRepository = {
     discountAmount: number;
     total: number;
     promoCodeId?: string;
-    deliverySlotId?: string;
     deliveryNotes?: string;
     items: {
       variantId: string;
@@ -66,13 +65,13 @@ export const orderRepository = {
            id, user_id, address_id, address_snapshot,
            payment_method, payment_ref,
            subtotal, delivery_fee, discount_amount, total,
-           promo_code_id, delivery_slot_id, delivery_notes,
+           promo_code_id, delivery_notes,
            status, payment_status
          ) VALUES (
            $1, $2, $3, $4,
            $5, $6,
            $7, $8, $9, $10,
-           $11, $12, $13,
+           $11, $12,
            'pending', 'pending'
          ) RETURNING *`,
         [
@@ -87,7 +86,6 @@ export const orderRepository = {
           data.discountAmount,
           data.total,
           data.promoCodeId || null,
-          data.deliverySlotId || null,
           data.deliveryNotes || null,
         ],
       );
@@ -118,16 +116,6 @@ export const orderRepository = {
            SET stock_qty = stock_qty - $1
            WHERE id = $2 AND stock_qty >= $1`,
           [item.quantity, item.variantId],
-        );
-      }
-
-      // Increment delivery slot booked count (only if a slot was selected)
-      if (data.deliverySlotId) {
-        await client.query(
-          `UPDATE delivery_slots
-           SET booked_count = booked_count + 1
-           WHERE id = $1 AND booked_count < max_orders`,
-          [data.deliverySlotId],
         );
       }
 

@@ -12,8 +12,8 @@ import type { Address } from "@/lib/types";
 
 type PaymentMethod = "card" | "cash" | "bizum";
 
-const DELIVERY_FEE = 2.99;
-const FREE_DELIVERY_THRESHOLD = 30;
+const DELIVERY_FEE = 3.99;
+const FREE_DELIVERY_THRESHOLD = 40;
 
 export default function PaymentScreen() {
   const router = useRouter();
@@ -48,20 +48,24 @@ export default function PaymentScreen() {
   );
 
   const handlePlaceOrder = async () => {
-    if (!selectedAddress) {
+    if (!selectedAddress?.id) {
       Alert.alert("Error", "Selecciona una dirección de entrega");
       return;
     }
 
     setIsPlacing(true);
-    const res = await api.post("/orders/", {
-      address_id: selectedAddress.id,
-      payment_method: paymentMethod,
-      ...(appliedPromo ? { promo_code: appliedPromo.code } : {}),
-    });
-    setIsPlacing(false);
+    try {
+      const res = await api.post("/orders/", {
+        address_id: selectedAddress.id,
+        payment_method: paymentMethod,
+        ...(appliedPromo ? { promo_code: appliedPromo.code } : {}),
+      });
 
-    if (res.success && res.data) {
+      if (!res.success || !res.data) {
+        Alert.alert("Error", res.error?.message || "No se pudo realizar el pedido");
+        return;
+      }
+
       const orderId = res.data.id;
 
       if (paymentMethod === "card") {
@@ -101,8 +105,8 @@ export default function PaymentScreen() {
       Alert.alert("Pedido Confirmado", `Tu pedido #${orderId.slice(0, 8)} ha sido realizado`, [
         { text: "Ver Pedido", onPress: () => router.replace("/(tabs)/orders") },
       ]);
-    } else {
-      Alert.alert("Error", res.error?.message || "No se pudo realizar el pedido");
+    } finally {
+      setIsPlacing(false);
     }
   };
 
