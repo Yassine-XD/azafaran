@@ -104,6 +104,22 @@ export const userRepository = {
       fields.push(`preferred_lang = $${idx++}`);
       values.push(data.preferred_lang);
     }
+    if (data.gender !== undefined) {
+      fields.push(`gender = $${idx++}`);
+      values.push(data.gender);
+    }
+    if (data.date_of_birth !== undefined) {
+      fields.push(`date_of_birth = $${idx++}`);
+      values.push(data.date_of_birth);
+    }
+    if (data.accepts_terms !== undefined) {
+      fields.push(`accepts_terms = $${idx++}`);
+      values.push(data.accepts_terms);
+    }
+    if (data.accepts_marketing !== undefined) {
+      fields.push(`accepts_marketing = $${idx++}`);
+      values.push(data.accepts_marketing);
+    }
 
     if (fields.length === 0) return userRepository.findById(id);
 
