@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { Home, Grid, Tag, ShoppingBag, User } from "lucide-react-native";
-import { cssInterop, useColorScheme } from "nativewind";
+import { cssInterop } from "nativewind";
 
 cssInterop(Home, { className: { target: "style", nativeStyleToProp: { color: true } } });
 cssInterop(Grid, { className: { target: "style", nativeStyleToProp: { color: true } } });
@@ -9,19 +9,16 @@ cssInterop(ShoppingBag, { className: { target: "style", nativeStyleToProp: { col
 cssInterop(User, { className: { target: "style", nativeStyleToProp: { color: true } } });
 
 export default function TabsLayout() {
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === "dark";
-
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: isDark ? "#1c1917" : "#fffbf7",
-          borderTopColor: isDark ? "#44403c" : "#f5ebe6",
+          backgroundColor: "#fffbf7",
+          borderTopColor: "#f5ebe6",
         },
         tabBarActiveTintColor: "#660710",
-        tabBarInactiveTintColor: isDark ? "#a8a29e" : "#78716c",
+        tabBarInactiveTintColor: "#78716c",
       }}
     >
       <Tabs.Screen

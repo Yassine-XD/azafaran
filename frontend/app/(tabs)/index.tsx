@@ -29,7 +29,6 @@ import {
 } from "lucide-react-native";
 import { Linking } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
@@ -237,8 +236,7 @@ export default function HomeScreen() {
               {user ? `${user.first_name}, Barcelona` : "Barcelona"}
             </Text>
           </View>
-          <View className="flex-row items-center gap-3">
-            <TouchableOpacity
+          <TouchableOpacity
               onPress={() => router.push("/cart")}
               className="relative"
             >
@@ -251,8 +249,6 @@ export default function HomeScreen() {
                 </View>
               )}
             </TouchableOpacity>
-            <ThemeToggle />
-          </View>
         </View>
 
         {/* Search Bar */}

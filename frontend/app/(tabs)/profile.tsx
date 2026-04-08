@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { User, MapPin, Phone, CreditCard, Bell, Shield, HelpCircle, Settings, LogOut, ChevronRight, Heart, Globe } from "lucide-react-native";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
@@ -98,10 +97,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <View className="px-6 py-4 border-b border-border">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-2xl font-bold text-foreground">Perfil</Text>
-          <ThemeToggle />
-        </View>
+        <Text className="text-2xl font-bold text-foreground">Perfil</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 128 }} showsVerticalScrollIndicator={false}>

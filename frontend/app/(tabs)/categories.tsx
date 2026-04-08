@@ -10,7 +10,6 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronRight, Search } from "lucide-react-native";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import type { Category } from "@/lib/types";
@@ -44,9 +43,8 @@ export default function CategoriesScreen() {
     >
       {/* Header */}
       <View className="px-6 py-4 border-b border-border">
-        <View className="flex-row items-center justify-between mb-4">
+        <View className="mb-4">
           <Text className="text-2xl font-bold text-foreground">Categorías</Text>
-          <ThemeToggle />
         </View>
         <TouchableOpacity onPress={() => router.push("/search")} className="flex-row items-center bg-input rounded-xl px-4 py-3">
           <Search size={20} className="text-muted-foreground mr-3" />
