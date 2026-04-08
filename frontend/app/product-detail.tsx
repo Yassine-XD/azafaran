@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Share } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Heart, Minus, Plus, ShoppingCart, Check, Shield, Clock } from "lucide-react-native";
+import { ArrowLeft, Minus, Plus, ShoppingCart, Check, Shield, Clock, Share2, Package, Flame } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
-import type { Product, ProductVariant } from "@/lib/types";
+import type { Product, ProductVariant, PackItem } from "@/lib/types";
 import { getProductImage } from "@/lib/types";
+
+function getPackItemImage(item: PackItem): string {
+  const img = item.product_images?.[0];
+  if (typeof img === "string") return img;
+  if (img?.url) return img.url;
+  return "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400";
+}
 
 export default function ProductDetailScreen() {
   const router = useRouter();
@@ -52,6 +59,16 @@ export default function ProductDetailScreen() {
     }
   };
 
+  const handleShare = async () => {
+    if (!product) return;
+    const price = selectedVariant ? `€${Number(selectedVariant.price).toFixed(2)}` : `€${Number(product.price_per_kg).toFixed(2)}`;
+    const items = product.pack_items?.map((i) => `  • ${i.custom_label || i.product_name}${i.quantity > 1 ? ` x${i.quantity}` : ""}`).join("\n") || "";
+    const message = `🔥 ${product.name}\n${product.short_desc || ""}\n\n${items ? `Contenido:\n${items}\n\n` : ""}Precio: ${price}\n\n¡Descúbrelo en Azafaran!`;
+    try {
+      await Share.share({ message });
+    } catch (_) {}
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center">
@@ -71,6 +88,7 @@ export default function ProductDetailScreen() {
     );
   }
 
+  const isPack = product.unit_type === "pack" && product.pack_items && product.pack_items.length > 0;
   const price = selectedVariant ? Number(selectedVariant.price) : 0;
   const comparePrice = selectedVariant?.compare_at_price ? Number(selectedVariant.compare_at_price) : null;
   const total = price * quantity;
@@ -92,22 +110,38 @@ export default function ProductDetailScreen() {
             >
               <ArrowLeft size={22} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push("/cart")}
-              className="w-10 h-10 bg-black/40 rounded-full items-center justify-center relative"
-            >
-              <ShoppingCart size={20} color="white" />
-              {itemCount > 0 && (
-                <View className="absolute -top-1 -right-1 bg-primary w-4 h-4 rounded-full items-center justify-center">
-                  <Text className="text-white text-[10px] font-bold">{itemCount}</Text>
-                </View>
+            <View className="flex-row gap-2">
+              {isPack && (
+                <TouchableOpacity
+                  onPress={handleShare}
+                  className="w-10 h-10 bg-black/40 rounded-full items-center justify-center"
+                >
+                  <Share2 size={20} color="white" />
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push("/cart")}
+                className="w-10 h-10 bg-black/40 rounded-full items-center justify-center relative"
+              >
+                <ShoppingCart size={20} color="white" />
+                {itemCount > 0 && (
+                  <View className="absolute -top-1 -right-1 bg-primary w-4 h-4 rounded-full items-center justify-center">
+                    <Text className="text-white text-[10px] font-bold">{itemCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
+          {isPack && (
+            <View className="absolute bottom-3 left-4 bg-primary px-3 py-1.5 rounded-full flex-row items-center gap-1.5">
+              <Flame size={14} color="white" />
+              <Text className="text-white text-xs font-bold">PACK</Text>
+            </View>
+          )}
         </View>
 
         <View className="px-6 pt-5">
-          {/* Name & Rating */}
+          {/* Name & Category */}
           <Text className="text-2xl font-bold text-foreground mb-1">{product.name}</Text>
           {product.category_name && (
             <Text className="text-muted-foreground text-sm mb-3">{product.category_name}</Text>
@@ -124,7 +158,7 @@ export default function ProductDetailScreen() {
           {/* Variant Selection */}
           {variants.length > 1 && (
             <View className="mb-5">
-              <Text className="text-foreground font-semibold mb-3">Peso / Formato</Text>
+              <Text className="text-foreground font-semibold mb-3">{isPack ? "Tamaño del pack" : "Peso / Formato"}</Text>
               <View className="flex-row flex-wrap gap-3">
                 {variants.map((v) => (
                   <TouchableOpacity
@@ -143,6 +177,45 @@ export default function ProductDetailScreen() {
                       €{Number(v.price).toFixed(2)}
                     </Text>
                   </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Pack Contents */}
+          {isPack && (
+            <View className="mb-5">
+              <View className="flex-row items-center gap-2 mb-3">
+                <Package size={18} className="text-primary" />
+                <Text className="text-foreground font-semibold text-base">Contenido del pack</Text>
+              </View>
+              <View className="bg-card rounded-xl border border-border overflow-hidden">
+                {product.pack_items!.map((item, index) => (
+                  <View
+                    key={item.id}
+                    className={`flex-row items-center p-3 ${
+                      index < product.pack_items!.length - 1 ? "border-b border-border" : ""
+                    }`}
+                  >
+                    <Image
+                      source={{ uri: getPackItemImage(item) }}
+                      className="w-12 h-12 rounded-lg"
+                      resizeMode="cover"
+                    />
+                    <View className="flex-1 ml-3">
+                      <Text className="text-foreground font-medium text-sm" numberOfLines={1}>
+                        {item.custom_label || item.product_name}
+                      </Text>
+                      <Text className="text-muted-foreground text-xs mt-0.5">
+                        {item.product_category_name}
+                      </Text>
+                    </View>
+                    {item.quantity > 1 && (
+                      <View className="bg-primary/10 px-2.5 py-1 rounded-full">
+                        <Text className="text-primary text-xs font-bold">x{item.quantity}</Text>
+                      </View>
+                    )}
+                  </View>
                 ))}
               </View>
             </View>

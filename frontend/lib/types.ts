@@ -56,6 +56,19 @@ export type ProductVariant = {
   sort_order?: number;
 };
 
+export type PackItem = {
+  id: string;
+  pack_id: string;
+  product_id: string;
+  quantity: number;
+  custom_label: string | null;
+  sort_order: number;
+  product_name: string;
+  product_images: ProductImage[];
+  product_price_per_kg: number;
+  product_category_name: string;
+};
+
 export type Product = {
   id: string;
   category_id: string;
@@ -75,6 +88,7 @@ export type Product = {
   avg_rating?: number;
   review_count?: number;
   variants?: ProductVariant[];
+  pack_items?: PackItem[];
   // Joined fields
   category_name?: string;
   category_slug?: string;

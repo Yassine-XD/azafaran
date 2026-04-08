@@ -152,6 +152,65 @@ export const adminService = {
     });
   },
 
+  // ─── Pack Items ─────────────────────────────────────
+
+  async getPackItems(packId: string) {
+    const product = await productRepository.findById(packId);
+    if (!product)
+      throw appError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
+    return adminRepository.findPackItems(packId);
+  },
+
+  async addPackItem(packId: string, data: any, adminId: string) {
+    const pack = await productRepository.findById(packId);
+    if (!pack)
+      throw appError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
+    if (pack.unit_type !== "pack")
+      throw appError("El producto no es un pack", 400, "NOT_A_PACK");
+
+    const item = await adminRepository.addPackItem(packId, data);
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "create",
+      entity: "pack_item",
+      entityId: item.id,
+      after: item,
+    });
+    return item;
+  },
+
+  async updatePackItem(packId: string, itemId: string, data: any, adminId: string) {
+    const item = await adminRepository.findPackItemById(itemId);
+    if (!item || item.pack_id !== packId)
+      throw appError("Elemento no encontrado", 404, "PACK_ITEM_NOT_FOUND");
+
+    const updated = await adminRepository.updatePackItem(itemId, data);
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "update",
+      entity: "pack_item",
+      entityId: itemId,
+      before: item,
+      after: updated,
+    });
+    return updated;
+  },
+
+  async deletePackItem(packId: string, itemId: string, adminId: string) {
+    const item = await adminRepository.findPackItemById(itemId);
+    if (!item || item.pack_id !== packId)
+      throw appError("Elemento no encontrado", 404, "PACK_ITEM_NOT_FOUND");
+
+    await adminRepository.deletePackItem(itemId);
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "delete",
+      entity: "pack_item",
+      entityId: itemId,
+      before: item,
+    });
+  },
+
   // ─── Orders ─────────────────────────────────────────
 
   async getOrders(filters: {
