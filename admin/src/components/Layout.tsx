@@ -15,7 +15,6 @@ const NAV = [
   { to: "/promotions", icon: Tag, label: "Promociones" },
   { to: "/banners", icon: Image, label: "Artículos" },
   { to: "/promo-codes", icon: Ticket, label: "Códigos" },
-  { to: "/delivery-slots", icon: Clock, label: "Horarios" },
   { to: "/notifications", icon: Bell, label: "Notificaciones" },
   { to: "/reviews", icon: Star, label: "Reseñas" },
   { to: "/audit-log", icon: FileText, label: "Auditoría" },
