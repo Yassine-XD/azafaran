@@ -59,4 +59,12 @@ export const promotionRepository = {
     );
     return rows[0] || null;
   },
+
+  async findBannerById(id: string) {
+    const { rows } = await pool.query(
+      "SELECT * FROM banners WHERE id = $1",
+      [id],
+    );
+    return rows[0] || null;
+  },
 };

@@ -13,7 +13,7 @@ const NAV = [
   { to: "/orders", icon: ShoppingCart, label: "Pedidos" },
   { to: "/users", icon: Users, label: "Usuarios" },
   { to: "/promotions", icon: Tag, label: "Promociones" },
-  { to: "/banners", icon: Image, label: "Banners" },
+  { to: "/banners", icon: Image, label: "Artículos" },
   { to: "/promo-codes", icon: Ticket, label: "Códigos" },
   { to: "/delivery-slots", icon: Clock, label: "Horarios" },
   { to: "/notifications", icon: Bell, label: "Notificaciones" },

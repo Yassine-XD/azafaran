@@ -456,17 +456,19 @@ export const adminRepository = {
   async createBanner(data: Record<string, any>) {
     const { rows } = await pool.query(
       `INSERT INTO banners
-         (id, title, subtitle, image_url, cta_text, cta_link,
+         (id, title, subtitle, image_url, link_type, link_value, bg_color, content,
           display_order, starts_at, ends_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
         uuidv4(),
         data.title,
         data.subtitle || null,
-        data.image_url,
-        data.cta_text || null,
-        data.cta_link || null,
+        data.image_url || null,
+        data.link_type || null,
+        data.link_value || null,
+        data.bg_color || null,
+        data.content || null,
         data.display_order || 0,
         data.starts_at || null,
         data.ends_at || null,
@@ -481,8 +483,8 @@ export const adminRepository = {
     let idx = 1;
 
     const allowed = [
-      "title", "subtitle", "image_url", "cta_text", "cta_link",
-      "display_order", "starts_at", "ends_at", "is_active",
+      "title", "subtitle", "image_url", "link_type", "link_value",
+      "bg_color", "content", "display_order", "starts_at", "ends_at", "is_active",
     ];
 
     for (const key of allowed) {

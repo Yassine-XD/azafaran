@@ -27,6 +27,10 @@ export const promotionService = {
     return promotionRepository.findActiveBanners();
   },
 
+  async getBannerById(id: string) {
+    return promotionRepository.findBannerById(id);
+  },
+
   async validatePromoCode(code: string, userId?: string) {
     const promo = await orderRepository.findPromoCode(code);
     if (!promo) {

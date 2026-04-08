@@ -13,6 +13,7 @@ const router = Router();
 // Public endpoints
 router.get("/active", promotionController.getActive);
 router.get("/banners", promotionController.getBanners);
+router.get("/banners/:id", promotionController.getBannerById);
 
 // Validate promo — optionally authed (userId checked if logged in)
 router.post(
