@@ -372,8 +372,8 @@ export const adminRepository = {
       `INSERT INTO promotions
          (id, title, subtitle, type, scope, product_id, category_id,
           discount_type, discount_value, image_url, badge_text,
-          show_on_home, show_on_product, priority, starts_at, ends_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+          show_on_home, show_on_product, priority, starts_at, ends_at, is_active, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        RETURNING *`,
       [
         uuidv4(),
@@ -392,6 +392,7 @@ export const adminRepository = {
         data.priority || 0,
         data.starts_at || new Date(),
         data.ends_at || null,
+        data.is_active ?? true,
         data.created_by || null,
       ],
     );
