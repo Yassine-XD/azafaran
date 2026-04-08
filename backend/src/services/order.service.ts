@@ -3,6 +3,7 @@ import { cartRepository } from "../repositories/cart.repository";
 import { userRepository } from "../repositories/user.repository";
 import { productRepository } from "../repositories/product.repository";
 import { cartService } from "./cart.service";
+import { sseClients } from "../utils/sseClients";
 import type {
   PlaceOrderInput,
   ReviewOrderInput,
@@ -156,6 +157,14 @@ export const orderService = {
 
     // 10. Clear cart after successful order
     await cartRepository.clearCart(cart.id);
+
+    // 11. Notify admin dashboard in real-time
+    sseClients.emit("new_order", {
+      id: order.id,
+      total: total.toFixed(2),
+      payment_method: input.payment_method,
+      at: new Date().toISOString(),
+    });
 
     return formatOrder({ ...order, items: orderItems });
   },
