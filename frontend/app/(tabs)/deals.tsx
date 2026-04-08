@@ -3,7 +3,6 @@ import { View, Text, ScrollView, FlatList, TouchableOpacity, Image, ActivityIndi
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Clock, Tag, Plus } from "lucide-react-native";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
 import type { Promotion } from "@/lib/types";
@@ -51,9 +50,8 @@ export default function DealsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
-      <View className="px-6 py-4 border-b border-border flex-row items-center justify-between">
+      <View className="px-6 py-4 border-b border-border">
         <Text className="text-2xl font-bold text-foreground">Ofertas</Text>
-        <ThemeToggle />
       </View>
 
       <ScrollView

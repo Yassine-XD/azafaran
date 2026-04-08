@@ -200,6 +200,7 @@ export type Banner = {
   link_type?: string;
   link_value?: string;
   bg_color?: string;
+  content?: string;
   sort_order: number;
   is_active: boolean;
 };

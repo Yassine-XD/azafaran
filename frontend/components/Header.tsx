@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
   title: string;
@@ -24,7 +23,6 @@ export function Header({ title, showBack = true }: HeaderProps) {
           {title}
         </Text>
       </View>
-      <ThemeToggle />
     </View>
   );
 }

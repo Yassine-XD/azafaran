@@ -27,9 +27,7 @@ import {
   Flame,
   BookOpen,
 } from "lucide-react-native";
-import { Linking } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
@@ -60,6 +58,7 @@ export default function HomeScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [featured, setFeatured] = useState<Product[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
+  const packsCategory = categories.find((c) => c.slug === "bbq-packs");
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -86,19 +85,14 @@ export default function HomeScreen() {
   }, [fetchData]);
 
   const handleBannerPress = (banner: Banner) => {
-    if (!banner.link_value) return;
-    if (banner.link_type === "internal" || banner.link_value.startsWith("/")) {
-      router.push(banner.link_value as any);
-    } else if (banner.link_type === "external" || banner.link_value.startsWith("http")) {
-      Linking.openURL(banner.link_value);
-    }
+    router.push({ pathname: "/article", params: { id: banner.id } });
   };
 
   const renderBanner = ({ item, index }: { item: Banner; index: number }) => (
     <TouchableOpacity
       className="mr-4 rounded-2xl overflow-hidden shadow-lg"
       onPress={() => handleBannerPress(item)}
-      activeOpacity={item.link_value ? 0.7 : 1}
+      activeOpacity={0.7}
     >
       <LinearGradient
         colors={
@@ -237,8 +231,7 @@ export default function HomeScreen() {
               {user ? `${user.first_name}, Barcelona` : "Barcelona"}
             </Text>
           </View>
-          <View className="flex-row items-center gap-3">
-            <TouchableOpacity
+          <TouchableOpacity
               onPress={() => router.push("/cart")}
               className="relative"
             >
@@ -251,8 +244,6 @@ export default function HomeScreen() {
                 </View>
               )}
             </TouchableOpacity>
-            <ThemeToggle />
-          </View>
         </View>
 
         {/* Search Bar */}
@@ -346,7 +337,7 @@ export default function HomeScreen() {
         ))}
 
         {/* Packs Section */}
-        <PacksSection router={router} />
+        <PacksSection router={router} category={packsCategory} />
 
         {/* Recipes Section */}
         <RecipesSection banners={banners} onPress={handleBannerPress} />
@@ -356,17 +347,18 @@ export default function HomeScreen() {
 }
 
 // Packs section — fetches bbq-packs category products
-function PacksSection({ router }: { router: any }) {
+function PacksSection({ router, category }: { router: any; category?: Category }) {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
+    if (!category) return;
     (async () => {
-      const res = await api.get<Product[]>("/categories/bbq-packs/products?limit=6", false);
+      const res = await api.get<Product[]>(`/categories/${category.slug}/products?limit=6`, false);
       if (res.success && res.data) setProducts(res.data);
     })();
-  }, []);
+  }, [category]);
 
-  if (products.length === 0) return null;
+  if (!category || products.length === 0) return null;
 
   return (
     <View className="mb-6">

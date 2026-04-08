@@ -17,7 +17,7 @@ const FREE_DELIVERY_THRESHOLD = 30;
 
 export default function PaymentScreen() {
   const router = useRouter();
-  const { subtotal, clearCart } = useCart();
+  const { subtotal, clearCart, appliedPromo } = useCart();
   const { user } = useAuth();
   const { payWithCard, CardField } = useStripePay();
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -26,8 +26,9 @@ export default function PaymentScreen() {
   const [isPlacing, setIsPlacing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const total = subtotal + deliveryFee;
+  const discount = appliedPromo?.free_delivery ? 0 : (appliedPromo?.discount_amount || 0);
+  const deliveryFee = (subtotal >= FREE_DELIVERY_THRESHOLD || appliedPromo?.free_delivery) ? 0 : DELIVERY_FEE;
+  const total = subtotal - discount + deliveryFee;
 
   // Refresh addresses every time screen is focused
   useFocusEffect(
@@ -56,6 +57,7 @@ export default function PaymentScreen() {
     const res = await api.post("/orders/", {
       address_id: selectedAddress.id,
       payment_method: paymentMethod,
+      ...(appliedPromo ? { promo_code: appliedPromo.code } : {}),
     });
     setIsPlacing(false);
 
@@ -207,6 +209,12 @@ export default function PaymentScreen() {
             <Text className="text-muted-foreground">Subtotal</Text>
             <Text className="text-foreground">€{subtotal.toFixed(2)}</Text>
           </View>
+          {discount > 0 && (
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-green-600">Descuento ({appliedPromo?.code})</Text>
+              <Text className="text-green-600 font-medium">-€{discount.toFixed(2)}</Text>
+            </View>
+          )}
           <View className="flex-row justify-between mb-2">
             <Text className="text-muted-foreground">Envío</Text>
             <Text className={deliveryFee === 0 ? "text-green-600 font-medium" : "text-foreground"}>

@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Package, Clock, Truck, CheckCircle, XCircle, Filter } from "lucide-react-native";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,6 +48,7 @@ export default function OrdersScreen() {
   }, [fetchOrders, period]);
 
   const handlePeriodChange = (p: string) => {
+    setOrders([]);
     setPeriod(p);
     setIsLoading(true);
   };
@@ -76,9 +76,8 @@ export default function OrdersScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
-      <View className="px-6 py-4 border-b border-border flex-row items-center justify-between">
+      <View className="px-6 py-4 border-b border-border">
         <Text className="text-2xl font-bold text-foreground">Mis Pedidos</Text>
-        <ThemeToggle />
       </View>
 
       {/* Period Filter Chips */}

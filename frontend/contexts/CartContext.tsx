@@ -6,6 +6,14 @@ import type { CartItem } from "@/lib/types";
 
 const GUEST_CART_KEY = "guest_cart";
 
+export type AppliedPromo = {
+  code: string;
+  type: string;
+  value: number;
+  discount_amount: number;
+  free_delivery: boolean;
+};
+
 type GuestCartItem = {
   id: string; // use variantId as id for guest items
   variant_id: string;
@@ -37,6 +45,8 @@ type CartContextType = CartState & {
   removeItem: (itemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
   applyPromo: (code: string) => Promise<{ success: boolean; error?: string; data?: any }>;
+  appliedPromo: AppliedPromo | null;
+  clearPromo: () => void;
 };
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -85,6 +95,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     itemCount: 0,
     isLoading: false,
   });
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
 
   // ── Server cart (authenticated) ───────────────────────────
   const fetchServerCart = useCallback(async () => {
@@ -234,6 +245,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       await api.delete("/cart/");
     }
     await clearGuestCart();
+    setAppliedPromo(null);
     setState({ items: [], subtotal: 0, itemCount: 0, isLoading: false });
   }, [isAuthenticated]);
 
@@ -243,15 +255,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: "Inicia sesión para usar códigos promocionales" };
     }
     const res = await api.post("/cart/apply-promo", { code });
-    if (res.success) {
+    if (res.success && res.data) {
+      setAppliedPromo(res.data as AppliedPromo);
       await fetchServerCart();
       return { success: true, data: res.data };
     }
     return { success: false, error: res.error?.message || "Código no válido" };
   }, [isAuthenticated, fetchServerCart]);
 
+  const clearPromo = useCallback(() => {
+    setAppliedPromo(null);
+  }, []);
+
   return (
-    <CartContext.Provider value={{ ...state, fetchCart, addItem, updateItem, removeItem, clearCart, applyPromo }}>
+    <CartContext.Provider value={{ ...state, fetchCart, addItem, updateItem, removeItem, clearCart, applyPromo, appliedPromo, clearPromo }}>
       {children}
     </CartContext.Provider>
   );
