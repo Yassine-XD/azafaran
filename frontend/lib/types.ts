@@ -10,6 +10,8 @@ export type User = {
   preferred_lang?: string;
   gender?: "male" | "female" | "other" | "prefer_not_to_say" | null;
   date_of_birth?: string | null;
+  accepts_terms?: boolean;
+  accepts_marketing?: boolean;
   created_at: string;
 };
 

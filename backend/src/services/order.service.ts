@@ -46,10 +46,12 @@ export const orderService = {
       throw appError(validation.errors.join(". "), 400, "CART_INVALID");
     }
 
-    // 3. Verify delivery slot
-    const slot = await orderRepository.findDeliverySlot(input.delivery_slot_id);
-    if (!slot)
-      throw appError("Franja horaria no disponible", 400, "SLOT_NOT_AVAILABLE");
+    // 3. Verify delivery slot (optional — if not provided, delivery is 48-72h)
+    if (input.delivery_slot_id) {
+      const slot = await orderRepository.findDeliverySlot(input.delivery_slot_id);
+      if (!slot)
+        throw appError("Franja horaria no disponible", 400, "SLOT_NOT_AVAILABLE");
+    }
 
     // 4. Get address and snapshot it
     const address = await userRepository.findAddressById(

@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function LoginScreen() {
     const result = await login(email.trim().toLowerCase(), password);
     setIsLoading(false);
     if (result.success) {
+      await AsyncStorage.setItem("onboarding_done", "true");
       router.replace("/(tabs)");
     } else {
       Alert.alert("Error", result.error || "Credenciales incorrectas");

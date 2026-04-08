@@ -5,6 +5,23 @@ import { User, Mail, Lock, Eye, EyeOff, Phone } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 
+function StepIndicator({ current, total }: { current: number; total: number }) {
+  return (
+    <View className="flex-row items-center justify-center gap-2 mb-6">
+      {Array.from({ length: total }, (_, i) => (
+        <View
+          key={i}
+          className={`h-1.5 rounded-full ${
+            i < current ? "w-8 bg-primary" : i === current ? "w-8 bg-primary" : "w-8 bg-muted"
+          }`}
+        />
+      ))}
+    </View>
+  );
+}
+
+export { StepIndicator };
+
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
@@ -53,11 +70,13 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24 }} keyboardShouldPersistTaps="handled">
+          <StepIndicator current={0} total={3} />
+
           {/* Header */}
-          <View className="items-center mb-8">
-            <Text className="text-4xl font-bold text-primary mb-2">Crear Cuenta</Text>
-            <Text className="text-muted-foreground text-base">Únete a Azafaran</Text>
+          <View className="mb-6">
+            <Text className="text-3xl font-bold text-foreground mb-1">Crear Cuenta</Text>
+            <Text className="text-muted-foreground text-base">Paso 1 de 3 — Tus datos de acceso</Text>
           </View>
 
           {/* Name Row */}
@@ -125,7 +144,7 @@ export default function RegisterScreen() {
               <Lock size={20} className="text-muted-foreground mr-3" />
               <TextInput
                 className="flex-1 text-foreground text-base"
-                placeholder="Contraseña"
+                placeholder="Contraseña (mín. 8 caracteres)"
                 placeholderTextColor="#a8a29e"
                 value={password}
                 onChangeText={setPassword}
@@ -138,7 +157,7 @@ export default function RegisterScreen() {
           </View>
 
           {/* Confirm Password */}
-          <View className="mb-6">
+          <View className="mb-8">
             <View className={inputClass}>
               <Lock size={20} className="text-muted-foreground mr-3" />
               <TextInput
@@ -154,11 +173,11 @@ export default function RegisterScreen() {
 
           {/* Register Button */}
           <TouchableOpacity onPress={handleRegister} disabled={isLoading} className="bg-primary py-4 rounded-xl items-center mb-4">
-            {isLoading ? <ActivityIndicator color="white" /> : <Text className="text-primary-foreground font-bold text-lg">Crear Cuenta</Text>}
+            {isLoading ? <ActivityIndicator color="white" /> : <Text className="text-primary-foreground font-bold text-lg">Siguiente</Text>}
           </TouchableOpacity>
 
           {/* Login Link */}
-          <View className="flex-row justify-center mt-4">
+          <View className="flex-row justify-center mt-2">
             <Text className="text-muted-foreground">¿Ya tienes cuenta? </Text>
             <TouchableOpacity onPress={() => router.push("/login")}>
               <Text className="text-primary font-semibold">Inicia Sesión</Text>

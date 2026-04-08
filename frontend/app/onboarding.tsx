@@ -34,14 +34,12 @@ export default function OnboardingScreen() {
       scrollRef.current?.scrollTo({ x: (currentIndex + 1) * width, animated: true });
       setCurrentIndex(currentIndex + 1);
     } else {
-      await AsyncStorage.setItem("onboarding_done", "true");
-      router.replace("/(tabs)");
+      router.replace("/register");
     }
   };
 
-  const handleSkip = async () => {
-    await AsyncStorage.setItem("onboarding_done", "true");
-    router.replace("/(tabs)");
+  const handleSkip = () => {
+    router.replace("/register");
   };
 
   return (

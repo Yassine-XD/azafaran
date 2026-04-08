@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const placeOrderSchema = z.object({
   address_id: z.string().uuid("Dirección inválida"),
-  delivery_slot_id: z.string().uuid("Franja horaria inválida"),
+  delivery_slot_id: z.string().uuid("Franja horaria inválida").optional(),
   payment_method: z.enum(["card", "cash", "bizum"]),
   payment_ref: z.string().optional(), // Stripe PaymentIntent id
   delivery_notes: z.string().max(500).optional(),

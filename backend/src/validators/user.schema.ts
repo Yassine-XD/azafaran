@@ -8,6 +8,8 @@ export const updateProfileSchema = z.object({
   preferred_lang: z.enum(["es", "ca", "en"]).optional(),
   gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional().nullable(),
   date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format: YYYY-MM-DD").optional().nullable(),
+  accepts_terms: z.boolean().optional(),
+  accepts_marketing: z.boolean().optional(),
 });
 
 export const createAddressSchema = z.object({

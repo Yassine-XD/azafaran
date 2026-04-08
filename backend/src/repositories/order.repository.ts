@@ -45,7 +45,7 @@ export const orderRepository = {
     discountAmount: number;
     total: number;
     promoCodeId?: string;
-    deliverySlotId: string;
+    deliverySlotId?: string;
     deliveryNotes?: string;
     items: {
       variantId: string;
@@ -87,7 +87,7 @@ export const orderRepository = {
           data.discountAmount,
           data.total,
           data.promoCodeId || null,
-          data.deliverySlotId,
+          data.deliverySlotId || null,
           data.deliveryNotes || null,
         ],
       );
@@ -121,13 +121,15 @@ export const orderRepository = {
         );
       }
 
-      // Increment delivery slot booked count
-      await client.query(
-        `UPDATE delivery_slots
-         SET booked_count = booked_count + 1
-         WHERE id = $1 AND booked_count < max_orders`,
-        [data.deliverySlotId],
-      );
+      // Increment delivery slot booked count (only if a slot was selected)
+      if (data.deliverySlotId) {
+        await client.query(
+          `UPDATE delivery_slots
+           SET booked_count = booked_count + 1
+           WHERE id = $1 AND booked_count < max_orders`,
+          [data.deliverySlotId],
+        );
+      }
 
       // Increment promo used count if used
       if (data.promoCodeId) {
