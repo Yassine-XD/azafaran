@@ -7,7 +7,6 @@ let userId: string;
 let variantId: string;
 let cartItemId: string;
 let addressId: string;
-let slotId: string;
 let orderId: string;
 
 beforeAll(async () => {
@@ -44,14 +43,6 @@ beforeAll(async () => {
       province: "Barcelona",
     });
   addressId = addr.body.data.id;
-
-  // Get a delivery slot
-  const { rows: slots } = await pool.query(
-    `SELECT id FROM delivery_slots
-     WHERE is_active = true AND booked_count < max_orders AND date >= CURRENT_DATE
-     LIMIT 1`,
-  );
-  slotId = slots[0]?.id;
 });
 
 afterAll(async () => {
@@ -164,15 +155,11 @@ describe("Cart", () => {
 
 describe("Orders", () => {
   it("POST /orders — places order successfully", async () => {
-    if (!slotId)
-      return console.warn("No delivery slot available — skipping order test");
-
     const res = await request(app)
       .post("/api/v1/orders")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({
         address_id: addressId,
-        delivery_slot_id: slotId,
         payment_method: "cash",
         delivery_notes: "Llamar al timbre",
       });
