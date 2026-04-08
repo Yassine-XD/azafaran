@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, CreditCard, MapPin, Check, Wallet, CalendarDays } from "lucide-react-native";
+import { ArrowLeft, CreditCard, MapPin, Check, Wallet, Truck } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useStripePay } from "@/hooks/useStripePay";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Address, DeliverySlot } from "@/lib/types";
+import type { Address } from "@/lib/types";
 
 type PaymentMethod = "card" | "cash" | "bizum";
 
@@ -22,9 +22,6 @@ export default function PaymentScreen() {
   const { payWithCard, CardField } = useStripePay();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [slots, setSlots] = useState<DeliverySlot[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<DeliverySlot | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [isPlacing, setIsPlacing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,27 +29,7 @@ export default function PaymentScreen() {
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const total = subtotal + deliveryFee;
 
-  // Group slots by date — pick first slot per date (user only chooses date)
-  const slotsByDate = useMemo(() => {
-    const grouped: Record<string, DeliverySlot> = {};
-    for (const slot of slots) {
-      const d = slot.slot_date;
-      if (!grouped[d]) grouped[d] = slot;
-    }
-    return grouped;
-  }, [slots]);
-
-  const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
-
-  const formatDateLabel = (dateStr: string) => {
-    const date = new Date(dateStr + "T00:00:00");
-    const weekday = date.toLocaleDateString("es-ES", { weekday: "short" });
-    const day = date.getDate();
-    const month = date.toLocaleDateString("es-ES", { month: "short" });
-    return { weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1), day, month };
-  };
-
-  // Refresh addresses every time screen is focused (e.g. returning from address picker)
+  // Refresh addresses every time screen is focused
   useFocusEffect(
     useCallback(() => {
       (async () => {
@@ -64,51 +41,20 @@ export default function PaymentScreen() {
             if (defaultAddr) setSelectedAddress(defaultAddr);
           }
         }
+        setIsLoading(false);
       })();
     }, [])
   );
-
-  // Load delivery slots once on mount
-  useEffect(() => {
-    (async () => {
-      const slotRes = await api.get<DeliverySlot[]>("/delivery-slots/available");
-      if (slotRes.success && slotRes.data) {
-        const minDate = new Date();
-        minDate.setDate(minDate.getDate() + 2);
-        minDate.setHours(0, 0, 0, 0);
-
-        const normalized = slotRes.data
-          .map((s: any) => {
-            const raw = s.slot_date || s.date;
-            const dateStr = typeof raw === 'string' ? raw.slice(0, 10) : '';
-            return { ...s, slot_date: dateStr };
-          })
-          .filter((s) => new Date(s.slot_date + 'T00:00:00') >= minDate);
-
-        setSlots(normalized);
-        if (normalized.length > 0) {
-          setSelectedDate(normalized[0].slot_date);
-          setSelectedSlot(normalized[0]);
-        }
-      }
-      setIsLoading(false);
-    })();
-  }, []);
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
       Alert.alert("Error", "Selecciona una dirección de entrega");
       return;
     }
-    if (!selectedSlot) {
-      Alert.alert("Error", "Selecciona una fecha de entrega");
-      return;
-    }
 
     setIsPlacing(true);
     const res = await api.post("/orders/", {
       address_id: selectedAddress.id,
-      delivery_slot_id: selectedSlot.id,
       payment_method: paymentMethod,
     });
     setIsPlacing(false);
@@ -202,46 +148,19 @@ export default function PaymentScreen() {
           )}
         </View>
 
-        {/* Delivery Date */}
+        {/* Delivery Estimate */}
         <View className="bg-card rounded-2xl border border-border p-4 mb-4">
-          <View className="flex-row items-center gap-2 mb-1">
-            <CalendarDays size={18} className="text-primary" />
-            <Text className="text-foreground font-bold">Fecha de Entrega</Text>
+          <View className="flex-row items-center gap-3">
+            <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center">
+              <Truck size={24} color="#ea580c" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-foreground font-bold text-base">Envío estimado</Text>
+              <Text className="text-muted-foreground text-sm mt-0.5">
+                Tu pedido será entregado en un plazo de 48 a 72 horas.
+              </Text>
+            </View>
           </View>
-          <Text className="text-muted-foreground text-xs mb-3">Mínimo 2 días de preparación</Text>
-
-          {availableDates.length === 0 ? (
-            <Text className="text-muted-foreground text-sm">No hay fechas disponibles</Text>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {availableDates.map((dateStr) => {
-                const isSelected = selectedDate === dateStr;
-                const { weekday, day, month } = formatDateLabel(dateStr);
-                return (
-                  <TouchableOpacity
-                    key={dateStr}
-                    onPress={() => {
-                      setSelectedDate(dateStr);
-                      setSelectedSlot(slotsByDate[dateStr] || null);
-                    }}
-                    className={`mr-3 w-16 py-3 rounded-xl border items-center ${
-                      isSelected ? "border-primary bg-primary" : "border-border bg-muted/50"
-                    }`}
-                  >
-                    <Text className={`text-xs font-medium ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}>
-                      {weekday}
-                    </Text>
-                    <Text className={`text-xl font-bold my-0.5 ${isSelected ? "text-primary-foreground" : "text-foreground"}`}>
-                      {day}
-                    </Text>
-                    <Text className={`text-xs ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}>
-                      {month}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
         </View>
 
         {/* Payment Method */}

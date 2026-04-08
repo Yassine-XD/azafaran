@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
@@ -12,7 +13,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
-import { Users, Calendar, Globe, ChevronRight, Minus, Plus } from "lucide-react-native";
+import { Users, Calendar, MapPin, ChevronRight } from "lucide-react-native";
+import { StepIndicator } from "./register";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 const GENDER_OPTIONS = [
@@ -22,45 +24,66 @@ const GENDER_OPTIONS = [
   { value: "prefer_not_to_say", label: "Prefiero no decir" },
 ] as const;
 
-const LANGUAGE_OPTIONS = [
-  { value: "es", label: "Castellano" },
-  { value: "ca", label: "Català" },
-  { value: "en", label: "English" },
-] as const;
-
 export default function ProfileSetupScreen() {
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
   const [gender, setGender] = useState<string | null>(null);
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [familySize, setFamilySize] = useState(2);
-  const [preferredLang, setPreferredLang] = useState("es");
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("Barcelona");
+  const [postcode, setPostcode] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    const payload: Record<string, any> = {
-      preferred_lang: preferredLang,
-      family_size: familySize,
-    };
-    if (gender) payload.gender = gender;
-    if (dateOfBirth) payload.date_of_birth = dateOfBirth.toISOString().split("T")[0];
+  const handleNext = async () => {
+    if (!gender) {
+      Alert.alert("Error", "Por favor selecciona tu género");
+      return;
+    }
+    if (!dateOfBirth) {
+      Alert.alert("Error", "Por favor selecciona tu fecha de nacimiento");
+      return;
+    }
+    if (!street.trim() || !city.trim() || !postcode.trim()) {
+      Alert.alert("Error", "Por favor completa tu dirección");
+      return;
+    }
 
-    const res = await api.put("/users/", payload);
+    setIsSaving(true);
+
+    // Save personal info
+    const profileRes = await api.put("/users/", {
+      gender,
+      date_of_birth: dateOfBirth.toISOString().split("T")[0],
+    });
+
+    // Save address
+    const addressRes = await api.post("/users/addresses", {
+      label: "Casa",
+      street: street.trim(),
+      city: city.trim(),
+      postcode: postcode.trim(),
+      province: "Barcelona",
+      country: "ES",
+      is_default: true,
+    });
+
     setIsSaving(false);
 
-    if (res.success) {
-      await refreshProfile();
-      router.replace("/(tabs)");
-    } else {
-      Alert.alert("Error", "No se pudo guardar. Inténtalo de nuevo.");
+    if (!profileRes.success) {
+      Alert.alert("Error", "No se pudo guardar tu perfil. Inténtalo de nuevo.");
+      return;
     }
+    if (!addressRes.success) {
+      Alert.alert("Error", "No se pudo guardar tu dirección. Inténtalo de nuevo.");
+      return;
+    }
+
+    await refreshProfile();
+    router.replace("/terms-accept");
   };
 
-  const handleSkip = () => {
-    router.replace("/(tabs)");
-  };
+  const inputClass = "flex-row items-center bg-card border border-border rounded-xl px-4 py-3";
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -68,13 +91,15 @@ export default function ProfileSetupScreen() {
         contentContainerStyle={{ flexGrow: 1, padding: 24 }}
         keyboardShouldPersistTaps="handled"
       >
+        <StepIndicator current={1} total={3} />
+
         {/* Header */}
-        <View className="mb-8">
-          <Text className="text-3xl font-bold text-foreground mb-2">
-            ¡Bienvenido{user?.first_name ? `, ${user.first_name}` : ""}!
+        <View className="mb-6">
+          <Text className="text-3xl font-bold text-foreground mb-1">
+            Sobre ti
           </Text>
           <Text className="text-muted-foreground text-base">
-            Cuéntanos un poco sobre ti para personalizar tu experiencia.
+            Paso 2 de 3 — Información personal y dirección
           </Text>
         </View>
 
@@ -145,82 +170,65 @@ export default function ProfileSetupScreen() {
           )}
         </View>
 
-        {/* Family Size */}
-        <View className="mb-6">
-          <View className="flex-row items-center gap-2 mb-3">
-            <Users size={18} color="#ea580c" />
-            <Text className="text-foreground font-semibold text-base">
-              Miembros de la familia
-            </Text>
-          </View>
-          <View className="flex-row items-center justify-center gap-6 bg-card border border-border rounded-xl py-4">
-            <TouchableOpacity
-              onPress={() => setFamilySize(Math.max(1, familySize - 1))}
-              className="w-10 h-10 rounded-full bg-muted items-center justify-center"
-            >
-              <Minus size={20} className="text-foreground" />
-            </TouchableOpacity>
-            <Text className="text-3xl font-bold text-foreground w-12 text-center">
-              {familySize}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setFamilySize(Math.min(20, familySize + 1))}
-              className="w-10 h-10 rounded-full bg-muted items-center justify-center"
-            >
-              <Plus size={20} className="text-foreground" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Language */}
+        {/* Address */}
         <View className="mb-8">
           <View className="flex-row items-center gap-2 mb-3">
-            <Globe size={18} color="#ea580c" />
-            <Text className="text-foreground font-semibold text-base">Idioma</Text>
+            <MapPin size={18} color="#ea580c" />
+            <Text className="text-foreground font-semibold text-base">
+              Dirección de entrega
+            </Text>
           </View>
-          <View className="flex-row gap-2">
-            {LANGUAGE_OPTIONS.map((opt) => (
-              <TouchableOpacity
-                key={opt.value}
-                onPress={() => setPreferredLang(opt.value)}
-                className={`flex-1 py-3 rounded-xl border items-center ${
-                  preferredLang === opt.value
-                    ? "border-primary bg-primary"
-                    : "border-border bg-card"
-                }`}
-              >
-                <Text
-                  className={`font-medium ${
-                    preferredLang === opt.value
-                      ? "text-primary-foreground"
-                      : "text-foreground"
-                  }`}
-                >
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+
+          <View className="mb-3">
+            <View className={inputClass}>
+              <TextInput
+                className="flex-1 text-foreground text-base"
+                placeholder="Calle y número"
+                placeholderTextColor="#a8a29e"
+                value={street}
+                onChangeText={setStreet}
+              />
+            </View>
+          </View>
+
+          <View className="flex-row gap-3">
+            <View className="flex-1">
+              <View className={inputClass}>
+                <TextInput
+                  className="flex-1 text-foreground text-base"
+                  placeholder="Ciudad"
+                  placeholderTextColor="#a8a29e"
+                  value={city}
+                  onChangeText={setCity}
+                />
+              </View>
+            </View>
+            <View className="w-28">
+              <View className={inputClass}>
+                <TextInput
+                  className="flex-1 text-foreground text-base"
+                  placeholder="C.P."
+                  placeholderTextColor="#a8a29e"
+                  value={postcode}
+                  onChangeText={setPostcode}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* Save Button */}
+        {/* Next Button */}
         <TouchableOpacity
-          onPress={handleSave}
+          onPress={handleNext}
           disabled={isSaving}
-          className="bg-primary py-4 rounded-xl items-center mb-3"
+          className="bg-primary py-4 rounded-xl items-center"
         >
           {isSaving ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-primary-foreground font-bold text-lg">
-              Guardar y continuar
-            </Text>
+            <Text className="text-primary-foreground font-bold text-lg">Siguiente</Text>
           )}
-        </TouchableOpacity>
-
-        {/* Skip */}
-        <TouchableOpacity onPress={handleSkip} className="py-3 items-center">
-          <Text className="text-muted-foreground font-medium">Omitir por ahora</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
