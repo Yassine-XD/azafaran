@@ -46,8 +46,6 @@ export default function DealsScreen() {
     );
   }
 
-  console.log(promotions)
-
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <View className="px-6 py-4 border-b border-border">
@@ -68,7 +66,7 @@ export default function DealsScreen() {
         ) : (
           <View className="flex-row flex-wrap">
             {promotions.map((promo) => (
-              <View key={promo.id} className="w-1/2 p-2">
+              <View key={promo.id} className="w-full p-2">
                 <View className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border">
                   {promo.image_url && (
                     <View className="relative">
@@ -84,15 +82,15 @@ export default function DealsScreen() {
                     <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={2}>
                       {promo.title}
                     </Text>
-                    {promo.description && (
+                    {promo.subtitle && (
                       <Text className="text-muted-foreground text-xs mb-2" numberOfLines={2}>
-                        {promo.description}
+                        {promo.subtitle}
                       </Text>
                     )}
                     <View className="flex-row items-center">
                       <Clock size={12} className="text-muted-foreground mr-1" />
-                      <Text className="text-muted-foreground text-xs">
-                        {getRemainingTime(promo.end_date)}
+                      <Text className="text-muted-foreground text-xs px-2">
+                        {getRemainingTime(promo.ends_at)}
                       </Text>
                     </View>
                     {promo.min_order_amount && (
