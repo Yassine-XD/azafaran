@@ -74,7 +74,7 @@ export default function OrderDetailModal({ orderId, onClose, onStatusChange }: P
     setLoading(true);
     setOrder(null);
     setError("");
-    api.get<OrderDetail>(`/orders/${orderId}`).then((r) => {
+    api.get<OrderDetail>(`/admin/orders/${orderId}`).then((r) => {
       if (r.success && r.data) {
         setOrder(r.data);
         setSelectedStatus(r.data.status);

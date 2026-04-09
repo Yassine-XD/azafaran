@@ -12,7 +12,7 @@ type Category = {
   image_url: string; display_order: number; is_active: boolean;
 };
 
-const empty = { name: "", slug: "", description: "", image_url: "", display_order: "0" };
+const empty = { name: "", slug: "", description: "", image_url: "", display_order: "0", is_active: true };
 
 export default function CategoriesPage() {
   const [data, setData] = useState<Category[]>([]);
@@ -38,7 +38,7 @@ export default function CategoriesPage() {
   const openCreate = () => { setEditing(null); setForm(empty); setModal(true); };
   const openEdit = (c: Category) => {
     setEditing(c);
-    setForm({ name: c.name, slug: c.slug, description: c.description || "", image_url: c.image_url || "", display_order: String(c.display_order) });
+    setForm({ name: c.name, slug: c.slug, description: c.description || "", image_url: c.image_url || "", display_order: String(c.display_order), is_active: c.is_active });
     setModal(true);
   };
 
@@ -105,6 +105,10 @@ export default function CategoriesPage() {
           <FormField label="Orden de visualización">
             <input type="number" className={inputClass} value={form.display_order} onChange={(e) => setForm({ ...form, display_order: e.target.value })} />
           </FormField>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+            Activo
+          </label>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => setModal(false)} className={btnSecondary}>Cancelar</button>
             <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Guardando..." : "Guardar"}</button>

@@ -10,7 +10,7 @@ type UserDetail = {
   id: string; first_name: string; last_name: string; email: string;
   phone: string; role: string; is_active: boolean; is_verified: boolean;
   family_size: number; preferred_lang: string; created_at: string;
-  recent_orders: { id: string; total_amount: string; status: string; created_at: string }[];
+  recent_orders: { id: string; total: string; status: string; created_at: string }[];
 };
 
 export default function UserDetailPage() {
@@ -110,7 +110,7 @@ export default function UserDetailPage() {
               {user.recent_orders.map((o) => (
                 <tr key={o.id} className="border-b">
                   <td className="px-4 py-2">{o.id.slice(0, 8)}...</td>
-                  <td className="px-4 py-2">{formatCurrency(Number(o.total_amount))}</td>
+                  <td className="px-4 py-2">{formatCurrency(Number(o.total))}</td>
                   <td className="px-4 py-2"><StatusBadge status={o.status} /></td>
                   <td className="px-4 py-2">{formatDate(o.created_at)}</td>
                 </tr>

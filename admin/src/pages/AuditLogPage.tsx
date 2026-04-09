@@ -56,13 +56,13 @@ export default function AuditLogPage() {
       <div className="flex gap-3 mb-4">
         <select value={entityFilter} onChange={(e) => { setEntityFilter(e.target.value); setPage(1); }} className={`${selectClass} max-w-xs`}>
           <option value="">Todas las entidades</option>
-          {["product", "category", "order", "promotion", "banner", "promo_code", "delivery_slot", "campaign"].map((e) => (
+          {["product", "product_variant", "pack_item", "category", "order", "user", "promotion", "banner", "promo_code", "delivery_slot", "notification_campaign"].map((e) => (
             <option key={e} value={e}>{e}</option>
           ))}
         </select>
         <select value={actionFilter} onChange={(e) => { setActionFilter(e.target.value); setPage(1); }} className={`${selectClass} max-w-xs`}>
           <option value="">Todas las acciones</option>
-          {["create", "update", "delete"].map((a) => (
+          {["create", "update", "update_status", "delete", "bulk_create"].map((a) => (
             <option key={a} value={a}>{a}</option>
           ))}
         </select>
