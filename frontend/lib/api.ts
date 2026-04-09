@@ -81,46 +81,53 @@ export async function api<T = any>(
 }> {
   const { method = "GET", body, headers = {}, requireAuth = true } = options;
 
-  const requestHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...headers,
-  };
+  try {
+    const requestHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...headers,
+    };
 
-  if (requireAuth) {
-    const tokens = await tokenStorage.getTokens();
-    if (tokens?.accessToken) {
-      requestHeaders["Authorization"] = `Bearer ${tokens.accessToken}`;
+    if (requireAuth) {
+      const tokens = await tokenStorage.getTokens();
+      if (tokens?.accessToken) {
+        requestHeaders["Authorization"] = `Bearer ${tokens.accessToken}`;
+      }
     }
+
+    let res = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: requestHeaders,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    // If 401 and we have a refresh token, try refreshing
+    if (res.status === 401 && requireAuth) {
+      // Deduplicate concurrent refresh calls
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => {
+          refreshPromise = null;
+        });
+      }
+      const newToken = await refreshPromise;
+
+      if (newToken) {
+        requestHeaders["Authorization"] = `Bearer ${newToken}`;
+        res = await fetch(`${API_BASE_URL}${path}`, {
+          method,
+          headers: requestHeaders,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      }
+    }
+
+    const json = await res.json();
+    return json;
+  } catch {
+    return {
+      success: false,
+      error: { message: "Error de conexión. Comprueba tu red.", code: "NETWORK_ERROR" },
+    };
   }
-
-  let res = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers: requestHeaders,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  // If 401 and we have a refresh token, try refreshing
-  if (res.status === 401 && requireAuth) {
-    // Deduplicate concurrent refresh calls
-    if (!refreshPromise) {
-      refreshPromise = refreshAccessToken().finally(() => {
-        refreshPromise = null;
-      });
-    }
-    const newToken = await refreshPromise;
-
-    if (newToken) {
-      requestHeaders["Authorization"] = `Bearer ${newToken}`;
-      res = await fetch(`${API_BASE_URL}${path}`, {
-        method,
-        headers: requestHeaders,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-    }
-  }
-
-  const json = await res.json();
-  return json;
 }
 
 // Convenience methods

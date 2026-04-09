@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -40,6 +40,7 @@ export default function PaymentScreen() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [isPlacing, setIsPlacing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const initialLoadDone = useRef(false);
 
   const discount = appliedPromo?.free_delivery
     ? 0
@@ -57,10 +58,11 @@ export default function PaymentScreen() {
         const res = await api.get<Address[]>("/users/addresses");
         if (res.success && res.data) {
           setAddresses(res.data);
-          if (!selectedAddress) {
+          if (!initialLoadDone.current) {
             const defaultAddr =
               res.data.find((a) => a.is_default) || res.data[0];
             if (defaultAddr) setSelectedAddress(defaultAddr);
+            initialLoadDone.current = true;
           }
         }
         setIsLoading(false);
@@ -81,7 +83,6 @@ export default function PaymentScreen() {
         payment_method: paymentMethod,
         ...(appliedPromo ? { promo_code: appliedPromo.code } : {}),
       });
-      console.log(res);
       if (!res.success || !res.data) {
         Alert.alert(
           "Error",
@@ -98,8 +99,6 @@ export default function PaymentScreen() {
           paymentIntentId: string;
         }>("/payments/intent", {
           orderId,
-          amount: total,
-          currency: "eur",
         });
 
         if (!piRes.success || !piRes.data?.clientSecret) {
@@ -149,6 +148,11 @@ export default function PaymentScreen() {
             onPress: () => router.replace("/(tabs)/orders"),
           },
         ],
+      );
+    } catch (err: any) {
+      Alert.alert(
+        "Error",
+        err?.message || "Ocurrió un error inesperado. Inténtalo de nuevo.",
       );
     } finally {
       setIsPlacing(false);

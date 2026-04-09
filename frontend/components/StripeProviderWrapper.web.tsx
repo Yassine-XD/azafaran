@@ -7,7 +7,7 @@ const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
 export default function StripeProviderWrapper({ children }: { children: ReactNode }) {
   return (
-    <Elements stripe={stripePromise} options={{ mode: "payment", currency: "eur", amount: 0 }}>
+    <Elements stripe={stripePromise} options={{ mode: "payment", currency: "eur", amount: 100 }}>
       {children}
     </Elements>
   );

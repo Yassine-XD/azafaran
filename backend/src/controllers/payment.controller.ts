@@ -5,11 +5,10 @@ import { success } from "../utils/apiResponse";
 
 export const paymentController = {
   createIntent: asyncHandler(async (req: Request, res: Response) => {
-    const { orderId, amount, currency } = req.body;
+    const { orderId, currency } = req.body;
     const result = await paymentService.createPaymentIntent(
       req.user!.sub,
       orderId,
-      amount,
       currency,
     );
     return success(res, result);

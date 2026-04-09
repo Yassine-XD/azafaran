@@ -111,12 +111,20 @@ export const orderRepository = {
 
       // Decrement stock for each variant
       for (const item of data.items) {
-        await client.query(
+        const stockResult = await client.query(
           `UPDATE product_variants
            SET stock_qty = stock_qty - $1
            WHERE id = $2 AND stock_qty >= $1`,
           [item.quantity, item.variantId],
         );
+        if (stockResult.rowCount === 0) {
+          const err: any = new Error(
+            `Stock insuficiente para el producto (variante ${item.variantId})`,
+          );
+          err.statusCode = 400;
+          err.code = "INSUFFICIENT_STOCK";
+          throw err;
+        }
       }
 
       // Increment promo used count if used
