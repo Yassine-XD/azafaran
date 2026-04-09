@@ -5,7 +5,7 @@ import DataTable, { type Column } from "../components/DataTable";
 import Modal from "../components/Modal";
 import FormField, { inputClass, selectClass, btnPrimary, btnSecondary } from "../components/FormField";
 import StatusBadge from "../components/StatusBadge";
-import { Plus, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Package } from "lucide-react";
 
 type Product = {
   id: string; name: string; slug: string; description: string; short_desc: string;
@@ -16,6 +16,12 @@ type Product = {
 type Variant = {
   id: string; product_id: string; label: string; weight_grams: number;
   price: string; stock_qty: number; sku: string; is_active: boolean;
+};
+
+type PackItem = {
+  id: string; pack_id: string; product_id: string; quantity: number;
+  custom_label: string | null; sort_order: number;
+  product_name: string; product_images: any[]; product_price_per_kg: string; product_category_name: string;
 };
 
 type Category = { id: string; name: string };
@@ -45,6 +51,14 @@ export default function ProductsPage() {
   const [varProduct, setVarProduct] = useState<Product | null>(null);
   const [varForm, setVarForm] = useState({ label: "", weight_grams: "", price: "", stock_qty: "", sku: "" });
   const [editingVar, setEditingVar] = useState<Variant | null>(null);
+
+  // Pack Items
+  const [packModal, setPackModal] = useState(false);
+  const [packItems, setPackItems] = useState<PackItem[]>([]);
+  const [packProduct, setPackProduct] = useState<Product | null>(null);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [packForm, setPackForm] = useState({ product_id: "", quantity: "1", custom_label: "", sort_order: "0" });
+  const [editingPackItem, setEditingPackItem] = useState<PackItem | null>(null);
 
   const fetch = () => {
     setLoading(true);
@@ -135,6 +149,52 @@ export default function ProductsPage() {
     if (r.success && r.data?.variants) setVariants(r.data.variants);
   };
 
+  // Pack Items
+  const openPackItems = async (p: Product) => {
+    setPackProduct(p);
+    setPackModal(true);
+    setEditingPackItem(null);
+    setPackForm({ product_id: "", quantity: "1", custom_label: "", sort_order: "0" });
+    // Fetch pack items
+    const r: any = await api.get(`/admin/products/${p.id}/pack-items`);
+    if (r.success) setPackItems(r.data || []);
+    else setPackItems([]);
+    // Fetch all products for dropdown (exclude packs)
+    const pr: any = await api.get("/admin/products?page=1&limit=200");
+    if (pr.success) {
+      setAllProducts((pr.data || []).filter((prod: Product) => prod.id !== p.id && prod.unit_type !== "pack"));
+    }
+  };
+
+  const savePackItem = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!packProduct) return;
+    const body = {
+      product_id: packForm.product_id,
+      quantity: Number(packForm.quantity),
+      custom_label: packForm.custom_label || null,
+      sort_order: Number(packForm.sort_order),
+    };
+    if (editingPackItem) {
+      await api.put(`/admin/products/${packProduct.id}/pack-items/${editingPackItem.id}`, body);
+    } else {
+      await api.post(`/admin/products/${packProduct.id}/pack-items`, body);
+    }
+    setEditingPackItem(null);
+    setPackForm({ product_id: "", quantity: "1", custom_label: "", sort_order: "0" });
+    // Refresh
+    const r: any = await api.get(`/admin/products/${packProduct.id}/pack-items`);
+    if (r.success) setPackItems(r.data || []);
+  };
+
+  const deletePackItem = async (itemId: string) => {
+    if (!packProduct || !confirm("¿Eliminar este producto del pack?")) return;
+    await api.del(`/admin/products/${packProduct.id}/pack-items/${itemId}`);
+    const r: any = await api.get(`/admin/products/${packProduct.id}/pack-items`);
+    if (r.success) setPackItems(r.data || []);
+    else setPackItems([]);
+  };
+
   const cols: Column<Product>[] = [
     { key: "name", header: "Nombre" },
     { key: "category_name", header: "Categoría" },
@@ -157,6 +217,11 @@ export default function ProductsPage() {
     {
       key: "actions", header: "Acciones", render: (r) => (
         <div className="flex gap-1">
+          {r.unit_type === "pack" && (
+            <button onClick={(e) => { e.stopPropagation(); openPackItems(r); }} className="p-1.5 hover:bg-gray-100 rounded text-orange-600 text-xs border border-orange-200 flex items-center gap-1">
+              <Package size={13} /> Contenido
+            </button>
+          )}
           <button onClick={(e) => { e.stopPropagation(); openVariants(r); }} className="p-1.5 hover:bg-gray-100 rounded text-blue-600 text-xs border border-blue-200">Variantes</button>
           <button onClick={(e) => { e.stopPropagation(); openEdit(r); }} className="p-1.5 hover:bg-gray-100 rounded text-gray-600"><Pencil size={15} /></button>
           <button onClick={(e) => { e.stopPropagation(); del(r.id); }} className="p-1.5 hover:bg-gray-100 rounded text-red-600"><Trash2 size={15} /></button>
@@ -165,7 +230,6 @@ export default function ProductsPage() {
     },
   ];
 
-  console.log(data)
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -311,6 +375,78 @@ export default function ProductsPage() {
           <div className="flex gap-2 mt-3">
             <button type="submit" className={btnPrimary}>{editingVar ? "Actualizar" : "Añadir"}</button>
             {editingVar && <button type="button" onClick={() => { setEditingVar(null); setVarForm({ label: "", weight_grams: "", price: "", stock_qty: "", sku: "" }); }} className={btnSecondary}>Cancelar</button>}
+          </div>
+        </form>
+      </Modal>
+
+      {/* Pack Items Modal */}
+      <Modal open={packModal} onClose={() => setPackModal(false)} title={`Contenido del pack — ${packProduct?.name || ""}`} wide>
+        {packItems.length === 0 ? (
+          <p className="text-gray-500 text-sm mb-4">Este pack no tiene productos aún. Añade productos abajo.</p>
+        ) : (
+          <table className="w-full text-sm mb-4">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="text-left px-3 py-2">Producto</th>
+                <th className="text-left px-3 py-2">Categoría</th>
+                <th className="text-left px-3 py-2">Cantidad</th>
+                <th className="text-left px-3 py-2">Etiqueta personalizada</th>
+                <th className="text-left px-3 py-2">Orden</th>
+                <th className="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {packItems.map((item) => (
+                <tr key={item.id} className="border-b">
+                  <td className="px-3 py-2 font-medium">{item.product_name}</td>
+                  <td className="px-3 py-2 text-gray-500">{item.product_category_name}</td>
+                  <td className="px-3 py-2">{item.quantity}</td>
+                  <td className="px-3 py-2 text-gray-500">{item.custom_label || "—"}</td>
+                  <td className="px-3 py-2">{item.sort_order}</td>
+                  <td className="px-3 py-2 flex gap-2">
+                    <button onClick={() => {
+                      setEditingPackItem(item);
+                      setPackForm({
+                        product_id: item.product_id,
+                        quantity: String(item.quantity),
+                        custom_label: item.custom_label || "",
+                        sort_order: String(item.sort_order),
+                      });
+                    }} className="text-blue-600 text-xs hover:underline">Editar</button>
+                    <button onClick={() => deletePackItem(item.id)} className="text-red-600 text-xs hover:underline">Eliminar</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <form onSubmit={savePackItem} className="border-t pt-4">
+          <p className="font-medium text-sm mb-3">{editingPackItem ? "Editar producto del pack" : "Añadir producto al pack"}</p>
+          <div className="grid grid-cols-4 gap-2">
+            <select
+              className={selectClass}
+              required
+              value={packForm.product_id}
+              onChange={(e) => setPackForm({ ...packForm, product_id: e.target.value })}
+              disabled={!!editingPackItem}
+            >
+              <option value="">Seleccionar producto</option>
+              {allProducts.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({p.category_name})</option>
+              ))}
+            </select>
+            <input type="number" min="1" className={inputClass} placeholder="Cantidad" required value={packForm.quantity} onChange={(e) => setPackForm({ ...packForm, quantity: e.target.value })} />
+            <input className={inputClass} placeholder="Etiqueta personalizada" value={packForm.custom_label} onChange={(e) => setPackForm({ ...packForm, custom_label: e.target.value })} />
+            <input type="number" className={inputClass} placeholder="Orden" value={packForm.sort_order} onChange={(e) => setPackForm({ ...packForm, sort_order: e.target.value })} />
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button type="submit" className={btnPrimary}>{editingPackItem ? "Actualizar" : "Añadir"}</button>
+            {editingPackItem && (
+              <button type="button" onClick={() => {
+                setEditingPackItem(null);
+                setPackForm({ product_id: "", quantity: "1", custom_label: "", sort_order: "0" });
+              }} className={btnSecondary}>Cancelar</button>
+            )}
           </div>
         </form>
       </Modal>

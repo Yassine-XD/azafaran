@@ -75,6 +75,37 @@ export const adminController = {
     return success(res, { message: "Variante eliminada" });
   }),
 
+  // ─── Pack Items ─────────────────────────────────────
+
+  getPackItems: asyncHandler(async (req: Request, res: Response) => {
+    const items = await adminService.getPackItems(req.params.id);
+    return success(res, items);
+  }),
+
+  addPackItem: asyncHandler(async (req: Request, res: Response) => {
+    const item = await adminService.addPackItem(
+      req.params.id,
+      req.body,
+      req.user!.sub,
+    );
+    return success(res, item, 201);
+  }),
+
+  updatePackItem: asyncHandler(async (req: Request, res: Response) => {
+    const item = await adminService.updatePackItem(
+      req.params.id,
+      req.params.itemId,
+      req.body,
+      req.user!.sub,
+    );
+    return success(res, item);
+  }),
+
+  deletePackItem: asyncHandler(async (req: Request, res: Response) => {
+    await adminService.deletePackItem(req.params.id, req.params.itemId, req.user!.sub);
+    return success(res, { message: "Elemento eliminado del pack" });
+  }),
+
   // ─── Orders ─────────────────────────────────────────
 
   getOrders: asyncHandler(async (req: Request, res: Response) => {

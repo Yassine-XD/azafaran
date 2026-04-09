@@ -38,8 +38,23 @@ export interface VariantRow {
   updated_at: Date;
 }
 
+export interface PackItemRow {
+  id: string;
+  pack_id: string;
+  product_id: string;
+  quantity: number;
+  custom_label: string | null;
+  sort_order: number;
+  created_at: Date;
+  product_name: string;
+  product_images: any[];
+  product_price_per_kg: string;
+  product_category_name: string;
+}
+
 export interface ProductWithVariants extends ProductRow {
   variants: VariantRow[];
+  pack_items?: PackItemRow[];
   category_name: string;
   category_slug: string;
 }
@@ -136,7 +151,24 @@ export const productRepository = {
       [id],
     );
 
-    return { ...productRows[0], variants: variantRows };
+    const product: ProductWithVariants = { ...productRows[0], variants: variantRows };
+
+    // Load pack items for pack products
+    if (product.unit_type === "pack") {
+      const { rows: packItemRows } = await pool.query(
+        `SELECT pi.*, p.name AS product_name, p.images AS product_images,
+                p.price_per_kg AS product_price_per_kg, c.name AS product_category_name
+         FROM pack_items pi
+         JOIN products p ON p.id = pi.product_id
+         JOIN categories c ON c.id = p.category_id
+         WHERE pi.pack_id = $1
+         ORDER BY pi.sort_order ASC, pi.created_at ASC`,
+        [id],
+      );
+      product.pack_items = packItemRows;
+    }
+
+    return product;
   },
 
   async findBySlug(slug: string): Promise<ProductWithVariants | null> {

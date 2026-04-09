@@ -42,6 +42,12 @@ router.post("/products/:id/variants", adminController.addVariant);
 router.put("/products/:id/variants/:vid", adminController.updateVariant);
 router.delete("/products/:id/variants/:vid", adminController.deleteVariant);
 
+// Pack Items
+router.get("/products/:id/pack-items", adminController.getPackItems);
+router.post("/products/:id/pack-items", adminController.addPackItem);
+router.put("/products/:id/pack-items/:itemId", adminController.updatePackItem);
+router.delete("/products/:id/pack-items/:itemId", adminController.deletePackItem);
+
 // Orders management
 router.get("/orders", adminController.getOrders);
 router.get("/orders/:id", adminController.getOrderDetail);

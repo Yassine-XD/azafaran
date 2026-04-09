@@ -230,6 +230,81 @@ export const adminRepository = {
     await pool.query("DELETE FROM product_variants WHERE id = $1", [id]);
   },
 
+  // ─── Pack Items ─────────────────────────────────────
+
+  async findPackItems(packId: string) {
+    const { rows } = await pool.query(
+      `SELECT pi.*, p.name AS product_name, p.images AS product_images,
+              p.price_per_kg AS product_price_per_kg, c.name AS product_category_name
+       FROM pack_items pi
+       JOIN products p ON p.id = pi.product_id
+       JOIN categories c ON c.id = p.category_id
+       WHERE pi.pack_id = $1
+       ORDER BY pi.sort_order ASC, pi.created_at ASC`,
+      [packId],
+    );
+    return rows;
+  },
+
+  async addPackItem(packId: string, data: {
+    product_id: string;
+    quantity?: number;
+    custom_label?: string;
+    sort_order?: number;
+  }) {
+    const { rows } = await pool.query(
+      `INSERT INTO pack_items (id, pack_id, product_id, quantity, custom_label, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        uuidv4(),
+        packId,
+        data.product_id,
+        data.quantity || 1,
+        data.custom_label || null,
+        data.sort_order ?? 0,
+      ],
+    );
+    return rows[0];
+  },
+
+  async updatePackItem(itemId: string, data: Record<string, any>) {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    const allowed = ["quantity", "custom_label", "sort_order"];
+
+    for (const key of allowed) {
+      if (data[key] !== undefined) {
+        fields.push(`${key} = $${idx++}`);
+        values.push(data[key]);
+      }
+    }
+
+    if (fields.length === 0) return null;
+
+    values.push(itemId);
+    const { rows } = await pool.query(
+      `UPDATE pack_items SET ${fields.join(", ")}
+       WHERE id = $${idx} RETURNING *`,
+      values,
+    );
+    return rows[0] || null;
+  },
+
+  async deletePackItem(itemId: string) {
+    await pool.query("DELETE FROM pack_items WHERE id = $1", [itemId]);
+  },
+
+  async findPackItemById(itemId: string) {
+    const { rows } = await pool.query(
+      "SELECT * FROM pack_items WHERE id = $1",
+      [itemId],
+    );
+    return rows[0] || null;
+  },
+
   // ─── Orders Management ──────────────────────────────
 
   async findAllOrders(filters: {

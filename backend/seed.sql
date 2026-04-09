@@ -120,6 +120,21 @@ INSERT INTO product_variants (id, product_id, label, weight_grams, price, stock_
   ('v1000000-0000-0000-0000-000000000036', 'p1000000-0000-0000-0000-000000000018', 'Pack 8-10 personas (6kg)', 6000, 109.90, 5, 'BBQ-PRE-6000', 2)
 ON CONFLICT DO NOTHING;
 
+-- ─── Pack Items ─────────────────────────────────────
+-- Links pack products to their contained individual products
+INSERT INTO pack_items (id, pack_id, product_id, quantity, custom_label, sort_order) VALUES
+-- Pack BBQ Familiar: chuletas de cordero, entrecot, alitas, hamburguesas
+  ('pi100000-0000-0000-0000-000000000001', 'p1000000-0000-0000-0000-000000000017', 'p1000000-0000-0000-0000-000000000006', 1, 'Chuletas de cordero', 1),
+  ('pi100000-0000-0000-0000-000000000002', 'p1000000-0000-0000-0000-000000000017', 'p1000000-0000-0000-0000-000000000002', 1, 'Entrecot de ternera', 2),
+  ('pi100000-0000-0000-0000-000000000003', 'p1000000-0000-0000-0000-000000000017', 'p1000000-0000-0000-0000-000000000011', 1, 'Alitas de pollo', 3),
+  ('pi100000-0000-0000-0000-000000000004', 'p1000000-0000-0000-0000-000000000017', 'p1000000-0000-0000-0000-000000000014', 1, 'Hamburguesas de ternera', 4),
+-- Pack BBQ Premium: solomillo, entrecot, costillar, kefta
+  ('pi100000-0000-0000-0000-000000000005', 'p1000000-0000-0000-0000-000000000018', 'p1000000-0000-0000-0000-000000000001', 1, 'Solomillo de ternera', 1),
+  ('pi100000-0000-0000-0000-000000000006', 'p1000000-0000-0000-0000-000000000018', 'p1000000-0000-0000-0000-000000000002', 1, 'Entrecot de ternera', 2),
+  ('pi100000-0000-0000-0000-000000000007', 'p1000000-0000-0000-0000-000000000018', 'p1000000-0000-0000-0000-000000000007', 1, 'Costillar de cordero', 3),
+  ('pi100000-0000-0000-0000-000000000008', 'p1000000-0000-0000-0000-000000000018', 'p1000000-0000-0000-0000-000000000016', 1, 'Kefta marroquí', 4)
+ON CONFLICT DO NOTHING;
+
 -- ─── Banners (3) ────────────────────────────────────
 INSERT INTO banners (id, title, subtitle, image_url, cta_text, cta_link, display_order) VALUES
   ('b1000000-0000-0000-0000-000000000001', 'Carne Halal Certificada', 'Frescura y calidad garantizada cada día', '/images/banners/halal-hero.jpg', 'Ver Productos', '/products', 1),
