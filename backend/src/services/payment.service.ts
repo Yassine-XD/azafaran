@@ -1,5 +1,6 @@
 import stripe from "../config/stripe";
 import { orderRepository } from "../repositories/order.repository";
+import { cartRepository } from "../repositories/cart.repository";
 import { notificationService } from "./notification.service";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
@@ -15,7 +16,6 @@ export const paymentService = {
   async createPaymentIntent(
     userId: string,
     orderId: string,
-    amount: number,
     currency = "eur",
   ) {
     // Verify order belongs to user and is pending payment
@@ -27,11 +27,24 @@ export const paymentService = {
       throw appError("Este pedido ya está pagado", 400, "ALREADY_PAID");
     }
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Stripe uses cents
-      currency: currency.toLowerCase(),
-      metadata: { userId, orderId },
-    });
+    // Use server-side order total — never trust client-sent amount
+    const orderTotal = parseFloat(order.total);
+    if (orderTotal < 0.5) {
+      throw appError(
+        "El total del pedido es inferior al mínimo permitido",
+        400,
+        "AMOUNT_TOO_LOW",
+      );
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: Math.round(orderTotal * 100), // Stripe uses cents
+        currency: currency.toLowerCase(),
+        metadata: { userId, orderId },
+      },
+      { idempotencyKey: `pi_${orderId}` },
+    );
 
     // Store the payment intent ID on the order
     await orderRepository.updatePaymentStatus(
@@ -75,42 +88,62 @@ export const paymentService = {
 
     logger.info(`Stripe webhook received: ${event.type}`);
 
-    switch (event.type) {
-      case "payment_intent.succeeded": {
-        const pi = event.data.object;
-        const { userId, orderId } = pi.metadata;
-        if (orderId) {
-          await orderRepository.updatePaymentStatus(
-            orderId,
-            "paid",
-            pi.id,
-          );
-          await orderRepository.updateStatus(orderId, "confirmed");
-          if (userId) {
-            await notificationService.sendOrderNotification(
-              userId,
-              "order_confirmed",
-              orderId,
-            );
+    try {
+      switch (event.type) {
+        case "payment_intent.succeeded": {
+          const pi = event.data.object;
+          const { userId, orderId } = pi.metadata;
+          if (orderId) {
+            // Guard: don't resurrect cancelled orders
+            const order = await orderRepository.findById(orderId);
+            if (order && order.status !== "cancelled") {
+              await orderRepository.updatePaymentStatus(
+                orderId,
+                "paid",
+                pi.id,
+              );
+              await orderRepository.updateStatus(orderId, "confirmed");
+              // Clear cart now that card payment is confirmed
+              if (userId) {
+                const cart = await cartRepository.findOrCreateCart(userId);
+                await cartRepository.clearCart(cart.id);
+                await notificationService.sendOrderNotification(
+                  userId,
+                  "order_confirmed",
+                  orderId,
+                );
+              }
+            } else {
+              logger.warn(
+                `Webhook: skipped confirming order ${orderId} (status: ${order?.status})`,
+              );
+            }
           }
+          break;
         }
-        break;
-      }
-      case "payment_intent.payment_failed": {
-        const pi = event.data.object;
-        const { userId, orderId } = pi.metadata;
-        if (orderId) {
-          await orderRepository.updatePaymentStatus(orderId, "failed", pi.id);
-          if (userId) {
-            await notificationService.sendOrderNotification(
-              userId,
-              "order_cancelled",
+        case "payment_intent.payment_failed": {
+          const pi = event.data.object;
+          const { userId, orderId } = pi.metadata;
+          if (orderId) {
+            await orderRepository.updatePaymentStatus(
               orderId,
+              "failed",
+              pi.id,
             );
+            if (userId) {
+              await notificationService.sendOrderNotification(
+                userId,
+                "order_cancelled",
+                orderId,
+              );
+            }
           }
+          break;
         }
-        break;
       }
+    } catch (err) {
+      // Log but don't throw — always acknowledge receipt to prevent Stripe retries
+      logger.error("Webhook processing error", err);
     }
 
     return { received: true };

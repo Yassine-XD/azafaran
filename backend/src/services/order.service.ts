@@ -147,8 +147,10 @@ export const orderService = {
       items: orderItems,
     });
 
-    // 10. Clear cart after successful order
-    await cartRepository.clearCart(cart.id);
+    // 10. Clear cart after successful order (for card payments, cart is cleared after payment confirmation)
+    if (input.payment_method !== "card") {
+      await cartRepository.clearCart(cart.id);
+    }
 
     // 11. Notify admin dashboard in real-time
     sseClients.emit("new_order", {

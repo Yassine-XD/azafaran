@@ -181,6 +181,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (isAuthenticated) {
       const res = await api.post("/cart/items", { variant_id: variantId, quantity });
       if (res.success) {
+        setAppliedPromo(null); // Cart changed — promo discount may no longer be valid
         await fetchServerCart();
         return { success: true };
       }
@@ -209,6 +210,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateItem = useCallback(async (itemId: string, quantity: number) => {
     if (isAuthenticated) {
       await api.put(`/cart/items/${itemId}`, { quantity });
+      setAppliedPromo(null); // Cart changed — promo discount may no longer be valid
       await fetchServerCart();
       return;
     }
@@ -229,6 +231,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const removeItem = useCallback(async (itemId: string) => {
     if (isAuthenticated) {
       await api.delete(`/cart/items/${itemId}`);
+      setAppliedPromo(null); // Cart changed — promo discount may no longer be valid
       await fetchServerCart();
       return;
     }
