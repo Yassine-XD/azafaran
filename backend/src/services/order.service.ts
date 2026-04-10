@@ -3,7 +3,9 @@ import { cartRepository } from "../repositories/cart.repository";
 import { userRepository } from "../repositories/user.repository";
 import { productRepository } from "../repositories/product.repository";
 import { cartService } from "./cart.service";
+import { emailService } from "./email.service";
 import { sseClients } from "../utils/sseClients";
+import { logger } from "../utils/logger";
 import type {
   PlaceOrderInput,
   ReviewOrderInput,
@@ -160,6 +162,14 @@ export const orderService = {
       at: new Date().toISOString(),
     });
 
+    // 12. Send confirmation + invoice emails to client & notify admin (fire-and-forget)
+    emailService.sendOrderConfirmation(order.id).catch((err) =>
+      logger.error(`Failed to send order confirmation email: ${err.message}`),
+    );
+    emailService.notifyAdminNewOrder(order.id).catch((err) =>
+      logger.error(`Failed to send admin new order email: ${err.message}`),
+    );
+
     return formatOrder({ ...order, items: orderItems });
   },
 
@@ -283,6 +293,19 @@ export const orderService = {
       input.rating,
       input.comment,
     );
+
+    // Notify admin of new review (fire-and-forget)
+    emailService
+      .notifyAdminNewReview({
+        orderId,
+        userId,
+        rating: input.rating,
+        comment: input.comment,
+      })
+      .catch((err) =>
+        logger.error(`Failed to send admin review email: ${err.message}`),
+      );
+
     return { message: "¡Gracias por tu valoración!" };
   },
 };

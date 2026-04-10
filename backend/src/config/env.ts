@@ -16,6 +16,14 @@ const envSchema = z.object({
   ADMIN_URL: z.string().optional(), // Admin dashboard URL (e.g. http://187.77.169.76)
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+
+  // SMTP / Email
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
+  ADMIN_EMAIL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

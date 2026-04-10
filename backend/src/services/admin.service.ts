@@ -2,6 +2,7 @@ import { adminRepository } from "../repositories/admin.repository";
 import { orderRepository } from "../repositories/order.repository";
 import { productRepository } from "../repositories/product.repository";
 import { notificationService } from "./notification.service";
+import { emailService } from "./email.service";
 import { logger } from "../utils/logger";
 
 type AuditCtx = { ipAddress?: string; userAgent?: string };
@@ -306,6 +307,13 @@ export const adminService = {
           logger.error(`Failed to send order notification: ${err.message}`),
         );
     }
+
+    // Send status change email (fire-and-forget)
+    emailService
+      .sendOrderStatusUpdate(orderId, status)
+      .catch((err) =>
+        logger.error(`Failed to send status email: ${err.message}`),
+      );
 
     return updated;
   },

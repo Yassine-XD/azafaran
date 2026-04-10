@@ -67,6 +67,7 @@ export const notificationRepository = {
       reorder_reminders?: boolean;
       promotions?: boolean;
       ai_suggestions?: boolean;
+      email_notifications?: boolean;
     },
   ) {
     const fields: string[] = [];
@@ -88,6 +89,10 @@ export const notificationRepository = {
     if (data.ai_suggestions !== undefined) {
       fields.push(`ai_suggestions = $${idx++}`);
       values.push(data.ai_suggestions);
+    }
+    if (data.email_notifications !== undefined) {
+      fields.push(`email_notifications = $${idx++}`);
+      values.push(data.email_notifications);
     }
 
     if (fields.length === 0) {
