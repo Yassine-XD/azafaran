@@ -3,6 +3,10 @@ import { adminService } from "../services/admin.service";
 import { asyncHandler } from "../utils/asyncHandler";
 import { success } from "../utils/apiResponse";
 
+function auditCtx(req: Request) {
+  return { ipAddress: req.ip, userAgent: req.headers["user-agent"] as string };
+}
+
 export const adminController = {
   // ─── Dashboard ──────────────────────────────────────
 
@@ -12,6 +16,11 @@ export const adminController = {
   }),
 
   // ─── Products ───────────────────────────────────────
+
+  getProductDetail: asyncHandler(async (req: Request, res: Response) => {
+    const product = await adminService.getProductDetail(req.params.id);
+    return success(res, product);
+  }),
 
   getProducts: asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
@@ -33,7 +42,7 @@ export const adminController = {
   }),
 
   createProduct: asyncHandler(async (req: Request, res: Response) => {
-    const product = await adminService.createProduct(req.body, req.user!.sub);
+    const product = await adminService.createProduct(req.body, req.user!.sub, auditCtx(req));
     return success(res, product, 201);
   }),
 
@@ -42,12 +51,13 @@ export const adminController = {
       req.params.id,
       req.body,
       req.user!.sub,
+      auditCtx(req),
     );
     return success(res, product);
   }),
 
   deleteProduct: asyncHandler(async (req: Request, res: Response) => {
-    await adminService.deleteProduct(req.params.id, req.user!.sub);
+    await adminService.deleteProduct(req.params.id, req.user!.sub, auditCtx(req));
     return success(res, { message: "Producto desactivado" });
   }),
 
@@ -56,6 +66,7 @@ export const adminController = {
       req.params.id,
       req.body,
       req.user!.sub,
+      auditCtx(req),
     );
     return success(res, variant, 201);
   }),
@@ -66,12 +77,13 @@ export const adminController = {
       req.params.vid,
       req.body,
       req.user!.sub,
+      auditCtx(req),
     );
     return success(res, variant);
   }),
 
   deleteVariant: asyncHandler(async (req: Request, res: Response) => {
-    await adminService.deleteVariant(req.params.id, req.params.vid, req.user!.sub);
+    await adminService.deleteVariant(req.params.id, req.params.vid, req.user!.sub, auditCtx(req));
     return success(res, { message: "Variante eliminada" });
   }),
 
@@ -87,6 +99,7 @@ export const adminController = {
       req.params.id,
       req.body,
       req.user!.sub,
+      auditCtx(req),
     );
     return success(res, item, 201);
   }),
@@ -97,12 +110,13 @@ export const adminController = {
       req.params.itemId,
       req.body,
       req.user!.sub,
+      auditCtx(req),
     );
     return success(res, item);
   }),
 
   deletePackItem: asyncHandler(async (req: Request, res: Response) => {
-    await adminService.deletePackItem(req.params.id, req.params.itemId, req.user!.sub);
+    await adminService.deletePackItem(req.params.id, req.params.itemId, req.user!.sub, auditCtx(req));
     return success(res, { message: "Elemento eliminado del pack" });
   }),
 
@@ -133,6 +147,7 @@ export const adminController = {
       req.params.id,
       status,
       req.user!.sub,
+      auditCtx(req),
     );
     return success(res, order);
   }),
@@ -153,7 +168,7 @@ export const adminController = {
   }),
 
   updateUser: asyncHandler(async (req: Request, res: Response) => {
-    const user = await adminService.updateUser(req.params.id, req.body, req.user!.sub);
+    const user = await adminService.updateUser(req.params.id, req.body, req.user!.sub, auditCtx(req));
     return success(res, user);
   }),
 
@@ -167,7 +182,7 @@ export const adminController = {
   }),
 
   createPromotion: asyncHandler(async (req: Request, res: Response) => {
-    const promo = await adminService.createPromotion(req.body, req.user!.sub);
+    const promo = await adminService.createPromotion(req.body, req.user!.sub, auditCtx(req));
     return success(res, promo, 201);
   }),
 
@@ -176,12 +191,13 @@ export const adminController = {
       req.params.id,
       req.body,
       req.user!.sub,
+      auditCtx(req),
     );
     return success(res, promo);
   }),
 
   deletePromotion: asyncHandler(async (req: Request, res: Response) => {
-    await adminService.deletePromotion(req.params.id, req.user!.sub);
+    await adminService.deletePromotion(req.params.id, req.user!.sub, auditCtx(req));
     return success(res, { message: "Promoción desactivada" });
   }),
 
@@ -195,7 +211,7 @@ export const adminController = {
   }),
 
   createBanner: asyncHandler(async (req: Request, res: Response) => {
-    const banner = await adminService.createBanner(req.body, req.user!.sub);
+    const banner = await adminService.createBanner(req.body, req.user!.sub, auditCtx(req));
     return success(res, banner, 201);
   }),
 
@@ -204,12 +220,13 @@ export const adminController = {
       req.params.id,
       req.body,
       req.user!.sub,
+      auditCtx(req),
     );
     return success(res, banner);
   }),
 
   deleteBanner: asyncHandler(async (req: Request, res: Response) => {
-    await adminService.deleteBanner(req.params.id, req.user!.sub);
+    await adminService.deleteBanner(req.params.id, req.user!.sub, auditCtx(req));
     return success(res, { message: "Banner desactivado" });
   }),
 
@@ -223,7 +240,7 @@ export const adminController = {
   }),
 
   createPromoCode: asyncHandler(async (req: Request, res: Response) => {
-    const code = await adminService.createPromoCode(req.body, req.user!.sub);
+    const code = await adminService.createPromoCode(req.body, req.user!.sub, auditCtx(req));
     return success(res, code, 201);
   }),
 
@@ -232,12 +249,13 @@ export const adminController = {
       req.params.id,
       req.body,
       req.user!.sub,
+      auditCtx(req),
     );
     return success(res, code);
   }),
 
   deletePromoCode: asyncHandler(async (req: Request, res: Response) => {
-    await adminService.deletePromoCode(req.params.id, req.user!.sub);
+    await adminService.deletePromoCode(req.params.id, req.user!.sub, auditCtx(req));
     return success(res, { message: "Código promocional desactivado" });
   }),
 
@@ -252,7 +270,7 @@ export const adminController = {
 
   createDeliverySlots: asyncHandler(async (req: Request, res: Response) => {
     const { slots } = req.body;
-    const created = await adminService.bulkCreateSlots(slots, req.user!.sub);
+    const created = await adminService.bulkCreateSlots(slots, req.user!.sub, auditCtx(req));
     return success(res, created, 201);
   }),
 
@@ -291,6 +309,7 @@ export const adminController = {
     const campaign = await adminService.createCampaign(
       req.body,
       req.user!.sub,
+      auditCtx(req),
     );
     return success(res, campaign, 201);
   }),
@@ -305,18 +324,18 @@ export const adminController = {
   }),
 
   createCategory: asyncHandler(async (req: Request, res: Response) => {
-    const category = await adminService.createCategory(req.body, req.user!.sub);
+    const category = await adminService.createCategory(req.body, req.user!.sub, auditCtx(req));
     return success(res, category, 201);
   }),
 
   updateCategory: asyncHandler(async (req: Request, res: Response) => {
-    const category = await adminService.updateCategory(req.params.id, req.body, req.user!.sub);
+    const category = await adminService.updateCategory(req.params.id, req.body, req.user!.sub, auditCtx(req));
     if (!category) return res.status(404).json({ success: false, error: { message: "Categoría no encontrada", code: "CATEGORY_NOT_FOUND" } });
     return success(res, category);
   }),
 
   deleteCategory: asyncHandler(async (req: Request, res: Response) => {
-    const result = await adminService.deleteCategory(req.params.id, req.user!.sub);
+    const result = await adminService.deleteCategory(req.params.id, req.user!.sub, auditCtx(req));
     if (!result) return res.status(404).json({ success: false, error: { message: "Categoría no encontrada", code: "CATEGORY_NOT_FOUND" } });
     return success(res, result);
   }),

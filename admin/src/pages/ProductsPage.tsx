@@ -118,12 +118,9 @@ export default function ProductsPage() {
     setVarModal(true);
     setEditingVar(null);
     setVarForm({ label: "", weight_grams: "", price: "", stock_qty: "", sku: "" });
-    api.get(`/admin/products?page=1&limit=1&search=${encodeURIComponent(p.name)}`).then(() => {
-      // Fetch variants from product detail — use products endpoint
-      api.get(`/products/${p.id}`).then((r: any) => {
-        if (r.success && r.data?.variants) setVariants(r.data.variants);
-        else setVariants([]);
-      });
+    api.get(`/admin/products/${p.id}`).then((r: any) => {
+      if (r.success && r.data?.variants) setVariants(r.data.variants);
+      else setVariants([]);
     });
   };
 
@@ -145,7 +142,7 @@ export default function ProductsPage() {
     setEditingVar(null);
     setVarForm({ label: "", weight_grams: "", price: "", stock_qty: "", sku: "" });
     // Refresh variants
-    const r: any = await api.get(`/products/${varProduct.id}`);
+    const r: any = await api.get(`/admin/products/${varProduct.id}`);
     if (r.success && r.data?.variants) setVariants(r.data.variants);
   };
 
@@ -354,7 +351,7 @@ export default function ProductsPage() {
                   <button onClick={async () => {
                     if (!confirm("¿Eliminar esta variante?")) return;
                     await api.del(`/admin/products/${varProduct!.id}/variants/${v.id}`);
-                    const r: any = await api.get(`/products/${varProduct!.id}`);
+                    const r: any = await api.get(`/admin/products/${varProduct!.id}`);
                     if (r.success && r.data?.variants) setVariants(r.data.variants);
                     else setVariants([]);
                   }} className="text-red-600 text-xs hover:underline">Eliminar</button>

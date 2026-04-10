@@ -163,6 +163,26 @@ export const adminRepository = {
     return rows[0] || null;
   },
 
+  async findProductById(id: string) {
+    const { rows: productRows } = await pool.query(
+      `SELECT p.*, c.name AS category_name, c.slug AS category_slug
+       FROM products p
+       JOIN categories c ON c.id = p.category_id
+       WHERE p.id = $1`,
+      [id],
+    );
+    if (!productRows[0]) return null;
+
+    const { rows: variants } = await pool.query(
+      `SELECT * FROM product_variants
+       WHERE product_id = $1
+       ORDER BY sort_order ASC, weight_grams ASC`,
+      [id],
+    );
+
+    return { ...productRows[0], variants };
+  },
+
   async softDeleteProduct(id: string) {
     const { rows } = await pool.query(
       "UPDATE products SET is_active = false WHERE id = $1 RETURNING *",
@@ -554,8 +574,8 @@ export const adminRepository = {
     const { rows } = await pool.query(
       `INSERT INTO banners
          (id, title, subtitle, image_url, link_type, link_value, bg_color, content,
-          display_order, starts_at, ends_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          display_order, starts_at, ends_at, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         uuidv4(),
@@ -569,6 +589,7 @@ export const adminRepository = {
         data.display_order || 0,
         data.starts_at || null,
         data.ends_at || null,
+        data.is_active ?? true,
       ],
     );
     return rows[0];
@@ -885,7 +906,7 @@ export const adminRepository = {
     deepLink?: string;
     promotionId?: string;
     imageUrl?: string;
-    scheduledAt: string;
+    scheduledAt?: string;
     createdBy: string;
   }) {
     const { rows } = await pool.query(
@@ -904,7 +925,7 @@ export const adminRepository = {
         data.deepLink || null,
         data.promotionId || null,
         data.imageUrl || null,
-        data.scheduledAt,
+        data.scheduledAt || null,
         data.createdBy,
       ],
     );
@@ -933,10 +954,11 @@ export const adminRepository = {
     description?: string;
     image_url?: string;
     display_order?: number;
+    is_active?: boolean;
   }) {
     const { rows } = await pool.query(
-      `INSERT INTO categories (id, name, slug, description, image_url, display_order)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO categories (id, name, slug, description, image_url, display_order, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         uuidv4(),
@@ -945,6 +967,7 @@ export const adminRepository = {
         data.description || null,
         data.image_url || null,
         data.display_order ?? 0,
+        data.is_active ?? true,
       ],
     );
     return rows[0];

@@ -4,6 +4,8 @@ import { productRepository } from "../repositories/product.repository";
 import { notificationService } from "./notification.service";
 import { logger } from "../utils/logger";
 
+type AuditCtx = { ipAddress?: string; userAgent?: string };
+
 function appError(message: string, statusCode: number, code: string) {
   const err: any = new Error(message);
   err.statusCode = statusCode;
@@ -29,6 +31,13 @@ export const adminService = {
 
   // ─── Products ───────────────────────────────────────
 
+  async getProductDetail(id: string) {
+    const product = await adminRepository.findProductById(id);
+    if (!product)
+      throw appError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
+    return product;
+  },
+
   async getProducts(filters: {
     page: number;
     limit: number;
@@ -51,7 +60,7 @@ export const adminService = {
     };
   },
 
-  async createProduct(data: any, adminId: string) {
+  async createProduct(data: any, adminId: string, ctx?: AuditCtx) {
     const product = await adminRepository.createProduct(data);
     await adminRepository.createAuditLog({
       adminId,
@@ -59,11 +68,12 @@ export const adminService = {
       entity: "product",
       entityId: product.id,
       after: product,
+      ...ctx,
     });
     return product;
   },
 
-  async updateProduct(id: string, data: any, adminId: string) {
+  async updateProduct(id: string, data: any, adminId: string, ctx?: AuditCtx) {
     const before = await productRepository.findById(id);
     if (!before)
       throw appError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
@@ -79,11 +89,12 @@ export const adminService = {
       entityId: id,
       before,
       after: updated,
+      ...ctx,
     });
     return updated;
   },
 
-  async deleteProduct(id: string, adminId: string) {
+  async deleteProduct(id: string, adminId: string, ctx?: AuditCtx) {
     const product = await adminRepository.softDeleteProduct(id);
     if (!product)
       throw appError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
@@ -95,12 +106,13 @@ export const adminService = {
       entityId: id,
       before: { is_active: true },
       after: { is_active: false },
+      ...ctx,
     });
     return product;
   },
 
-  async addVariant(productId: string, data: any, adminId: string) {
-    const product = await productRepository.findById(productId);
+  async addVariant(productId: string, data: any, adminId: string, ctx?: AuditCtx) {
+    const product = await adminRepository.findProductById(productId);
     if (!product)
       throw appError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
 
@@ -111,6 +123,7 @@ export const adminService = {
       entity: "product_variant",
       entityId: variant.id,
       after: variant,
+      ...ctx,
     });
     return variant;
   },
@@ -120,6 +133,7 @@ export const adminService = {
     variantId: string,
     data: any,
     adminId: string,
+    ctx?: AuditCtx,
   ) {
     const variant = await productRepository.findVariantById(variantId);
     if (!variant || variant.product_id !== productId)
@@ -133,11 +147,12 @@ export const adminService = {
       entityId: variantId,
       before: variant,
       after: updated,
+      ...ctx,
     });
     return updated;
   },
 
-  async deleteVariant(productId: string, variantId: string, adminId: string) {
+  async deleteVariant(productId: string, variantId: string, adminId: string, ctx?: AuditCtx) {
     const variant = await productRepository.findVariantById(variantId);
     if (!variant || variant.product_id !== productId)
       throw appError("Variante no encontrada", 404, "VARIANT_NOT_FOUND");
@@ -149,6 +164,7 @@ export const adminService = {
       entity: "product_variant",
       entityId: variantId,
       before: variant,
+      ...ctx,
     });
   },
 
@@ -161,8 +177,8 @@ export const adminService = {
     return adminRepository.findPackItems(packId);
   },
 
-  async addPackItem(packId: string, data: any, adminId: string) {
-    const pack = await productRepository.findById(packId);
+  async addPackItem(packId: string, data: any, adminId: string, ctx?: AuditCtx) {
+    const pack = await adminRepository.findProductById(packId);
     if (!pack)
       throw appError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
     if (pack.unit_type !== "pack")
@@ -175,11 +191,12 @@ export const adminService = {
       entity: "pack_item",
       entityId: item.id,
       after: item,
+      ...ctx,
     });
     return item;
   },
 
-  async updatePackItem(packId: string, itemId: string, data: any, adminId: string) {
+  async updatePackItem(packId: string, itemId: string, data: any, adminId: string, ctx?: AuditCtx) {
     const item = await adminRepository.findPackItemById(itemId);
     if (!item || item.pack_id !== packId)
       throw appError("Elemento no encontrado", 404, "PACK_ITEM_NOT_FOUND");
@@ -192,11 +209,12 @@ export const adminService = {
       entityId: itemId,
       before: item,
       after: updated,
+      ...ctx,
     });
     return updated;
   },
 
-  async deletePackItem(packId: string, itemId: string, adminId: string) {
+  async deletePackItem(packId: string, itemId: string, adminId: string, ctx?: AuditCtx) {
     const item = await adminRepository.findPackItemById(itemId);
     if (!item || item.pack_id !== packId)
       throw appError("Elemento no encontrado", 404, "PACK_ITEM_NOT_FOUND");
@@ -208,6 +226,7 @@ export const adminService = {
       entity: "pack_item",
       entityId: itemId,
       before: item,
+      ...ctx,
     });
   },
 
@@ -260,6 +279,7 @@ export const adminService = {
     orderId: string,
     status: string,
     adminId: string,
+    ctx?: AuditCtx,
   ) {
     const order = await orderRepository.findById(orderId);
     if (!order)
@@ -274,6 +294,7 @@ export const adminService = {
       entityId: orderId,
       before: { status: order.status },
       after: { status },
+      ...ctx,
     });
 
     // Send push notification for status change
@@ -317,7 +338,7 @@ export const adminService = {
     return { ...user, recent_orders: orders };
   },
 
-  async updateUser(userId: string, data: any, adminId: string) {
+  async updateUser(userId: string, data: any, adminId: string, ctx?: AuditCtx) {
     // Only allow specific fields
     const allowed: Record<string, any> = {};
     if (data.role !== undefined) allowed.role = data.role;
@@ -339,6 +360,7 @@ export const adminService = {
       entityId: userId,
       before,
       after: updated,
+      ...ctx,
     });
     return updated;
   },
@@ -353,7 +375,7 @@ export const adminService = {
     };
   },
 
-  async createPromotion(data: any, adminId: string) {
+  async createPromotion(data: any, adminId: string, ctx?: AuditCtx) {
     const promo = await adminRepository.createPromotion({
       ...data,
       created_by: adminId,
@@ -364,11 +386,12 @@ export const adminService = {
       entity: "promotion",
       entityId: promo.id,
       after: promo,
+      ...ctx,
     });
     return promo;
   },
 
-  async updatePromotion(id: string, data: any, adminId: string) {
+  async updatePromotion(id: string, data: any, adminId: string, ctx?: AuditCtx) {
     const updated = await adminRepository.updatePromotion(id, data);
     if (!updated)
       throw appError("Promoción no encontrada", 404, "PROMOTION_NOT_FOUND");
@@ -378,11 +401,12 @@ export const adminService = {
       entity: "promotion",
       entityId: id,
       after: updated,
+      ...ctx,
     });
     return updated;
   },
 
-  async deletePromotion(id: string, adminId: string) {
+  async deletePromotion(id: string, adminId: string, ctx?: AuditCtx) {
     const deleted = await adminRepository.deletePromotion(id);
     if (!deleted)
       throw appError("Promoción no encontrada", 404, "PROMOTION_NOT_FOUND");
@@ -391,6 +415,7 @@ export const adminService = {
       action: "delete",
       entity: "promotion",
       entityId: id,
+      ...ctx,
     });
     return deleted;
   },
@@ -405,7 +430,7 @@ export const adminService = {
     };
   },
 
-  async createBanner(data: any, adminId: string) {
+  async createBanner(data: any, adminId: string, ctx?: AuditCtx) {
     const banner = await adminRepository.createBanner(data);
     await adminRepository.createAuditLog({
       adminId,
@@ -413,11 +438,12 @@ export const adminService = {
       entity: "banner",
       entityId: banner.id,
       after: banner,
+      ...ctx,
     });
     return banner;
   },
 
-  async updateBanner(id: string, data: any, adminId: string) {
+  async updateBanner(id: string, data: any, adminId: string, ctx?: AuditCtx) {
     const updated = await adminRepository.updateBanner(id, data);
     if (!updated)
       throw appError("Banner no encontrado", 404, "BANNER_NOT_FOUND");
@@ -427,11 +453,12 @@ export const adminService = {
       entity: "banner",
       entityId: id,
       after: updated,
+      ...ctx,
     });
     return updated;
   },
 
-  async deleteBanner(id: string, adminId: string) {
+  async deleteBanner(id: string, adminId: string, ctx?: AuditCtx) {
     const deleted = await adminRepository.deleteBanner(id);
     if (!deleted)
       throw appError("Banner no encontrado", 404, "BANNER_NOT_FOUND");
@@ -440,6 +467,7 @@ export const adminService = {
       action: "delete",
       entity: "banner",
       entityId: id,
+      ...ctx,
     });
     return deleted;
   },
@@ -461,7 +489,7 @@ export const adminService = {
     };
   },
 
-  async createPromoCode(data: any, adminId: string) {
+  async createPromoCode(data: any, adminId: string, ctx?: AuditCtx) {
     const code = await adminRepository.createPromoCode(data);
     await adminRepository.createAuditLog({
       adminId,
@@ -469,11 +497,12 @@ export const adminService = {
       entity: "promo_code",
       entityId: code.id,
       after: code,
+      ...ctx,
     });
     return code;
   },
 
-  async updatePromoCode(id: string, data: any, adminId: string) {
+  async updatePromoCode(id: string, data: any, adminId: string, ctx?: AuditCtx) {
     const updated = await adminRepository.updatePromoCode(id, data);
     if (!updated)
       throw appError("Código no encontrado", 404, "PROMO_CODE_NOT_FOUND");
@@ -483,11 +512,12 @@ export const adminService = {
       entity: "promo_code",
       entityId: id,
       after: updated,
+      ...ctx,
     });
     return updated;
   },
 
-  async deletePromoCode(id: string, adminId: string) {
+  async deletePromoCode(id: string, adminId: string, ctx?: AuditCtx) {
     const deleted = await adminRepository.deletePromoCode(id);
     if (!deleted)
       throw appError("Código no encontrado", 404, "PROMO_CODE_NOT_FOUND");
@@ -496,6 +526,7 @@ export const adminService = {
       action: "delete",
       entity: "promo_code",
       entityId: id,
+      ...ctx,
     });
     return deleted;
   },
@@ -521,6 +552,7 @@ export const adminService = {
       max_orders?: number;
     }>,
     adminId: string,
+    ctx?: AuditCtx,
   ) {
     const created = await adminRepository.bulkCreateDeliverySlots(slots);
     await adminRepository.createAuditLog({
@@ -528,6 +560,7 @@ export const adminService = {
       action: "bulk_create",
       entity: "delivery_slot",
       after: { count: created.length },
+      ...ctx,
     });
     return created;
   },
@@ -571,9 +604,16 @@ export const adminService = {
     };
   },
 
-  async createCampaign(data: any, adminId: string) {
+  async createCampaign(data: any, adminId: string, ctx?: AuditCtx) {
     const campaign = await adminRepository.createCampaign({
-      ...data,
+      title: data.title,
+      body: data.body,
+      type: data.type,
+      target: data.target,
+      targetUserIds: data.target_user_ids || data.targetUserIds,
+      deepLink: data.deep_link || data.deepLink,
+      imageUrl: data.image_url || data.imageUrl,
+      scheduledAt: data.scheduled_at || data.scheduledAt,
       createdBy: adminId,
     });
     await adminRepository.createAuditLog({
@@ -582,6 +622,7 @@ export const adminService = {
       entity: "notification_campaign",
       entityId: campaign.id,
       after: campaign,
+      ...ctx,
     });
     return campaign;
   },
@@ -596,7 +637,7 @@ export const adminService = {
     };
   },
 
-  async createCategory(data: any, adminId: string) {
+  async createCategory(data: any, adminId: string, ctx?: AuditCtx) {
     const category = await adminRepository.createCategory(data);
     await adminRepository.createAuditLog({
       adminId,
@@ -604,11 +645,12 @@ export const adminService = {
       entity: "category",
       entityId: category.id,
       after: category,
+      ...ctx,
     });
     return category;
   },
 
-  async updateCategory(id: string, data: any, adminId: string) {
+  async updateCategory(id: string, data: any, adminId: string, ctx?: AuditCtx) {
     const category = await adminRepository.updateCategory(id, data);
     if (!category) return null;
     await adminRepository.createAuditLog({
@@ -617,11 +659,12 @@ export const adminService = {
       entity: "category",
       entityId: id,
       after: category,
+      ...ctx,
     });
     return category;
   },
 
-  async deleteCategory(id: string, adminId: string) {
+  async deleteCategory(id: string, adminId: string, ctx?: AuditCtx) {
     const category = await adminRepository.deleteCategory(id);
     if (!category) return null;
     await adminRepository.createAuditLog({
@@ -629,6 +672,7 @@ export const adminService = {
       action: "delete",
       entity: "category",
       entityId: id,
+      ...ctx,
     });
     return { message: "Categoría desactivada" };
   },

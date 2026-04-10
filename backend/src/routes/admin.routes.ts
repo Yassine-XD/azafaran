@@ -35,6 +35,7 @@ router.get("/dashboard", adminController.getDashboard);
 
 // Products CRUD
 router.get("/products", adminController.getProducts);
+router.get("/products/:id", adminController.getProductDetail);
 router.post("/products", adminController.createProduct);
 router.put("/products/:id", adminController.updateProduct);
 router.delete("/products/:id", adminController.deleteProduct);

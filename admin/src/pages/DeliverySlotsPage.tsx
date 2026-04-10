@@ -6,7 +6,8 @@ import FormField, { inputClass, btnPrimary, btnSecondary } from "../components/F
 import { Plus } from "lucide-react";
 
 type Slot = {
-  id: string; date: string; max_orders: number; booked_count: number;
+  id: string; date: string; start_time: string; end_time: string;
+  max_orders: number; booked_count: number;
 };
 
 export default function DeliverySlotsPage() {
@@ -51,6 +52,7 @@ export default function DeliverySlotsPage() {
 
   const cols: Column<Slot>[] = [
     { key: "date", header: "Fecha", render: (r) => r.date?.slice(0, 10) },
+    { key: "time", header: "Horario", render: (r) => `${r.start_time?.slice(0, 5)} – ${r.end_time?.slice(0, 5)}` },
     { key: "max_orders", header: "Máx. pedidos" },
     { key: "booked_count", header: "Reservados" },
     {
