@@ -14,4 +14,5 @@ export const updatePreferencesSchema = z.object({
   reorder_reminders: z.boolean().optional(),
   promotions: z.boolean().optional(),
   ai_suggestions: z.boolean().optional(),
+  email_notifications: z.boolean().optional(),
 });

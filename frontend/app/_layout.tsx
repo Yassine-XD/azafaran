@@ -3,6 +3,7 @@ import { Stack, useRouter } from "expo-router";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import StripeProviderWrapper from "@/components/StripeProviderWrapper";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -36,12 +37,13 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <SafeAreaProvider>
-        <StripeProviderWrapper>
-          <AuthProvider>
-            <CartProvider>
-              <NavigationGuard>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <StripeProviderWrapper>
+            <AuthProvider>
+              <CartProvider>
+                <NavigationGuard>
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="(tabs)" />
                   <Stack.Screen name="onboarding" />
@@ -60,11 +62,12 @@ export default function RootLayout() {
                   <Stack.Screen name="edit-profile" options={{ presentation: "card" }} />
                   <Stack.Screen name="notification-preferences" options={{ presentation: "card" }} />
                 </Stack>
-              </NavigationGuard>
-            </CartProvider>
-          </AuthProvider>
-        </StripeProviderWrapper>
-      </SafeAreaProvider>
-    </ThemeProvider>
+                </NavigationGuard>
+              </CartProvider>
+            </AuthProvider>
+          </StripeProviderWrapper>
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

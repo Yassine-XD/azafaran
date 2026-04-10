@@ -1,5 +1,6 @@
 import { pool } from "../config/database";
 import { notificationRepository } from "../repositories/notification.repository";
+import { emailService } from "../services/email.service";
 import { logger } from "../utils/logger";
 
 /**
@@ -26,11 +27,15 @@ export async function processScheduledCampaigns() {
         let userIds: string[] = [];
 
         if (campaign.target === "all") {
+          // Include users with push tokens OR email notifications enabled
           const { rows } = await pool.query(
-            `SELECT DISTINCT pt.user_id
-             FROM push_tokens pt
-             JOIN notification_preferences np ON np.user_id = pt.user_id
-             WHERE pt.is_active = true AND np.promotions = true`,
+            `SELECT DISTINCT u.id AS user_id
+             FROM users u
+             LEFT JOIN push_tokens pt ON pt.user_id = u.id AND pt.is_active = true
+             LEFT JOIN notification_preferences np ON np.user_id = u.id
+             WHERE u.is_active = true
+               AND (pt.id IS NOT NULL OR COALESCE(np.email_notifications, true) = true)
+               AND COALESCE(np.promotions, false) = true`,
           );
           userIds = rows.map((r) => r.user_id);
         } else if (
@@ -56,6 +61,21 @@ export async function processScheduledCampaigns() {
               },
             });
             // TODO: actual Expo push when SDK is installed
+
+            // Send campaign email
+            emailService
+              .sendCampaignEmail(userId, {
+                title: campaign.title,
+                body: campaign.body,
+                image_url: campaign.image_url,
+                deep_link: campaign.deep_link,
+              })
+              .catch((err) =>
+                logger.error(
+                  `Campaign ${campaign.id}: email failed for user ${userId}: ${err.message}`,
+                ),
+              );
+
             totalSent++;
           } catch (err) {
             logger.error(

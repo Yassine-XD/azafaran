@@ -10,6 +10,7 @@ import deliverySlotRoutes from "./delivery-slot.routes";
 import notificationRoutes from "./notification.routes";
 import paymentRoutes from "./payment.routes";
 import adminRoutes from "./admin.routes";
+import errorReportRoutes from "./error-report.routes";
 
 const router = Router();
 
@@ -37,5 +38,6 @@ router.use("/delivery-slots", deliverySlotRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/admin", adminRoutes);
+router.use("/errors", errorReportRoutes);
 
 export default router;

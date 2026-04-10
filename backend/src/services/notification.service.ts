@@ -60,6 +60,7 @@ export const notificationService = {
       reorder_reminders?: boolean;
       promotions?: boolean;
       ai_suggestions?: boolean;
+      email_notifications?: boolean;
     },
   ) {
     return notificationRepository.updatePreferences(userId, data);

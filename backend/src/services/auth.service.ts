@@ -1,4 +1,6 @@
 import { userRepository } from '../repositories/user.repository'
+import { emailService } from './email.service'
+import { logger } from '../utils/logger'
 import { hashPassword, comparePassword } from '../utils/hash'
 import {
   signAccessToken,
@@ -34,6 +36,11 @@ export const authService = {
       password_hash,
       phone: input.phone,
     })
+
+    // Send welcome email (fire-and-forget)
+    emailService.sendWelcomeEmail(user.id).catch((err) =>
+      logger.error(`Failed to send welcome email: ${err.message}`),
+    )
 
     // Generate tokens
     return authService._issueTokens(user, deviceInfo)

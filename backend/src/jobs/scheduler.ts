@@ -4,6 +4,7 @@ import { cleanExpiredCarts } from "./cartExpiry.job";
 import { sendReorderReminders } from "./reorderReminder.job";
 import { processScheduledCampaigns } from "./campaignScheduler.job";
 import { checkPushReceipts } from "./receiptChecker.job";
+import { sendReviewReminders } from "./reviewReminder.job";
 
 /**
  * Initialize all cron jobs.
@@ -34,6 +35,12 @@ export function startScheduler() {
   cron.schedule("*/30 * * * *", async () => {
     logger.info("Running: push receipt checker");
     await checkPushReceipts();
+  });
+
+  // Every day at 11:00 AM — send review request emails (48h after delivery)
+  cron.schedule("0 11 * * *", async () => {
+    logger.info("Running: review reminder emails");
+    await sendReviewReminders();
   });
 
   logger.info("Cron jobs scheduled successfully");
