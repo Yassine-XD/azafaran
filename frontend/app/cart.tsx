@@ -105,7 +105,9 @@ export default function CartScreen() {
                 onPress={() => updateItem(item.id, item.quantity + 1)}
                 className="w-8 h-8 bg-primary rounded-full items-center justify-center"
               >
-                <Plus size={14} className="text-primary-foreground" />
+                <Plus size={14} className="text-primary-foreground" style={{
+                  color:"white"
+                }}/>
               </TouchableOpacity>
             </View>
           </View>

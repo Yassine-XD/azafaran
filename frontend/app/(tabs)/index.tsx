@@ -278,7 +278,8 @@ export default function HomeScreen() {
         )}
 
         {/* Categories */}
-        {categories.length > 0 && (
+        {/* Hidden for test reason */}
+        {/* {categories.length > 0 && (
           <View className="mb-6">
             <View className="px-6 flex-row items-center justify-between mb-4">
               <Text className="text-xl font-bold text-foreground">
@@ -303,7 +304,7 @@ export default function HomeScreen() {
               contentContainerStyle={{ paddingHorizontal: 24 }}
             />
           </View>
-        )}
+        )} */}
 
         {/* Featured Products */}
         {featured.length > 0 && (
@@ -379,10 +380,10 @@ function PacksSection({ router, category }: { router: any; category?: Category }
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => router.push({ pathname: "/product-detail", params: { id: item.id } })}
-            className="w-44 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
+            className=" w-96 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
           >
             <Image
-              source={{ uri: getProductImage(item) }}
+              source={{ uri: item.images[0] }}
               className="w-full h-32"
               resizeMode="cover"
             />
@@ -390,7 +391,7 @@ function PacksSection({ router, category }: { router: any; category?: Category }
               <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>
                 {item.name}
               </Text>
-              <Text className="text-primary font-bold">€{getMinPrice(item).toFixed(2)}</Text>
+              <Text className="text-primary font-bold">€{getMinPrice(item)}</Text>
             </View>
           </TouchableOpacity>
         )}

@@ -225,7 +225,9 @@ export default function ShopScreen() {
                         onPress={() => handleAddToCart(item)}
                         className="w-8 h-8 bg-primary rounded-full items-center justify-center"
                       >
-                        <Plus size={18} className="text-primary-foreground" />
+                        <Plus size={18} className="text-primary-foreground" style={{
+                  color:"white"
+                }} />
                       </TouchableOpacity>
                     </View>
                   </View>

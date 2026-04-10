@@ -14,7 +14,6 @@ import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import type { Category } from "@/lib/types";
 
-
 export default function CategoriesScreen() {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -46,7 +45,10 @@ export default function CategoriesScreen() {
         <View className="mb-4">
           <Text className="text-2xl font-bold text-foreground">Categorías</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push("/search")} className="flex-row items-center bg-input rounded-xl px-4 py-3">
+        <TouchableOpacity
+          onPress={() => router.push("/search")}
+          className="flex-row items-center bg-input rounded-xl px-4 py-3"
+        >
           <Search size={20} className="text-muted-foreground mr-3" />
           <Text className="text-muted-foreground">Buscar categoría...</Text>
         </TouchableOpacity>
@@ -71,7 +73,7 @@ export default function CategoriesScreen() {
           >
             <ImageBackground
               className="p-5 w-full h-40 justify-end items-center"
-              source={{uri: item.image_url}}
+              source={{ uri: item.image_url }}
             >
               <LinearGradient
                 colors={[
@@ -89,7 +91,13 @@ export default function CategoriesScreen() {
                   <View className="flex-row items-center justify-between">
                     <Text className="text-white/80 text-xs">Explore</Text>
                     <View className="bg-primary/90 rounded-full p-1.5">
-                      <ChevronRight size={14} className="text-white" />
+                      <ChevronRight
+                        size={14}
+                        className="text-white"
+                        style={{
+                          color: "white",
+                        }}
+                      />
                     </View>
                   </View>
                 </View>

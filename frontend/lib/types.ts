@@ -98,7 +98,8 @@ export type Product = {
 
 // Helper to get the first image URL from a product
 export function getProductImage(product: Product | null | undefined): string {
-  return product?.images?.[0]?.url || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400";
+  return product?.images?.[0]?.url || product?.images[0];
+;
 }
 
 // Helper to get the cheapest variant price

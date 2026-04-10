@@ -144,7 +144,7 @@ export default function OrdersScreen() {
                       return (
                         <View key={idx} className="flex-row items-center gap-2 mb-1.5">
                           {image ? (
-                            <Image source={{ uri: image }} className="w-8 h-8 rounded-md" resizeMode="cover" />
+                            <Image source={{ uri: image }} className="w-8 h-8 " resizeMode="cover" />
                           ) : (
                             <View className="w-8 h-8 rounded-md bg-muted items-center justify-center">
                               <Package size={14} className="text-muted-foreground" />

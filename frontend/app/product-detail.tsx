@@ -236,7 +236,9 @@ export default function ProductDetailScreen() {
                 onPress={() => setQuantity(Math.min(selectedVariant?.stock_qty || 99, quantity + 1))}
                 className="w-10 h-10 bg-primary rounded-full items-center justify-center"
               >
-                <Plus size={18} className="text-primary-foreground" />
+                <Plus size={18} style={{
+                  color:"white"
+                }} />
               </TouchableOpacity>
             </View>
           </View>
