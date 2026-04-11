@@ -137,7 +137,7 @@ export const productRepository = {
          c.slug AS category_slug
        FROM products p
        JOIN categories c ON c.id = p.category_id
-       WHERE p.id = $1 AND p.is_active = true`,
+       WHERE p.id = $1`,
       [id],
     );
 
