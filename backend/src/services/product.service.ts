@@ -1,5 +1,8 @@
 import { productRepository } from "../repositories/product.repository";
-import type { ListProductsInput } from "../validators/product.schema";
+import type {
+  ListProductsInput,
+  UpdateProductInput,
+} from "../validators/product.schema";
 
 function appError(message: string, statusCode: number, code: string) {
   const err: any = new Error(message);
@@ -65,6 +68,57 @@ export const productService = {
 
     const results = await productRepository.searchProducts(query.trim());
     return results.map(formatProduct);
+  },
+
+  async updateProduct(productId: string, input: UpdateProductInput) {
+    // 1. Check product exists
+    const existingProduct = await productRepository.findById(productId);
+    if (!existingProduct) {
+      throw appError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
+    }
+
+    // 2. Business rules / validations
+
+    // Slug uniqueness (if updating slug)
+    if (input.slug && input.slug !== existingProduct.slug) {
+      const existingSlug = await productRepository.findBySlug(input.slug);
+      if (existingSlug) {
+        throw appError("El slug ya está en uso", 400, "SLUG_ALREADY_EXISTS");
+      }
+    }
+
+    // Optional: prevent invalid unit_type transitions
+    if (input.unit_type && input.unit_type !== existingProduct.unit_type) {
+      // Example rule: block changing pack type if it has pack_items
+      if (
+        existingProduct.unit_type === "pack" &&
+        existingProduct.pack_items?.length
+      ) {
+        throw appError(
+          "No se puede cambiar el tipo de un producto pack con items",
+          400,
+          "INVALID_UNIT_TYPE_CHANGE",
+        );
+      }
+    }
+
+    // Optional: price validation
+    if (input.price_per_kg && parseFloat(input.price_per_kg) <= 0) {
+      throw appError("El precio debe ser mayor que 0", 400, "INVALID_PRICE");
+    }
+
+    // 3. Update product
+    const updatedProduct = await productRepository.updateProduct(
+      productId,
+      input,
+    );
+
+    if (!updatedProduct) {
+      throw appError("Error al actualizar el producto", 500, "UPDATE_FAILED");
+    }
+
+    // 4. Return formatted result
+    return formatProduct(updatedProduct);
   },
 
   async getVariants(productId: string) {

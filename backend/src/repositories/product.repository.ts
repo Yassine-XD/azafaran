@@ -171,6 +171,45 @@ export const productRepository = {
     return product;
   },
 
+  async updateProduct(
+  id: string,
+  data: Partial<Omit<ProductRow, "id" | "created_at" | "updated_at">>,
+): Promise<ProductWithVariants | null> {
+  const fields: string[] = [];
+  const values: any[] = [];
+  let idx = 1;
+
+  // Dynamically build SET clause
+  for (const [key, value] of Object.entries(data)) {
+    fields.push(`${key} = $${idx++}`);
+    values.push(value);
+  }
+
+  if (fields.length === 0) {
+    // Nothing to update → just return current product
+    return productRepository.findById(id);
+  }
+
+  // Always update timestamp
+  fields.push(`updated_at = NOW()`);
+
+  values.push(id);
+
+  const query = `
+    UPDATE products
+    SET ${fields.join(", ")}
+    WHERE id = $${idx}
+    RETURNING id
+  `;
+
+  const { rows } = await pool.query(query, values);
+
+  if (!rows[0]) return null;
+
+  // Reuse existing logic (VERY IMPORTANT → avoids duplication)
+  return productRepository.findById(rows[0].id);
+}
+
   async findBySlug(slug: string): Promise<ProductWithVariants | null> {
     const { rows } = await pool.query(
       "SELECT id FROM products WHERE slug = $1 AND is_active = true",

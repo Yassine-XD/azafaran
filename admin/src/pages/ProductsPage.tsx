@@ -203,11 +203,13 @@ export default function ProductsPage() {
           e.stopPropagation();
           await api.put(`/admin/products/${r.id}`, { is_active: !r.is_active });
           fetch();
+          console.log(r.id)
         }}
         className={`px-2 py-0.5 rounded text-xs font-medium ${
           r.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
         }`}
       >
+        
         {r.is_active ? "Activo" : "Inactivo"}
       </button>
     ) },

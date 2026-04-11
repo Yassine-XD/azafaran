@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { productController } from "../controllers/product.controller";
-import { validateParams } from "../middleware/validate";
-import { productIdSchema } from "../validators/product.schema";
+import { validateBody, validateParams } from "../middleware/validate";
+import { productIdSchema, updateProductSchema } from "../validators/product.schema";
 
 const router = Router();
 
@@ -14,6 +14,15 @@ router.get(
   "/:id/variants",
   validateParams(productIdSchema),
   productController.getVariants,
+);
+
+router.put(
+  "/admin/products/:id",
+  // authMiddleware,
+  // adminMiddleware,
+  validateParams(productIdSchema),
+  validateBody(updateProductSchema),
+  productController.updateProduct,
 );
 
 export default router;

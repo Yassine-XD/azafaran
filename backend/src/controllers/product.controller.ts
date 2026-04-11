@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { productService } from "../services/product.service";
 import { asyncHandler } from "../utils/asyncHandler";
 import { success } from "../utils/apiResponse";
-import { listProductsSchema } from "../validators/product.schema";
+import { listProductsSchema, updateProductSchema } from "../validators/product.schema";
 
 export const productController = {
   getAll: asyncHandler(async (req: Request, res: Response) => {
@@ -31,4 +31,18 @@ export const productController = {
     const variants = await productService.getVariants(req.params.id);
     return success(res, variants);
   }),
+  
+  updateProduct: asyncHandler(async (req: Request, res: Response) => {
+  // 1. Validate input
+  const input = updateProductSchema.parse(req.body);
+
+  // 2. Call service
+  const product = await productService.updateProduct(
+    req.params.id,
+    input,
+  );
+
+  // 3. Return response
+  return success(res, product);
+}),
 };
