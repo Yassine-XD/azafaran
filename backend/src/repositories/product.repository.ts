@@ -208,7 +208,7 @@ export const productRepository = {
 
   // Reuse existing logic (VERY IMPORTANT → avoids duplication)
   return productRepository.findById(rows[0].id);
-}
+},
 
   async findBySlug(slug: string): Promise<ProductWithVariants | null> {
     const { rows } = await pool.query(
