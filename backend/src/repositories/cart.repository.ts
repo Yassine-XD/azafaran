@@ -17,8 +17,10 @@ export interface CartItemRow {
   added_at: Date;
   // Joined
   product_name?: string;
+  product_name_i18n?: Record<string, string> | null;
   product_slug?: string;
   variant_label?: string;
+  variant_label_i18n?: Record<string, string> | null;
   weight_grams?: number;
   current_price?: string;
   stock_qty?: number;
@@ -54,10 +56,12 @@ export const cartRepository = {
       `SELECT
          ci.*,
          p.name        AS product_name,
+         p.name_i18n   AS product_name_i18n,
          p.slug        AS product_slug,
          p.images      AS product_images,
          p.halal_cert_id,
          pv.label      AS variant_label,
+         pv.label_i18n AS variant_label_i18n,
          pv.weight_grams,
          pv.price      AS current_price,
          pv.stock_qty
