@@ -27,16 +27,22 @@ export async function sendMail(
   html: string,
 ): Promise<void> {
   if (!transporter) {
-    logger.debug(`Email skipped (SMTP not configured): ${subject} → ${to}`);
+    logger.warn(`Email skipped (SMTP not configured): ${subject} → ${to}`);
     return;
   }
 
-  await transporter.sendMail({
-    from: env.SMTP_FROM || env.SMTP_USER,
-    to,
-    subject,
-    html,
-  });
-
-  logger.info(`Email sent: ${subject} → ${to}`);
+  try {
+    const info = await transporter.sendMail({
+      from: env.SMTP_FROM || env.SMTP_USER,
+      to,
+      subject,
+      html,
+    });
+    logger.info(
+      `Email sent: ${subject} → ${to} (messageId=${info.messageId})`,
+    );
+  } catch (err) {
+    logger.error(`Email send failed: ${subject} → ${to}`, err);
+    throw err;
+  }
 }

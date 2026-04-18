@@ -44,6 +44,27 @@ else
     CLIENT_URL="http://YOUR_VPS_IP"
 fi
 
+echo "[?] SMTP Host (e.g. smtp.gmail.com, Enter to skip email):"
+read -r SMTP_HOST
+
+if [ -n "$SMTP_HOST" ]; then
+    echo "[?] SMTP Port (587 for STARTTLS, 465 for SSL):"
+    read -r SMTP_PORT
+
+    echo "[?] SMTP User (e.g. noreply@azafaran.es):"
+    read -r SMTP_USER
+
+    echo "[?] SMTP Password / App Password:"
+    read -rs SMTP_PASS
+    echo ""
+
+    echo "[?] SMTP From header (e.g. Azafaran <noreply@azafaran.es>, Enter to use SMTP_USER):"
+    read -r SMTP_FROM
+
+    echo "[?] Admin email (receives new-order notifications, Enter to skip):"
+    read -r ADMIN_EMAIL
+fi
+
 cat > "${SCRIPT_DIR}/.env" << EOF
 DB_USER=azafaran
 DB_PASSWORD=${DB_PASSWORD}
@@ -54,6 +75,12 @@ CLIENT_URL=${CLIENT_URL}
 STRIPE_SECRET_KEY=${STRIPE_SK:-}
 STRIPE_WEBHOOK_SECRET=${STRIPE_WH:-}
 DOMAIN=${DOMAIN:-}
+SMTP_HOST=${SMTP_HOST:-}
+SMTP_PORT=${SMTP_PORT:-}
+SMTP_USER=${SMTP_USER:-}
+SMTP_PASS=${SMTP_PASS:-}
+SMTP_FROM=${SMTP_FROM:-}
+ADMIN_EMAIL=${ADMIN_EMAIL:-}
 EOF
 
 chmod 600 "${SCRIPT_DIR}/.env"
