@@ -12,21 +12,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLang } from "@/contexts/LanguageContext";
 import { api } from "@/lib/api";
 import { Users, Calendar, MapPin, ChevronRight } from "lucide-react-native";
 import { StepIndicator } from "./register";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
-const GENDER_OPTIONS = [
-  { value: "male", label: "Hombre" },
-  { value: "female", label: "Mujer" },
-  { value: "other", label: "Otro" },
-  { value: "prefer_not_to_say", label: "Prefiero no decir" },
-] as const;
-
 export default function ProfileSetupScreen() {
   const router = useRouter();
-  const { user, refreshProfile } = useAuth();
+  const { refreshProfile } = useAuth();
+  const { t } = useLang();
   const [gender, setGender] = useState<string | null>(null);
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -35,29 +30,34 @@ export default function ProfileSetupScreen() {
   const [postcode, setPostcode] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  const GENDER_OPTIONS = [
+    { value: "male", label: t("auth.profile_setup.gender_male") },
+    { value: "female", label: t("auth.profile_setup.gender_female") },
+    { value: "other", label: t("auth.profile_setup.gender_other") },
+    { value: "prefer_not_to_say", label: t("auth.profile_setup.gender_prefer_not") },
+  ];
+
   const handleNext = async () => {
     if (!gender) {
-      Alert.alert("Error", "Por favor selecciona tu género");
+      Alert.alert(t("common.error"), t("auth.profile_setup.error_gender"));
       return;
     }
     if (!dateOfBirth) {
-      Alert.alert("Error", "Por favor selecciona tu fecha de nacimiento");
+      Alert.alert(t("common.error"), t("auth.profile_setup.error_dob"));
       return;
     }
     if (!street.trim() || !city.trim() || !postcode.trim()) {
-      Alert.alert("Error", "Por favor completa tu dirección");
+      Alert.alert(t("common.error"), t("auth.profile_setup.error_address"));
       return;
     }
 
     setIsSaving(true);
 
-    // Save personal info
     const profileRes = await api.put("/users/", {
       gender,
       date_of_birth: dateOfBirth.toISOString().split("T")[0],
     });
 
-    // Save address
     const addressRes = await api.post("/users/addresses", {
       label: "Casa",
       street: street.trim(),
@@ -71,11 +71,11 @@ export default function ProfileSetupScreen() {
     setIsSaving(false);
 
     if (!profileRes.success) {
-      Alert.alert("Error", "No se pudo guardar tu perfil. Inténtalo de nuevo.");
+      Alert.alert(t("common.error"), t("auth.profile_setup.error_profile"));
       return;
     }
     if (!addressRes.success) {
-      Alert.alert("Error", "No se pudo guardar tu dirección. Inténtalo de nuevo.");
+      Alert.alert(t("common.error"), t("auth.profile_setup.error_address_save"));
       return;
     }
 
@@ -96,10 +96,10 @@ export default function ProfileSetupScreen() {
         {/* Header */}
         <View className="mb-6">
           <Text className="text-3xl font-bold text-foreground mb-1">
-            Sobre ti
+            {t("auth.profile_setup.title")}
           </Text>
           <Text className="text-muted-foreground text-base">
-            Paso 2 de 3 — Información personal y dirección
+            {t("auth.profile_setup.subtitle")}
           </Text>
         </View>
 
@@ -107,7 +107,7 @@ export default function ProfileSetupScreen() {
         <View className="mb-6">
           <View className="flex-row items-center gap-2 mb-3">
             <Users size={18} color="#ea580c" />
-            <Text className="text-foreground font-semibold text-base">Género</Text>
+            <Text className="text-foreground font-semibold text-base">{t("auth.profile_setup.gender")}</Text>
           </View>
           <View className="flex-row flex-wrap gap-2">
             {GENDER_OPTIONS.map((opt) => (
@@ -137,7 +137,7 @@ export default function ProfileSetupScreen() {
           <View className="flex-row items-center gap-2 mb-3">
             <Calendar size={18} color="#ea580c" />
             <Text className="text-foreground font-semibold text-base">
-              Fecha de nacimiento
+              {t("auth.profile_setup.dob")}
             </Text>
           </View>
           <TouchableOpacity
@@ -151,7 +151,7 @@ export default function ProfileSetupScreen() {
                     month: "long",
                     year: "numeric",
                   })
-                : "Seleccionar fecha"}
+                : t("auth.profile_setup.dob_placeholder")}
             </Text>
             <ChevronRight size={18} className="text-muted-foreground" />
           </TouchableOpacity>
@@ -175,7 +175,7 @@ export default function ProfileSetupScreen() {
           <View className="flex-row items-center gap-2 mb-3">
             <MapPin size={18} color="#ea580c" />
             <Text className="text-foreground font-semibold text-base">
-              Dirección de entrega
+              {t("auth.profile_setup.address_title")}
             </Text>
           </View>
 
@@ -183,7 +183,7 @@ export default function ProfileSetupScreen() {
             <View className={inputClass}>
               <TextInput
                 className="flex-1 text-foreground text-base"
-                placeholder="Calle y número"
+                placeholder={t("auth.profile_setup.street")}
                 placeholderTextColor="#a8a29e"
                 value={street}
                 onChangeText={setStreet}
@@ -196,7 +196,7 @@ export default function ProfileSetupScreen() {
               <View className={inputClass}>
                 <TextInput
                   className="flex-1 text-foreground text-base"
-                  placeholder="Ciudad"
+                  placeholder={t("auth.profile_setup.city")}
                   placeholderTextColor="#a8a29e"
                   value={city}
                   onChangeText={setCity}
@@ -207,7 +207,7 @@ export default function ProfileSetupScreen() {
               <View className={inputClass}>
                 <TextInput
                   className="flex-1 text-foreground text-base"
-                  placeholder="C.P."
+                  placeholder={t("auth.profile_setup.postcode")}
                   placeholderTextColor="#a8a29e"
                   value={postcode}
                   onChangeText={setPostcode}
@@ -227,7 +227,7 @@ export default function ProfileSetupScreen() {
           {isSaving ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-primary-foreground font-bold text-lg">Siguiente</Text>
+            <Text className="text-primary-foreground font-bold text-lg">{t("auth.profile_setup.button")}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

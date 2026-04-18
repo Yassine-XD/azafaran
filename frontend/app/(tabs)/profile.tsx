@@ -1,58 +1,51 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from "react-native";
+import React from "react";
+import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { User, MapPin, Phone, CreditCard, Bell, Shield, HelpCircle, Settings, LogOut, ChevronRight, Heart, Globe } from "lucide-react-native";
+import { User, MapPin, Phone, Bell, HelpCircle, LogOut, ChevronRight, Globe } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLang } from "@/contexts/LanguageContext";
+import { LANGUAGES, type Lang } from "@/lib/i18n";
 import { api } from "@/lib/api";
-
-type MenuItem = { id: string; label: string; icon: any; color: string; route?: string };
-type MenuSection = { title: string; items: MenuItem[] };
-
-const MENU_SECTIONS: MenuSection[] = [
-  {
-    title: "Mi Cuenta",
-    items: [
-      { id: "1", label: "Información Personal", icon: User, color: "text-blue-500", route: "/edit-profile" },
-      { id: "2", label: "Direcciones", icon: MapPin, color: "text-green-500", route: "/addresses" },
-    ],
-  },
-  {
-    title: "Preferencias",
-    items: [
-      { id: "4", label: "Notificaciones", icon: Bell, color: "text-orange-500", route: "/notification-preferences" },
-    ],
-  },
-  {
-    title: "Soporte",
-    items: [
-      { id: "7", label: "Centro de Ayuda", icon: HelpCircle, color: "text-indigo-500" },
-    ],
-  },
-];
-
-const LANG_OPTIONS = [
-  { value: "es", label: "Castellano" },
-  { value: "ca", label: "Català" },
-  { value: "en", label: "English" },
-] as const;
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, isAuthenticated, logout, refreshProfile } = useAuth();
-  const [selectedLang, setSelectedLang] = useState(user?.preferred_lang || "es");
+  const { lang, setLang, t } = useLang();
 
-  const handleLangChange = async (lang: string) => {
-    setSelectedLang(lang);
-    await api.put("/users/", { preferred_lang: lang });
+  const MENU_SECTIONS = [
+    {
+      title: t("profile.section_account"),
+      items: [
+        { id: "1", label: t("profile.menu_personal_info"), icon: User, color: "text-blue-500", route: "/edit-profile" },
+        { id: "2", label: t("profile.menu_addresses"), icon: MapPin, color: "text-green-500", route: "/addresses" },
+      ],
+    },
+    {
+      title: t("profile.section_preferences"),
+      items: [
+        { id: "4", label: t("profile.menu_notifications"), icon: Bell, color: "text-orange-500", route: "/notification-preferences" },
+      ],
+    },
+    {
+      title: t("profile.section_support"),
+      items: [
+        { id: "7", label: t("profile.menu_help"), icon: HelpCircle, color: "text-indigo-500" },
+      ],
+    },
+  ];
+
+  const handleLangChange = async (newLang: Lang) => {
+    await setLang(newLang);
+    await api.put("/users/", { preferred_lang: newLang });
     await refreshProfile();
   };
 
   const handleLogout = () => {
-    Alert.alert("Cerrar Sesión", "¿Estás seguro?", [
-      { text: "Cancelar", style: "cancel" },
+    Alert.alert(t("profile.logout_title"), t("profile.logout_message"), [
+      { text: t("profile.logout_cancel"), style: "cancel" },
       {
-        text: "Cerrar Sesión",
+        text: t("profile.logout"),
         style: "destructive",
         onPress: async () => {
           await logout();
@@ -66,16 +59,16 @@ export default function ProfileScreen() {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center px-6">
         <User size={64} className="text-muted-foreground mb-4" />
-        <Text className="text-xl font-bold text-foreground mb-2">Inicia sesión</Text>
-        <Text className="text-muted-foreground text-center mb-6">Inicia sesión para ver tu perfil</Text>
+        <Text className="text-xl font-bold text-foreground mb-2">{t("profile.not_logged_title")}</Text>
+        <Text className="text-muted-foreground text-center mb-6">{t("profile.not_logged_subtitle")}</Text>
         <TouchableOpacity onPress={() => router.push("/login")} className="bg-primary px-8 py-3 rounded-xl">
-          <Text className="text-primary-foreground font-bold">Iniciar Sesión</Text>
+          <Text className="text-primary-foreground font-bold">{t("profile.not_logged_button")}</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
-  const renderMenuItem = (item: MenuItem) => {
+  const renderMenuItem = (item: { id: string; label: string; icon: any; color: string; route?: string }) => {
     const Icon = item.icon;
     return (
       <TouchableOpacity
@@ -97,7 +90,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <View className="px-6 py-4 border-b border-border">
-        <Text className="text-2xl font-bold text-foreground">Perfil</Text>
+        <Text className="text-2xl font-bold text-foreground">{t("profile.title")}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 128 }} showsVerticalScrollIndicator={false}>
@@ -120,15 +113,15 @@ export default function ProfileScreen() {
               <View className="flex-1">
                 <View className="flex-row items-center gap-2">
                   <Phone size={14} className="text-muted-foreground" />
-                  <Text className="text-xs text-muted-foreground">Teléfono</Text>
+                  <Text className="text-xs text-muted-foreground">{t("profile.phone_label")}</Text>
                 </View>
-                <Text className="text-sm font-semibold text-foreground mt-1">{user.phone || "No añadido"}</Text>
+                <Text className="text-sm font-semibold text-foreground mt-1">{user.phone || t("profile.not_added")}</Text>
               </View>
               <View className="w-px bg-border" />
               <View className="flex-1">
                 <View className="flex-row items-center gap-2">
                   <MapPin size={14} className="text-muted-foreground" />
-                  <Text className="text-xs text-muted-foreground">Miembro desde</Text>
+                  <Text className="text-xs text-muted-foreground">{t("profile.member_since")}</Text>
                 </View>
                 <Text className="text-sm font-semibold text-foreground mt-1">
                   {new Date(user.created_at).toLocaleDateString("es-ES", { month: "short", year: "numeric" })}
@@ -153,27 +146,27 @@ export default function ProfileScreen() {
         {/* Language Picker */}
         <View className="px-6 mb-6">
           <Text className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-            Idioma
+            {t("profile.language_section")}
           </Text>
           <View className="bg-card rounded-2xl p-4 shadow-sm border border-border">
             <View className="flex-row items-center gap-2 mb-3">
               <Globe size={18} color="#ea580c" />
-              <Text className="text-foreground font-medium">Selecciona tu idioma</Text>
+              <Text className="text-foreground font-medium">{t("profile.language_label")}</Text>
             </View>
             <View className="flex-row gap-2">
-              {LANG_OPTIONS.map((opt) => (
+              {LANGUAGES.map((opt) => (
                 <TouchableOpacity
                   key={opt.value}
                   onPress={() => handleLangChange(opt.value)}
                   className={`flex-1 py-2.5 rounded-xl border items-center ${
-                    selectedLang === opt.value
+                    lang === opt.value
                       ? "border-primary bg-primary"
                       : "border-border bg-muted"
                   }`}
                 >
                   <Text
                     className={`font-medium text-sm ${
-                      selectedLang === opt.value
+                      lang === opt.value
                         ? "text-primary-foreground"
                         : "text-foreground"
                     }`}
@@ -193,12 +186,12 @@ export default function ProfileScreen() {
             className="flex-row items-center justify-center gap-3 bg-destructive/10 py-4 rounded-2xl border border-destructive/20"
           >
             <LogOut size={20} className="text-destructive" strokeWidth={2.5} />
-            <Text className="text-destructive font-semibold">Cerrar Sesión</Text>
+            <Text className="text-destructive font-semibold">{t("profile.logout")}</Text>
           </TouchableOpacity>
         </View>
 
         <View className="items-center pb-6">
-          <Text className="text-xs text-muted-foreground">Azafaran v1.0.0</Text>
+          <Text className="text-xs text-muted-foreground">{t("profile.version")}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

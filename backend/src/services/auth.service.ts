@@ -35,6 +35,7 @@ export const authService = {
       email: input.email,
       password_hash,
       phone: input.phone,
+      preferred_lang: input.preferred_lang,
     })
 
     // Send welcome email (fire-and-forget)
@@ -119,6 +120,7 @@ export const authService = {
         first_name: user.first_name,
         last_name: user.last_name,
         role: user.role,
+        preferred_lang: user.preferred_lang,
       },
       accessToken,
       refreshToken: rawRefreshToken,
