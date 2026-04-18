@@ -11,6 +11,10 @@ import { env } from "./config/env";
 
 const app = express();
 
+// Trust the first proxy (nginx / Docker ingress) so rate-limiter reads the
+// real client IP from X-Forwarded-For instead of the internal proxy address.
+app.set("trust proxy", 1);
+
 // ─── Security middleware ─────────────────────────────
 app.use(helmet());
 app.use(corsOptions);
