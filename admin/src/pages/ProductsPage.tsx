@@ -7,15 +7,24 @@ import FormField, { inputClass, selectClass, btnPrimary, btnSecondary } from "..
 import StatusBadge from "../components/StatusBadge";
 import { Plus, Pencil, Trash2, X, Package } from "lucide-react";
 
+type LangCode = "es" | "ca" | "en";
+const LANGS: LangCode[] = ["es", "ca", "en"];
+const LANG_LABELS: Record<LangCode, string> = { es: "ES", ca: "CA", en: "EN" };
+
+type I18nMap = { es: string; ca: string; en: string };
+const emptyI18n = (): I18nMap => ({ es: "", ca: "", en: "" });
+
 type Product = {
   id: string; name: string; slug: string; description: string; short_desc: string;
   category_id: string; category_name: string; price_per_kg: string; unit_type: string;
   images: string[]; tags: string[]; halal_cert_id: string; is_featured: boolean; is_active: boolean;
+  name_i18n?: I18nMap; description_i18n?: I18nMap; short_desc_i18n?: I18nMap;
 };
 
 type Variant = {
   id: string; product_id: string; label: string; weight_grams: number;
   price: string; stock_qty: number; sku: string; is_active: boolean;
+  label_i18n?: I18nMap;
 };
 
 type PackItem = {
@@ -26,10 +35,27 @@ type PackItem = {
 
 type Category = { id: string; name: string };
 
-const empty = {
-  name: "", slug: "", description: "", short_desc: "", category_id: "",
-  price_per_kg: "", unit_type: "kg", halal_cert_id: "", is_featured: false, is_active: true, images: [""], tags: "",
-};
+const emptyForm = () => ({
+  name: "", slug: "", category_id: "",
+  price_per_kg: "", unit_type: "kg", halal_cert_id: "", is_featured: false, is_active: true,
+  images: [""], tags: "",
+  name_i18n: emptyI18n(),
+  description_i18n: emptyI18n(),
+  short_desc_i18n: emptyI18n(),
+});
+
+function LangTabs({ active, onChange }: { active: LangCode; onChange: (l: LangCode) => void }) {
+  return (
+    <div className="flex gap-1 mb-3">
+      {LANGS.map((l) => (
+        <button key={l} type="button" onClick={() => onChange(l)}
+          className={`px-3 py-1 text-xs font-medium rounded transition-colors ${active === l ? "bg-orange-500 text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-600"}`}>
+          {LANG_LABELS[l]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function ProductsPage() {
   const [data, setData] = useState<Product[]>([]);
@@ -42,14 +68,16 @@ export default function ProductsPage() {
 
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState(emptyForm());
+  const [langTab, setLangTab] = useState<LangCode>("es");
   const [saving, setSaving] = useState(false);
 
   // Variants
   const [varModal, setVarModal] = useState(false);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [varProduct, setVarProduct] = useState<Product | null>(null);
-  const [varForm, setVarForm] = useState({ label: "", weight_grams: "", price: "", stock_qty: "", sku: "" });
+  const [varForm, setVarForm] = useState({ label_i18n: emptyI18n(), weight_grams: "", price: "", stock_qty: "", sku: "" });
+  const [varLangTab, setVarLangTab] = useState<LangCode>("es");
   const [editingVar, setEditingVar] = useState<Variant | null>(null);
 
   // Pack Items
@@ -60,7 +88,7 @@ export default function ProductsPage() {
   const [packForm, setPackForm] = useState({ product_id: "", quantity: "1", custom_label: "", sort_order: "0" });
   const [editingPackItem, setEditingPackItem] = useState<PackItem | null>(null);
 
-  const fetch = () => {
+  const fetchData = () => {
     setLoading(true);
     let q = `/admin/products?page=${page}&limit=20`;
     if (search) q += `&search=${encodeURIComponent(search)}`;
@@ -71,22 +99,38 @@ export default function ProductsPage() {
     });
   };
 
-  useEffect(() => { fetch(); }, [page, search, catFilter]);
+  useEffect(() => { fetchData(); }, [page, search, catFilter]);
   useEffect(() => {
     api.get("/admin/categories?limit=100").then((r) => {
       if (r.success) setCategories(r.data as any || []);
     });
   }, []);
 
-  const openCreate = () => { setEditing(null); setForm(empty); setModal(true); };
+  const openCreate = () => {
+    setEditing(null);
+    setForm(emptyForm());
+    setLangTab("es");
+    setModal(true);
+  };
+
   const openEdit = (p: Product) => {
     setEditing(p);
     setForm({
-      name: p.name, slug: p.slug, description: p.description || "", short_desc: p.short_desc || "",
-      category_id: p.category_id, price_per_kg: p.price_per_kg, unit_type: p.unit_type || "kg",
-      halal_cert_id: p.halal_cert_id || "", is_featured: p.is_featured, is_active: p.is_active,
-      images: p.images?.length ? p.images : [""], tags: (p.tags || []).join(", "),
+      name: p.name,
+      slug: p.slug,
+      category_id: p.category_id,
+      price_per_kg: p.price_per_kg,
+      unit_type: p.unit_type || "kg",
+      halal_cert_id: p.halal_cert_id || "",
+      is_featured: p.is_featured,
+      is_active: p.is_active,
+      images: p.images?.length ? p.images : [""],
+      tags: (p.tags || []).join(", "),
+      name_i18n: p.name_i18n || { es: p.name || "", ca: "", en: "" },
+      description_i18n: p.description_i18n || { es: p.description || "", ca: "", en: "" },
+      short_desc_i18n: p.short_desc_i18n || { es: p.short_desc || "", ca: "", en: "" },
     });
+    setLangTab("es");
     setModal(true);
   };
 
@@ -94,22 +138,31 @@ export default function ProductsPage() {
     e.preventDefault();
     setSaving(true);
     const body = {
-      ...form,
+      name: form.name_i18n.es || form.name,
+      slug: form.slug,
+      category_id: form.category_id,
+      price_per_kg: Number(form.price_per_kg),
+      unit_type: form.unit_type,
+      halal_cert_id: form.halal_cert_id,
+      is_featured: form.is_featured,
+      is_active: form.is_active,
       images: form.images.filter((u) => u.trim()),
       tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
-      price_per_kg: Number(form.price_per_kg),
+      name_i18n: form.name_i18n,
+      description_i18n: form.description_i18n,
+      short_desc_i18n: form.short_desc_i18n,
     };
     const res = editing
       ? await api.put(`/admin/products/${editing.id}`, body)
       : await api.post("/admin/products", body);
     setSaving(false);
-    if (res.success) { setModal(false); fetch(); }
+    if (res.success) { setModal(false); fetchData(); }
   };
 
   const del = async (id: string) => {
     if (!confirm("¿Eliminar este producto?")) return;
     await api.del(`/admin/products/${id}`);
-    fetch();
+    fetchData();
   };
 
   // Variants
@@ -117,7 +170,8 @@ export default function ProductsPage() {
     setVarProduct(p);
     setVarModal(true);
     setEditingVar(null);
-    setVarForm({ label: "", weight_grams: "", price: "", stock_qty: "", sku: "" });
+    setVarForm({ label_i18n: emptyI18n(), weight_grams: "", price: "", stock_qty: "", sku: "" });
+    setVarLangTab("es");
     api.get(`/admin/products/${p.id}`).then((r: any) => {
       if (r.success && r.data?.variants) setVariants(r.data.variants);
       else setVariants([]);
@@ -128,7 +182,8 @@ export default function ProductsPage() {
     e.preventDefault();
     if (!varProduct) return;
     const body = {
-      label: varForm.label,
+      label: varForm.label_i18n.es,
+      label_i18n: varForm.label_i18n,
       weight_grams: Number(varForm.weight_grams),
       price: Number(varForm.price),
       stock_qty: Number(varForm.stock_qty),
@@ -140,8 +195,7 @@ export default function ProductsPage() {
       await api.post(`/admin/products/${varProduct.id}/variants`, body);
     }
     setEditingVar(null);
-    setVarForm({ label: "", weight_grams: "", price: "", stock_qty: "", sku: "" });
-    // Refresh variants
+    setVarForm({ label_i18n: emptyI18n(), weight_grams: "", price: "", stock_qty: "", sku: "" });
     const r: any = await api.get(`/admin/products/${varProduct.id}`);
     if (r.success && r.data?.variants) setVariants(r.data.variants);
   };
@@ -152,11 +206,9 @@ export default function ProductsPage() {
     setPackModal(true);
     setEditingPackItem(null);
     setPackForm({ product_id: "", quantity: "1", custom_label: "", sort_order: "0" });
-    // Fetch pack items
     const r: any = await api.get(`/admin/products/${p.id}/pack-items`);
     if (r.success) setPackItems(r.data || []);
     else setPackItems([]);
-    // Fetch all products for dropdown (exclude packs)
     const pr: any = await api.get("/admin/products?page=1&limit=200");
     if (pr.success) {
       setAllProducts((pr.data || []).filter((prod: Product) => prod.id !== p.id && prod.unit_type !== "pack"));
@@ -179,7 +231,6 @@ export default function ProductsPage() {
     }
     setEditingPackItem(null);
     setPackForm({ product_id: "", quantity: "1", custom_label: "", sort_order: "0" });
-    // Refresh
     const r: any = await api.get(`/admin/products/${packProduct.id}/pack-items`);
     if (r.success) setPackItems(r.data || []);
   };
@@ -202,14 +253,12 @@ export default function ProductsPage() {
         onClick={async (e) => {
           e.stopPropagation();
           await api.put(`/admin/products/${r.id}`, { is_active: !r.is_active });
-          fetch();
-          console.log(r.id)
+          fetchData();
         }}
         className={`px-2 py-0.5 rounded text-xs font-medium ${
           r.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
         }`}
       >
-        
         {r.is_active ? "Activo" : "Inactivo"}
       </button>
     ) },
@@ -256,25 +305,20 @@ export default function ProductsPage() {
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? "Editar producto" : "Nuevo producto"} wide>
         <form onSubmit={save} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Nombre">
-              <input className={inputClass} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value, slug: slugify(e.target.value) })} />
-            </FormField>
             <FormField label="Slug">
               <input className={inputClass} required value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} />
             </FormField>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
             <FormField label="Categoría">
               <select className={selectClass} required value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
                 <option value="">Seleccionar</option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <FormField label="Precio/kg">
               <input type="number" step="0.01" className={inputClass} required value={form.price_per_kg} onChange={(e) => setForm({ ...form, price_per_kg: e.target.value })} />
             </FormField>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
             <FormField label="Tipo unidad">
               <select className={selectClass} value={form.unit_type} onChange={(e) => setForm({ ...form, unit_type: e.target.value })}>
                 <option value="kg">kg</option>
@@ -282,16 +326,44 @@ export default function ProductsPage() {
                 <option value="pack">Pack</option>
               </select>
             </FormField>
-            <FormField label="Cert. Halal">
-              <input className={inputClass} value={form.halal_cert_id} onChange={(e) => setForm({ ...form, halal_cert_id: e.target.value })} />
-            </FormField>
           </div>
-          <FormField label="Descripción">
-            <textarea className={inputClass} rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <FormField label="Cert. Halal">
+            <input className={inputClass} value={form.halal_cert_id} onChange={(e) => setForm({ ...form, halal_cert_id: e.target.value })} />
           </FormField>
-          <FormField label="Descripción corta">
-            <input className={inputClass} value={form.short_desc} onChange={(e) => setForm({ ...form, short_desc: e.target.value })} />
-          </FormField>
+
+          {/* i18n section */}
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Traducciones</p>
+            <LangTabs active={langTab} onChange={setLangTab} />
+            <div className="space-y-3">
+              <FormField label={`Nombre (${LANG_LABELS[langTab]})`}>
+                <input
+                  className={inputClass}
+                  required={langTab === "es"}
+                  value={form.name_i18n[langTab]}
+                  onChange={(e) => {
+                    const updated = { ...form.name_i18n, [langTab]: e.target.value };
+                    setForm({ ...form, name_i18n: updated, ...(langTab === "es" ? { name: e.target.value, slug: slugify(e.target.value) } : {}) });
+                  }}
+                />
+              </FormField>
+              <FormField label={`Descripción (${LANG_LABELS[langTab]})`}>
+                <textarea
+                  className={inputClass} rows={3}
+                  value={form.description_i18n[langTab]}
+                  onChange={(e) => setForm({ ...form, description_i18n: { ...form.description_i18n, [langTab]: e.target.value } })}
+                />
+              </FormField>
+              <FormField label={`Descripción corta (${LANG_LABELS[langTab]})`}>
+                <input
+                  className={inputClass}
+                  value={form.short_desc_i18n[langTab]}
+                  onChange={(e) => setForm({ ...form, short_desc_i18n: { ...form.short_desc_i18n, [langTab]: e.target.value } })}
+                />
+              </FormField>
+            </div>
+          </div>
+
           <FormField label="Tags (separados por coma)">
             <input className={inputClass} value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="halal, premium, oferta" />
           </FormField>
@@ -332,7 +404,7 @@ export default function ProductsPage() {
         <table className="w-full text-sm mb-4">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="text-left px-3 py-2">Etiqueta</th>
+              <th className="text-left px-3 py-2">Etiqueta (ES)</th>
               <th className="text-left px-3 py-2">Peso (g)</th>
               <th className="text-left px-3 py-2">Precio</th>
               <th className="text-left px-3 py-2">Stock</th>
@@ -343,13 +415,23 @@ export default function ProductsPage() {
           <tbody>
             {variants.map((v) => (
               <tr key={v.id} className="border-b">
-                <td className="px-3 py-2">{v.label}</td>
+                <td className="px-3 py-2">{v.label_i18n?.es || v.label}</td>
                 <td className="px-3 py-2">{v.weight_grams}</td>
                 <td className="px-3 py-2">{formatCurrency(Number(v.price))}</td>
                 <td className="px-3 py-2">{v.stock_qty}</td>
                 <td className="px-3 py-2">{v.sku}</td>
                 <td className="px-3 py-2 flex gap-2">
-                  <button onClick={() => { setEditingVar(v); setVarForm({ label: v.label, weight_grams: String(v.weight_grams), price: v.price, stock_qty: String(v.stock_qty), sku: v.sku || "" }); }} className="text-blue-600 text-xs hover:underline">Editar</button>
+                  <button onClick={() => {
+                    setEditingVar(v);
+                    setVarForm({
+                      label_i18n: v.label_i18n || { es: v.label, ca: "", en: "" },
+                      weight_grams: String(v.weight_grams),
+                      price: v.price,
+                      stock_qty: String(v.stock_qty),
+                      sku: v.sku || "",
+                    });
+                    setVarLangTab("es");
+                  }} className="text-blue-600 text-xs hover:underline">Editar</button>
                   <button onClick={async () => {
                     if (!confirm("¿Eliminar esta variante?")) return;
                     await api.del(`/admin/products/${varProduct!.id}/variants/${v.id}`);
@@ -364,8 +446,19 @@ export default function ProductsPage() {
         </table>
         <form onSubmit={saveVar} className="border-t pt-4">
           <p className="font-medium text-sm mb-3">{editingVar ? "Editar variante" : "Nueva variante"}</p>
-          <div className="grid grid-cols-5 gap-2">
-            <input className={inputClass} placeholder="Etiqueta" required value={varForm.label} onChange={(e) => setVarForm({ ...varForm, label: e.target.value })} />
+          <div className="border rounded-lg p-3 bg-gray-50 mb-3">
+            <LangTabs active={varLangTab} onChange={setVarLangTab} />
+            <FormField label={`Etiqueta (${LANG_LABELS[varLangTab]})`}>
+              <input
+                className={inputClass}
+                required={varLangTab === "es"}
+                placeholder={`Etiqueta en ${LANG_LABELS[varLangTab]}`}
+                value={varForm.label_i18n[varLangTab]}
+                onChange={(e) => setVarForm({ ...varForm, label_i18n: { ...varForm.label_i18n, [varLangTab]: e.target.value } })}
+              />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
             <input type="number" className={inputClass} placeholder="Peso (g)" required value={varForm.weight_grams} onChange={(e) => setVarForm({ ...varForm, weight_grams: e.target.value })} />
             <input type="number" step="0.01" className={inputClass} placeholder="Precio" required value={varForm.price} onChange={(e) => setVarForm({ ...varForm, price: e.target.value })} />
             <input type="number" className={inputClass} placeholder="Stock" required value={varForm.stock_qty} onChange={(e) => setVarForm({ ...varForm, stock_qty: e.target.value })} />
@@ -373,7 +466,7 @@ export default function ProductsPage() {
           </div>
           <div className="flex gap-2 mt-3">
             <button type="submit" className={btnPrimary}>{editingVar ? "Actualizar" : "Añadir"}</button>
-            {editingVar && <button type="button" onClick={() => { setEditingVar(null); setVarForm({ label: "", weight_grams: "", price: "", stock_qty: "", sku: "" }); }} className={btnSecondary}>Cancelar</button>}
+            {editingVar && <button type="button" onClick={() => { setEditingVar(null); setVarForm({ label_i18n: emptyI18n(), weight_grams: "", price: "", stock_qty: "", sku: "" }); }} className={btnSecondary}>Cancelar</button>}
           </div>
         </form>
       </Modal>

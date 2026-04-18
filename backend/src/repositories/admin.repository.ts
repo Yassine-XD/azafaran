@@ -98,13 +98,21 @@ export const adminRepository = {
     images?: any[];
     tags?: string[];
     is_featured?: boolean;
+    name_i18n?: Record<string, string>;
+    description_i18n?: Record<string, string>;
+    short_desc_i18n?: Record<string, string>;
   }) {
+    const nameI18n = data.name_i18n ?? { es: data.name, ca: '', en: '' };
+    const descI18n = data.description_i18n ?? { es: data.description ?? '', ca: '', en: '' };
+    const shortI18n = data.short_desc_i18n ?? { es: data.short_desc ?? '', ca: '', en: '' };
+
     const { rows } = await pool.query(
       `INSERT INTO products
          (id, category_id, name, slug, description, short_desc,
           price_per_kg, unit_type, halal_cert_id, halal_cert_body,
-          images, tags, is_featured)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          images, tags, is_featured,
+          name_i18n, description_i18n, short_desc_i18n)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING *`,
       [
         uuidv4(),
@@ -120,6 +128,9 @@ export const adminRepository = {
         JSON.stringify(data.images || []),
         data.tags || [],
         data.is_featured || false,
+        JSON.stringify(nameI18n),
+        JSON.stringify(descI18n),
+        JSON.stringify(shortI18n),
       ],
     );
     return rows[0];
@@ -150,6 +161,18 @@ export const adminRepository = {
     if (data.tags !== undefined) {
       fields.push(`tags = $${idx++}`);
       values.push(data.tags);
+    }
+    if (data.name_i18n !== undefined) {
+      fields.push(`name_i18n = $${idx++}`);
+      values.push(JSON.stringify(data.name_i18n));
+    }
+    if (data.description_i18n !== undefined) {
+      fields.push(`description_i18n = $${idx++}`);
+      values.push(JSON.stringify(data.description_i18n));
+    }
+    if (data.short_desc_i18n !== undefined) {
+      fields.push(`short_desc_i18n = $${idx++}`);
+      values.push(JSON.stringify(data.short_desc_i18n));
     }
 
     if (fields.length === 0) return null;
@@ -199,11 +222,13 @@ export const adminRepository = {
     price: number;
     stock_qty: number;
     sku?: string;
+    label_i18n?: Record<string, string>;
   }) {
+    const labelI18n = data.label_i18n ?? { es: data.label, ca: data.label, en: data.label };
     const { rows } = await pool.query(
       `INSERT INTO product_variants
-         (id, product_id, label, weight_grams, price, stock_qty, sku)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (id, product_id, label, weight_grams, price, stock_qty, sku, label_i18n)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         uuidv4(),
@@ -213,6 +238,7 @@ export const adminRepository = {
         data.price,
         data.stock_qty,
         data.sku || null,
+        JSON.stringify(labelI18n),
       ],
     );
     return rows[0];
@@ -233,6 +259,11 @@ export const adminRepository = {
         fields.push(`${key} = $${idx++}`);
         values.push(data[key]);
       }
+    }
+
+    if (data.label_i18n !== undefined) {
+      fields.push(`label_i18n = $${idx++}`);
+      values.push(JSON.stringify(data.label_i18n));
     }
 
     if (fields.length === 0) return null;
@@ -955,10 +986,17 @@ export const adminRepository = {
     image_url?: string;
     display_order?: number;
     is_active?: boolean;
+    name_i18n?: Record<string, string>;
+    description_i18n?: Record<string, string>;
   }) {
+    const nameI18n = data.name_i18n ?? { es: data.name, ca: '', en: '' };
+    const descI18n = data.description_i18n ?? { es: data.description ?? '', ca: '', en: '' };
+
     const { rows } = await pool.query(
-      `INSERT INTO categories (id, name, slug, description, image_url, display_order, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO categories
+         (id, name, slug, description, image_url, display_order, is_active,
+          name_i18n, description_i18n)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         uuidv4(),
@@ -968,23 +1006,42 @@ export const adminRepository = {
         data.image_url || null,
         data.display_order ?? 0,
         data.is_active ?? true,
+        JSON.stringify(nameI18n),
+        JSON.stringify(descI18n),
       ],
     );
     return rows[0];
   },
 
   async updateCategory(id: string, data: Record<string, unknown>) {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
     const allowed = ["name", "slug", "description", "image_url", "display_order", "is_active"];
-    const entries = Object.entries(data).filter(([k]) => allowed.includes(k));
-    if (entries.length === 0) return null;
+    for (const key of allowed) {
+      if (data[key] !== undefined) {
+        fields.push(`${key} = $${idx++}`);
+        values.push(data[key]);
+      }
+    }
 
-    const sets = entries.map(([k], i) => `${k} = $${i + 2}`);
-    const values = entries.map(([, v]) => v);
+    if (data.name_i18n !== undefined) {
+      fields.push(`name_i18n = $${idx++}`);
+      values.push(JSON.stringify(data.name_i18n));
+    }
+    if (data.description_i18n !== undefined) {
+      fields.push(`description_i18n = $${idx++}`);
+      values.push(JSON.stringify(data.description_i18n));
+    }
 
+    if (fields.length === 0) return null;
+
+    values.push(id);
     const { rows } = await pool.query(
-      `UPDATE categories SET ${sets.join(", ")}, updated_at = NOW()
-       WHERE id = $1 RETURNING *`,
-      [id, ...values],
+      `UPDATE categories SET ${fields.join(", ")}, updated_at = NOW()
+       WHERE id = $${idx} RETURNING *`,
+      values,
     );
     return rows[0];
   },

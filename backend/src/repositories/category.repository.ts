@@ -10,6 +10,9 @@ export interface CategoryRow {
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
+  // i18n translation maps
+  name_i18n: Record<string, string> | null;
+  description_i18n: Record<string, string> | null;
 }
 
 export const categoryRepository = {
