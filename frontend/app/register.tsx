@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { User, Mail, Lock, Eye, EyeOff, Phone } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLang } from "@/contexts/LanguageContext";
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -12,7 +13,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
         <View
           key={i}
           className={`h-1.5 rounded-full ${
-            i < current ? "w-8 bg-primary" : i === current ? "w-8 bg-primary" : "w-8 bg-muted"
+            i <= current ? "w-8 bg-primary" : "w-8 bg-muted"
           }`}
         />
       ))}
@@ -25,6 +26,7 @@ export { StepIndicator };
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
+  const { t, lang } = useLang();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -36,15 +38,15 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !password) {
-      Alert.alert("Error", "Por favor completa todos los campos");
+      Alert.alert(t("common.error"), t("auth.register.error_fields"));
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Las contraseñas no coinciden");
+      Alert.alert(t("common.error"), t("auth.register.error_password_match"));
       return;
     }
     if (password.length < 8) {
-      Alert.alert("Error", "La contraseña debe tener al menos 8 caracteres");
+      Alert.alert(t("common.error"), t("auth.register.error_password_length"));
       return;
     }
 
@@ -55,13 +57,14 @@ export default function RegisterScreen() {
       email: email.trim().toLowerCase(),
       password,
       phone: phone.trim(),
+      preferred_lang: lang,
     });
     setIsLoading(false);
 
     if (result.success) {
       router.replace("/profile-setup");
     } else {
-      Alert.alert("Error", result.error || "No se pudo crear la cuenta");
+      Alert.alert(t("common.error"), result.error || t("auth.register.error_create"));
     }
   };
 
@@ -75,8 +78,8 @@ export default function RegisterScreen() {
 
           {/* Header */}
           <View className="mb-6">
-            <Text className="text-3xl font-bold text-foreground mb-1">Crear Cuenta</Text>
-            <Text className="text-muted-foreground text-base">Paso 1 de 3 — Tus datos de acceso</Text>
+            <Text className="text-3xl font-bold text-foreground mb-1">{t("auth.register.title")}</Text>
+            <Text className="text-muted-foreground text-base">{t("auth.register.subtitle")}</Text>
           </View>
 
           {/* Name Row */}
@@ -86,7 +89,7 @@ export default function RegisterScreen() {
                 <User size={20} className="text-muted-foreground mr-3" />
                 <TextInput
                   className="flex-1 text-foreground text-base"
-                  placeholder="Nombre"
+                  placeholder={t("auth.register.first_name")}
                   placeholderTextColor="#a8a29e"
                   value={firstName}
                   onChangeText={setFirstName}
@@ -97,7 +100,7 @@ export default function RegisterScreen() {
               <View className={inputClass}>
                 <TextInput
                   className="flex-1 text-foreground text-base"
-                  placeholder="Apellido"
+                  placeholder={t("auth.register.last_name")}
                   placeholderTextColor="#a8a29e"
                   value={lastName}
                   onChangeText={setLastName}
@@ -112,7 +115,7 @@ export default function RegisterScreen() {
               <Mail size={20} className="text-muted-foreground mr-3" />
               <TextInput
                 className="flex-1 text-foreground text-base"
-                placeholder="Email"
+                placeholder={t("auth.register.email")}
                 placeholderTextColor="#a8a29e"
                 value={email}
                 onChangeText={setEmail}
@@ -129,7 +132,7 @@ export default function RegisterScreen() {
               <Phone size={20} className="text-muted-foreground mr-3" />
               <TextInput
                 className="flex-1 text-foreground text-base"
-                placeholder="Teléfono (+34...)"
+                placeholder={t("auth.register.phone")}
                 placeholderTextColor="#a8a29e"
                 value={phone}
                 onChangeText={setPhone}
@@ -144,7 +147,7 @@ export default function RegisterScreen() {
               <Lock size={20} className="text-muted-foreground mr-3" />
               <TextInput
                 className="flex-1 text-foreground text-base"
-                placeholder="Contraseña (mín. 8 caracteres)"
+                placeholder={t("auth.register.password")}
                 placeholderTextColor="#a8a29e"
                 value={password}
                 onChangeText={setPassword}
@@ -162,7 +165,7 @@ export default function RegisterScreen() {
               <Lock size={20} className="text-muted-foreground mr-3" />
               <TextInput
                 className="flex-1 text-foreground text-base"
-                placeholder="Confirmar Contraseña"
+                placeholder={t("auth.register.confirm_password")}
                 placeholderTextColor="#a8a29e"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -173,14 +176,14 @@ export default function RegisterScreen() {
 
           {/* Register Button */}
           <TouchableOpacity onPress={handleRegister} disabled={isLoading} className="bg-primary py-4 rounded-xl items-center mb-4">
-            {isLoading ? <ActivityIndicator color="white" /> : <Text className="text-primary-foreground font-bold text-lg">Siguiente</Text>}
+            {isLoading ? <ActivityIndicator color="white" /> : <Text className="text-primary-foreground font-bold text-lg">{t("auth.register.button")}</Text>}
           </TouchableOpacity>
 
           {/* Login Link */}
           <View className="flex-row justify-center mt-2">
-            <Text className="text-muted-foreground">¿Ya tienes cuenta? </Text>
+            <Text className="text-muted-foreground">{t("auth.register.has_account")}</Text>
             <TouchableOpacity onPress={() => router.push("/login")}>
-              <Text className="text-primary font-semibold">Inicia Sesión</Text>
+              <Text className="text-primary font-semibold">{t("auth.register.login_link")}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

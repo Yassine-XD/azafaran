@@ -5,19 +5,21 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { Shield, Mail, Check, Square } from "lucide-react-native";
+import { useLang } from "@/contexts/LanguageContext";
+import { Shield, Mail, Check } from "lucide-react-native";
 import { StepIndicator } from "./register";
 
 export default function TermsAcceptScreen() {
   const router = useRouter();
   const { refreshProfile } = useAuth();
+  const { t } = useLang();
   const [acceptsTerms, setAcceptsTerms] = useState(false);
   const [acceptsMarketing, setAcceptsMarketing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleFinish = async () => {
     if (!acceptsTerms) {
-      Alert.alert("Obligatorio", "Debes aceptar los términos y condiciones para continuar.");
+      Alert.alert(t("auth.terms.error_title"), t("auth.terms.error_terms"));
       return;
     }
 
@@ -29,7 +31,7 @@ export default function TermsAcceptScreen() {
     setIsSaving(false);
 
     if (!res.success) {
-      Alert.alert("Error", "No se pudo guardar. Inténtalo de nuevo.");
+      Alert.alert(t("common.error"), t("auth.terms.error_save"));
       return;
     }
 
@@ -46,10 +48,10 @@ export default function TermsAcceptScreen() {
         {/* Header */}
         <View className="mb-8">
           <Text className="text-3xl font-bold text-foreground mb-1">
-            Casi listo
+            {t("auth.terms.title")}
           </Text>
           <Text className="text-muted-foreground text-base">
-            Paso 3 de 3 — Revisa y acepta nuestras condiciones
+            {t("auth.terms.subtitle")}
           </Text>
         </View>
 
@@ -57,18 +59,14 @@ export default function TermsAcceptScreen() {
         <View className="bg-card rounded-2xl border border-border p-5 mb-4">
           <View className="flex-row items-center gap-3 mb-4">
             <Shield size={24} color="#ea580c" />
-            <Text className="text-foreground font-bold text-lg">Términos y Condiciones</Text>
+            <Text className="text-foreground font-bold text-lg">{t("auth.terms.terms_card_title")}</Text>
           </View>
           <Text className="text-muted-foreground text-sm leading-5 mb-4">
-            Al crear tu cuenta, aceptas nuestros términos de servicio y política de privacidad.
-            Puedes leer los detalles completos antes de aceptar.
+            {t("auth.terms.terms_description")}
           </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/policies")}
-            className="mb-4"
-          >
+          <TouchableOpacity onPress={() => router.push("/policies")} className="mb-4">
             <Text className="text-primary font-medium text-sm underline">
-              Leer términos y condiciones completos
+              {t("auth.terms.read_terms")}
             </Text>
           </TouchableOpacity>
 
@@ -87,9 +85,7 @@ export default function TermsAcceptScreen() {
               )}
             </View>
             <Text className="text-foreground text-sm flex-1 leading-5">
-              Acepto los{" "}
-              <Text className="font-semibold">términos y condiciones</Text> y la{" "}
-              <Text className="font-semibold">política de privacidad</Text> de Azafaran.{" "}
+              {t("auth.terms.accept_terms")}{" "}
               <Text className="text-destructive">*</Text>
             </Text>
           </TouchableOpacity>
@@ -99,7 +95,7 @@ export default function TermsAcceptScreen() {
         <View className="bg-card rounded-2xl border border-border p-5 mb-8">
           <View className="flex-row items-center gap-3 mb-4">
             <Mail size={24} color="#ea580c" />
-            <Text className="text-foreground font-bold text-lg">Comunicaciones</Text>
+            <Text className="text-foreground font-bold text-lg">{t("auth.terms.marketing_title")}</Text>
           </View>
 
           <TouchableOpacity
@@ -116,8 +112,8 @@ export default function TermsAcceptScreen() {
               )}
             </View>
             <Text className="text-foreground text-sm flex-1 leading-5">
-              Quiero recibir ofertas, novedades y recetas por email.{" "}
-              <Text className="text-muted-foreground">(Opcional)</Text>
+              {t("auth.terms.accept_marketing")}{" "}
+              <Text className="text-muted-foreground">{t("auth.terms.optional")}</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -132,7 +128,7 @@ export default function TermsAcceptScreen() {
             <ActivityIndicator color="white" />
           ) : (
             <Text className={`font-bold text-lg ${acceptsTerms ? "text-primary-foreground" : "text-muted-foreground"}`}>
-              Crear cuenta y empezar
+              {t("auth.terms.button")}
             </Text>
           )}
         </TouchableOpacity>

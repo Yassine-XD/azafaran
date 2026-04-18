@@ -10,6 +10,7 @@ export const registerSchema = z.object({
     .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
     .regex(/[0-9]/, "Debe contener al menos un número"),
   phone: z.string().optional(),
+  preferred_lang: z.enum(["es", "ca", "en"]).optional(),
 });
 
 export const loginSchema = z.object({

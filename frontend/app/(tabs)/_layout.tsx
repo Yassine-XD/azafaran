@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import { Home, Grid, Tag, ShoppingBag, User } from "lucide-react-native";
 import { cssInterop } from "nativewind";
+import { useLang } from "@/contexts/LanguageContext";
 
 cssInterop(Home, { className: { target: "style", nativeStyleToProp: { color: true } } });
 cssInterop(Grid, { className: { target: "style", nativeStyleToProp: { color: true } } });
@@ -9,6 +10,8 @@ cssInterop(ShoppingBag, { className: { target: "style", nativeStyleToProp: { col
 cssInterop(User, { className: { target: "style", nativeStyleToProp: { color: true } } });
 
 export default function TabsLayout() {
+  const { t } = useLang();
+
   return (
     <Tabs
       screenOptions={{
@@ -24,7 +27,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Inicio",
+          title: t("tabs.home"),
           tabBarIcon: ({ focused }) => (
             <Home className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
           ),
@@ -33,7 +36,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="categories"
         options={{
-          title: "Categorías",
+          title: t("tabs.categories"),
           tabBarIcon: ({ focused }) => (
             <Grid className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
           ),
@@ -42,7 +45,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="deals"
         options={{
-          title: "Ofertas",
+          title: t("tabs.deals"),
           tabBarIcon: ({ focused }) => (
             <Tag className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
           ),
@@ -51,7 +54,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="orders"
         options={{
-          title: "Pedidos",
+          title: t("tabs.orders"),
           tabBarIcon: ({ focused }) => (
             <ShoppingBag className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
           ),
@@ -60,7 +63,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Perfil",
+          title: t("tabs.profile"),
           tabBarIcon: ({ focused }) => (
             <User className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
           ),

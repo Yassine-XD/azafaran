@@ -61,10 +61,11 @@ export const userRepository = {
     email: string;
     password_hash: string;
     phone?: string;
+    preferred_lang?: string;
   }): Promise<UserRow> {
     const { rows } = await pool.query(
-      `INSERT INTO users (id, first_name, last_name, email, password_hash, phone, role)
-       VALUES ($1, $2, $3, $4, $5, $6, 'customer')
+      `INSERT INTO users (id, first_name, last_name, email, password_hash, phone, role, preferred_lang)
+       VALUES ($1, $2, $3, $4, $5, $6, 'customer', $7)
        RETURNING *`,
       [
         uuidv4(),
@@ -73,6 +74,7 @@ export const userRepository = {
         data.email,
         data.password_hash,
         data.phone || null,
+        data.preferred_lang || "es",
       ],
     );
     return rows[0];

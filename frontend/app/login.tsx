@@ -4,11 +4,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLang } from "@/contexts/LanguageContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
+  const { t } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -16,7 +18,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Por favor completa todos los campos");
+      Alert.alert(t("common.error"), t("auth.login.error_fields"));
       return;
     }
     setIsLoading(true);
@@ -26,7 +28,7 @@ export default function LoginScreen() {
       await AsyncStorage.setItem("onboarding_done", "true");
       router.replace("/(tabs)");
     } else {
-      Alert.alert("Error", result.error || "Credenciales incorrectas");
+      Alert.alert(t("common.error"), result.error || t("auth.login.error_credentials"));
     }
   };
 
@@ -36,8 +38,8 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }} keyboardShouldPersistTaps="handled">
           {/* Header */}
           <View className="items-center mb-10">
-            <Text className="text-4xl font-bold text-primary mb-2">Azafaran</Text>
-            <Text className="text-muted-foreground text-base">Carne halal a tu puerta</Text>
+            <Text className="text-4xl font-bold text-primary mb-2">{t("auth.login.title")}</Text>
+            <Text className="text-muted-foreground text-base">{t("auth.login.subtitle")}</Text>
           </View>
 
           {/* Email */}
@@ -46,7 +48,7 @@ export default function LoginScreen() {
               <Mail size={20} className="text-muted-foreground mr-3" />
               <TextInput
                 className="flex-1 text-foreground text-base"
-                placeholder="Email"
+                placeholder={t("auth.login.email")}
                 placeholderTextColor="#a8a29e"
                 value={email}
                 onChangeText={setEmail}
@@ -63,7 +65,7 @@ export default function LoginScreen() {
               <Lock size={20} className="text-muted-foreground mr-3" />
               <TextInput
                 className="flex-1 text-foreground text-base"
-                placeholder="Contraseña"
+                placeholder={t("auth.login.password")}
                 placeholderTextColor="#a8a29e"
                 value={password}
                 onChangeText={setPassword}
@@ -88,15 +90,15 @@ export default function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-primary-foreground font-bold text-lg">Iniciar Sesión</Text>
+              <Text className="text-primary-foreground font-bold text-lg">{t("auth.login.button")}</Text>
             )}
           </TouchableOpacity>
 
           {/* Register Link */}
           <View className="flex-row justify-center mt-4">
-            <Text className="text-muted-foreground">¿No tienes cuenta? </Text>
+            <Text className="text-muted-foreground">{t("auth.login.no_account")}</Text>
             <TouchableOpacity onPress={() => router.push("/register")}>
-              <Text className="text-primary font-semibold">Regístrate</Text>
+              <Text className="text-primary font-semibold">{t("auth.login.register_link")}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

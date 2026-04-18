@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { api, tokenStorage } from "@/lib/api";
+import { useLang } from "@/contexts/LanguageContext";
+import { isValidLang } from "@/lib/i18n";
 import type { User } from "@/lib/types";
 
 type AuthState = {
@@ -8,9 +10,18 @@ type AuthState = {
   isAuthenticated: boolean;
 };
 
+type RegisterData = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  phone: string;
+  preferred_lang?: string;
+};
+
 type AuthContextType = AuthState & {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: { first_name: string; last_name: string; email: string; password: string; phone: string }) => Promise<{ success: boolean; error?: string }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -18,6 +29,7 @@ type AuthContextType = AuthState & {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { setLang } = useLang();
   const [state, setState] = useState<AuthState>({
     user: null,
     isLoading: true,
@@ -32,6 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.get<User>("/users/");
         if (res.success && res.data) {
           setState({ user: res.data, isLoading: false, isAuthenticated: true });
+          // Sync language from user's saved preference
+          if (isValidLang(res.data.preferred_lang)) {
+            await setLang(res.data.preferred_lang);
+          }
           return;
         }
       }
@@ -49,10 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshToken: res.data.refreshToken,
     });
     setState({ user: res.data.user, isLoading: false, isAuthenticated: true });
+    // Sync language from login response
+    if (isValidLang(res.data.user?.preferred_lang)) {
+      await setLang(res.data.user.preferred_lang);
+    }
     return { success: true };
-  }, []);
+  }, [setLang]);
 
-  const register = useCallback(async (data: { first_name: string; last_name: string; email: string; password: string; phone: string }) => {
+  const register = useCallback(async (data: RegisterData) => {
     const res = await api.post("/auth/register", data, false);
     if (!res.success) {
       return { success: false, error: res.error?.message || "Error al registrarse" };
@@ -62,8 +82,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshToken: res.data.refreshToken,
     });
     setState({ user: res.data.user, isLoading: false, isAuthenticated: true });
+    // Sync language from register response
+    if (isValidLang(res.data.user?.preferred_lang)) {
+      await setLang(res.data.user.preferred_lang);
+    }
     return { success: true };
-  }, []);
+  }, [setLang]);
 
   const logout = useCallback(async () => {
     try {
