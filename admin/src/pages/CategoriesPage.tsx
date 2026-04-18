@@ -7,12 +7,37 @@ import FormField, { inputClass, btnPrimary, btnSecondary } from "../components/F
 import StatusBadge from "../components/StatusBadge";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
+type LangCode = "es" | "ca" | "en";
+const LANGS: LangCode[] = ["es", "ca", "en"];
+const LANG_LABELS: Record<LangCode, string> = { es: "ES", ca: "CA", en: "EN" };
+
+type I18nMap = { es: string; ca: string; en: string };
+const emptyI18n = (): I18nMap => ({ es: "", ca: "", en: "" });
+
 type Category = {
   id: string; name: string; slug: string; description: string;
   image_url: string; display_order: number; is_active: boolean;
+  name_i18n?: I18nMap; description_i18n?: I18nMap;
 };
 
-const empty = { name: "", slug: "", description: "", image_url: "", display_order: "0", is_active: true };
+const emptyForm = () => ({
+  slug: "", image_url: "", display_order: "0", is_active: true,
+  name_i18n: emptyI18n(),
+  description_i18n: emptyI18n(),
+});
+
+function LangTabs({ active, onChange }: { active: LangCode; onChange: (l: LangCode) => void }) {
+  return (
+    <div className="flex gap-1 mb-3">
+      {LANGS.map((l) => (
+        <button key={l} type="button" onClick={() => onChange(l)}
+          className={`px-3 py-1 text-xs font-medium rounded transition-colors ${active === l ? "bg-orange-500 text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-600"}`}>
+          {LANG_LABELS[l]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function CategoriesPage() {
   const [data, setData] = useState<Category[]>([]);
@@ -22,7 +47,8 @@ export default function CategoriesPage() {
 
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState(emptyForm());
+  const [langTab, setLangTab] = useState<LangCode>("es");
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -35,17 +61,40 @@ export default function CategoriesPage() {
 
   useEffect(() => { load(); }, [page]);
 
-  const openCreate = () => { setEditing(null); setForm(empty); setModal(true); };
+  const openCreate = () => {
+    setEditing(null);
+    setForm(emptyForm());
+    setLangTab("es");
+    setModal(true);
+  };
+
   const openEdit = (c: Category) => {
     setEditing(c);
-    setForm({ name: c.name, slug: c.slug, description: c.description || "", image_url: c.image_url || "", display_order: String(c.display_order), is_active: c.is_active });
+    setForm({
+      slug: c.slug,
+      image_url: c.image_url || "",
+      display_order: String(c.display_order),
+      is_active: c.is_active,
+      name_i18n: c.name_i18n || { es: c.name || "", ca: "", en: "" },
+      description_i18n: c.description_i18n || { es: c.description || "", ca: "", en: "" },
+    });
+    setLangTab("es");
     setModal(true);
   };
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const body = { ...form, display_order: Number(form.display_order) };
+    const body = {
+      name: form.name_i18n.es,
+      slug: form.slug,
+      description: form.description_i18n.es,
+      image_url: form.image_url,
+      display_order: Number(form.display_order),
+      is_active: form.is_active,
+      name_i18n: form.name_i18n,
+      description_i18n: form.description_i18n,
+    };
     const res = editing
       ? await api.put(`/admin/categories/${editing.id}`, body)
       : await api.post("/admin/categories", body);
@@ -90,15 +139,36 @@ export default function CategoriesPage() {
       </div>
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? "Editar categoría" : "Nueva categoría"}>
         <form onSubmit={save} className="space-y-4">
-          <FormField label="Nombre">
-            <input className={inputClass} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value, slug: slugify(e.target.value) })} />
-          </FormField>
           <FormField label="Slug">
             <input className={inputClass} required value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} />
           </FormField>
-          <FormField label="Descripción">
-            <textarea className={inputClass} rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          </FormField>
+
+          {/* i18n section */}
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Traducciones</p>
+            <LangTabs active={langTab} onChange={setLangTab} />
+            <div className="space-y-3">
+              <FormField label={`Nombre (${LANG_LABELS[langTab]})`}>
+                <input
+                  className={inputClass}
+                  required={langTab === "es"}
+                  value={form.name_i18n[langTab]}
+                  onChange={(e) => {
+                    const updated = { ...form.name_i18n, [langTab]: e.target.value };
+                    setForm({ ...form, name_i18n: updated, ...(langTab === "es" ? { slug: slugify(e.target.value) } : {}) });
+                  }}
+                />
+              </FormField>
+              <FormField label={`Descripción (${LANG_LABELS[langTab]})`}>
+                <textarea
+                  className={inputClass} rows={3}
+                  value={form.description_i18n[langTab]}
+                  onChange={(e) => setForm({ ...form, description_i18n: { ...form.description_i18n, [langTab]: e.target.value } })}
+                />
+              </FormField>
+            </div>
+          </div>
+
           <FormField label="URL de imagen">
             <input className={inputClass} value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://..." />
           </FormField>
