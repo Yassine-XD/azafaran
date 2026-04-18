@@ -40,8 +40,9 @@ function formatOrder(order: any, lang = 'es') {
         product_snapshot: { ...snapshot, images: normalizedImages },
         unit_price: parseFloat(item.unit_price),
         line_total: parseFloat(item.line_total),
-        product_name: resolveI18n(snapshot.name_i18n, snapshot.name, lang),
-        weight_label: resolveI18n(snapshot.variant_label_i18n, snapshot.variant_label, lang),
+        // Live name_i18n from DB JOIN takes priority; snapshot i18n is fallback for deleted products
+        product_name: resolveI18n(item.product_name_i18n ?? snapshot.name_i18n, snapshot.name, lang),
+        weight_label: resolveI18n(item.variant_label_i18n ?? snapshot.variant_label_i18n, snapshot.variant_label, lang),
         product_image: normalizedImages[0]?.url || null,
       };
     }),
