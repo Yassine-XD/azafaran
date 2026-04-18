@@ -140,7 +140,7 @@ export default function OrdersScreen() {
                   <View className="mb-3">
                     {orderItems.slice(0, 3).map((item, idx) => {
                       const snapshot = item.product_snapshot as any;
-                      const name = snapshot?.name || item.product_name || "Producto";
+                      const name = item.product_name || snapshot?.name || "Producto";
                       const image = snapshot?.images?.[0]?.url;
                       return (
                         <View key={idx} className="flex-row items-center gap-2 mb-1.5">

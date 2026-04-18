@@ -183,7 +183,7 @@ export default function OrderDetailsScreen() {
                 />
                 <View className="flex-1 ml-3">
                   <Text className="text-foreground font-medium" numberOfLines={1}>
-                    {item.product_snapshot.name}
+                    {item.product_name || item.product_snapshot.name}
                   </Text>
                   <Text className="text-muted-foreground text-xs">
                     {item.weight_label} × {item.quantity}
