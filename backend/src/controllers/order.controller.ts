@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { orderService } from "../services/order.service";
 import { asyncHandler } from "../utils/asyncHandler";
 import { success } from "../utils/apiResponse";
+import { getLang } from "../utils/i18n";
 
 export const orderController = {
   placeOrder: asyncHandler(async (req: Request, res: Response) => {
@@ -13,12 +14,14 @@ export const orderController = {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const period = req.query.period as string | undefined;
-    const result = await orderService.getOrders(req.user!.sub, page, limit, period);
+    const lang = getLang(req);
+    const result = await orderService.getOrders(req.user!.sub, page, limit, period, lang);
     return success(res, result.orders, 200, result.meta);
   }),
 
   getOrderById: asyncHandler(async (req: Request, res: Response) => {
-    const order = await orderService.getOrderById(req.user!.sub, req.params.id);
+    const lang = getLang(req);
+    const order = await orderService.getOrderById(req.user!.sub, req.params.id, lang);
     return success(res, order);
   }),
 
