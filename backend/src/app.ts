@@ -31,9 +31,13 @@ app.use(
 );
 
 // ─── Body parsers ────────────────────────────────────
-// NOTE: Stripe webhook needs raw body — must be BEFORE json parser
-// That's handled in payment.routes.ts with express.raw()
-app.use(express.json({ limit: "10mb" }));
+// Stripe webhook needs the raw Buffer — skip JSON parsing for that path
+app.use((req, res, next) => {
+  if (req.originalUrl === "/api/v1/payments/webhook") {
+    return next();
+  }
+  express.json({ limit: "10mb" })(req, res, next);
+});
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Request logging ─────────────────────────────────
