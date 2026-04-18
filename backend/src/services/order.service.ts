@@ -6,6 +6,7 @@ import { cartService } from "./cart.service";
 import { emailService } from "./email.service";
 import { sseClients } from "../utils/sseClients";
 import { logger } from "../utils/logger";
+import { resolveI18n } from "../utils/i18n";
 import type {
   PlaceOrderInput,
   ReviewOrderInput,
@@ -21,21 +22,29 @@ function appError(message: string, statusCode: number, code: string) {
   return err;
 }
 
-function formatOrder(order: any) {
+function formatOrder(order: any, lang = 'es') {
   return {
     ...order,
     subtotal: parseFloat(order.subtotal),
     delivery_fee: parseFloat(order.delivery_fee),
     discount_amount: parseFloat(order.discount_amount),
     total: parseFloat(order.total),
-    items: order.items?.map((item: any) => ({
-      ...item,
-      unit_price: parseFloat(item.unit_price),
-      line_total: parseFloat(item.line_total),
-      product_name: item.product_snapshot?.name,
-      weight_label: item.product_snapshot?.variant_label,
-      product_image: item.product_snapshot?.images?.[0]?.url || null,
-    })),
+    items: order.items?.map((item: any) => {
+      const snapshot = item.product_snapshot || {};
+      // Normalize images: the DB stores plain URL strings; frontend expects {url} objects
+      const normalizedImages = (snapshot.images || []).map((img: any) =>
+        typeof img === 'string' ? { url: img } : img,
+      );
+      return {
+        ...item,
+        product_snapshot: { ...snapshot, images: normalizedImages },
+        unit_price: parseFloat(item.unit_price),
+        line_total: parseFloat(item.line_total),
+        product_name: resolveI18n(snapshot.name_i18n, snapshot.name, lang),
+        weight_label: resolveI18n(snapshot.variant_label_i18n, snapshot.variant_label, lang),
+        product_image: normalizedImages[0]?.url || null,
+      };
+    }),
   };
 }
 
@@ -123,7 +132,9 @@ export const orderService = {
       variantId: item.variant_id,
       productSnapshot: {
         name: item.product_name,
+        name_i18n: item.product_name_i18n,
         variant_label: item.variant_label,
+        variant_label_i18n: item.variant_label_i18n,
         weight_grams: item.weight_grams,
         halal_cert_id: item.halal_cert_id,
         images: item.product_images,
@@ -173,7 +184,7 @@ export const orderService = {
     return formatOrder({ ...order, items: orderItems });
   },
 
-  async getOrders(userId: string, page: number, limit: number, period?: string) {
+  async getOrders(userId: string, page: number, limit: number, period?: string, lang = 'es') {
     // Calculate dateFrom based on period filter
     let dateFrom: string | undefined;
     if (period) {
@@ -193,7 +204,7 @@ export const orderService = {
       dateFrom,
     );
     return {
-      orders: rows.map(formatOrder),
+      orders: rows.map((o) => formatOrder(o, lang)),
       meta: {
         total,
         page,
@@ -203,10 +214,10 @@ export const orderService = {
     };
   },
 
-  async getOrderById(userId: string, orderId: string) {
+  async getOrderById(userId: string, orderId: string, lang = 'es') {
     const order = await orderRepository.findById(orderId, userId);
     if (!order) throw appError("Pedido no encontrado", 404, "ORDER_NOT_FOUND");
-    return formatOrder(order);
+    return formatOrder(order, lang);
   },
 
   async cancelOrder(userId: string, orderId: string) {
