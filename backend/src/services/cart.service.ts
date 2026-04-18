@@ -1,6 +1,7 @@
 import { cartRepository } from "../repositories/cart.repository";
 import { productRepository } from "../repositories/product.repository";
 import { orderRepository } from "../repositories/order.repository";
+import { resolveI18n } from "../utils/i18n";
 import type {
   AddToCartInput,
   UpdateCartItemInput,
@@ -14,9 +15,11 @@ function appError(message: string, statusCode: number, code: string) {
   return err;
 }
 
-function formatCartItem(item: any) {
+function formatCartItem(item: any, lang = 'es') {
   return {
     ...item,
+    product_name: resolveI18n(item.product_name_i18n, item.product_name, lang),
+    variant_label: resolveI18n(item.variant_label_i18n, item.variant_label, lang),
     unit_price: parseFloat(item.unit_price),
     current_price: parseFloat(item.current_price),
     price_changed:
@@ -25,10 +28,10 @@ function formatCartItem(item: any) {
 }
 
 export const cartService = {
-  async getCart(userId: string) {
+  async getCart(userId: string, lang = 'es') {
     const { cart, items } = await cartRepository.getCartWithItems(userId);
 
-    const formatted = items.map(formatCartItem);
+    const formatted = items.map((item) => formatCartItem(item, lang));
 
     const subtotal = formatted.reduce(
       (sum, item) => sum + item.current_price * item.quantity,
@@ -44,7 +47,7 @@ export const cartService = {
     };
   },
 
-  async addItem(userId: string, input: AddToCartInput) {
+  async addItem(userId: string, input: AddToCartInput, lang = 'es') {
     // Verify variant exists and has stock
     const variant = await productRepository.findVariantById(input.variant_id);
     if (!variant) {
@@ -70,10 +73,10 @@ export const cartService = {
       parseFloat(variant.price),
     );
 
-    return cartService.getCart(userId);
+    return cartService.getCart(userId, lang);
   },
 
-  async updateItem(userId: string, itemId: string, input: UpdateCartItemInput) {
+  async updateItem(userId: string, itemId: string, input: UpdateCartItemInput, lang = 'es') {
     const { cart } = await cartRepository.getCartWithItems(userId);
     const item = await cartRepository.findCartItem(cart.id, itemId);
 
@@ -95,10 +98,10 @@ export const cartService = {
       await cartRepository.updateItemQuantity(itemId, input.quantity);
     }
 
-    return cartService.getCart(userId);
+    return cartService.getCart(userId, lang);
   },
 
-  async removeItem(userId: string, itemId: string) {
+  async removeItem(userId: string, itemId: string, lang = 'es') {
     const { cart } = await cartRepository.getCartWithItems(userId);
     const item = await cartRepository.findCartItem(cart.id, itemId);
 
@@ -110,7 +113,7 @@ export const cartService = {
       );
 
     await cartRepository.removeItem(itemId);
-    return cartService.getCart(userId);
+    return cartService.getCart(userId, lang);
   },
 
   async clearCart(userId: string) {

@@ -109,7 +109,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         quantity: i.quantity,
         product_id: i.product_id,
         product_name: i.product_name,
-        product_image: Array.isArray(i.product_images) ? i.product_images[0]?.url : i.product_image,
+        product_image: Array.isArray(i.product_images) && i.product_images.length > 0
+          ? (i.product_images[0]?.url ?? i.product_images[0])
+          : i.product_image,
         weight_label: i.variant_label || i.weight_label,
         price: i.current_price ?? i.price,
         compare_at_price: i.compare_at_price,
