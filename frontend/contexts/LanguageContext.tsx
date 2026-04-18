@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { t as translateFn, isValidLang, type Lang } from "@/lib/i18n";
+import { setApiLang } from "@/lib/api";
 
 export const LANG_STORAGE_KEY = "preferred_lang";
 
@@ -17,12 +18,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(LANG_STORAGE_KEY).then((stored) => {
-      if (isValidLang(stored)) setLangState(stored);
+      if (isValidLang(stored)) {
+        setLangState(stored);
+        setApiLang(stored);
+      }
     });
   }, []);
 
   const setLang = useCallback(async (newLang: Lang) => {
     setLangState(newLang);
+    setApiLang(newLang);
     await AsyncStorage.setItem(LANG_STORAGE_KEY, newLang);
   }, []);
 

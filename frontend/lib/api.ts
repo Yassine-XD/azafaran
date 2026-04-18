@@ -2,6 +2,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_BASE_URL = "http://187.77.169.76/api/v1";
 
+let currentLang = "es";
+
+export function setApiLang(lang: string) {
+  currentLang = lang;
+}
+
 type RequestOptions = {
   method?: string;
   body?: unknown;
@@ -84,6 +90,7 @@ export async function api<T = any>(
   try {
     const requestHeaders: Record<string, string> = {
       "Content-Type": "application/json",
+      "X-Lang": currentLang,
       ...headers,
     };
 

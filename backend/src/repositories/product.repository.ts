@@ -19,6 +19,10 @@ export interface ProductRow {
   sort_order: number;
   created_at: Date;
   updated_at: Date;
+  // i18n translation maps
+  name_i18n: Record<string, string> | null;
+  description_i18n: Record<string, string> | null;
+  short_desc_i18n: Record<string, string> | null;
   // Joined fields
   category_name?: string;
   category_slug?: string;
@@ -28,6 +32,7 @@ export interface VariantRow {
   id: string;
   product_id: string;
   label: string;
+  label_i18n: Record<string, string> | null;
   weight_grams: number;
   price: string;
   stock_qty: number;
