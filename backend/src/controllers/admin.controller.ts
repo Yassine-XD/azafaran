@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
 import { adminService } from "../services/admin.service";
+import { ticketService, NotFoundError } from "../services/ticket.service";
 import { asyncHandler } from "../utils/asyncHandler";
-import { success } from "../utils/apiResponse";
+import { success, error } from "../utils/apiResponse";
+import {
+  adminUpdateTicketSchema,
+  createMessageSchema,
+} from "../validators/ticket.schema";
 
 function auditCtx(req: Request) {
   return { ipAddress: req.ip, userAgent: req.headers["user-agent"] as string };
@@ -338,5 +343,73 @@ export const adminController = {
     const result = await adminService.deleteCategory(req.params.id, req.user!.sub, auditCtx(req));
     if (!result) return res.status(404).json({ success: false, error: { message: "Categoría no encontrada", code: "CATEGORY_NOT_FOUND" } });
     return success(res, result);
+  }),
+
+  // ─── Support Tickets ────────────────────────────────
+
+  getTickets: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await ticketService.listForAdmin({
+      page,
+      limit,
+      status: req.query.status as string | undefined,
+      category: req.query.category as string | undefined,
+      priority: req.query.priority as string | undefined,
+      q: req.query.q as string | undefined,
+    });
+    return success(res, result.rows, 200, {
+      total: result.total,
+      total_pages: Math.max(Math.ceil(result.total / limit), 1),
+      page,
+      limit,
+    });
+  }),
+
+  getTicketDetail: asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const ticket = await ticketService.getForAdmin(req.params.id);
+      return success(res, ticket);
+    } catch (e: any) {
+      if (e instanceof NotFoundError)
+        return error(res, e.message, 404, "NOT_FOUND");
+      throw e;
+    }
+  }),
+
+  replyTicket: asyncHandler(async (req: Request, res: Response) => {
+    const parsed = createMessageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return error(res, "Datos inválidos", 400, "VALIDATION_ERROR");
+    }
+    const files = (req.files as Express.Multer.File[]) || [];
+    try {
+      const ticket = await ticketService.addAdminMessage({
+        ticketId: req.params.id,
+        adminId: req.user!.sub,
+        body: parsed.data.body,
+        files,
+      });
+      return success(res, ticket, 201);
+    } catch (e: any) {
+      if (e instanceof NotFoundError)
+        return error(res, e.message, 404, "NOT_FOUND");
+      throw e;
+    }
+  }),
+
+  updateTicket: asyncHandler(async (req: Request, res: Response) => {
+    const parsed = adminUpdateTicketSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return error(res, "Datos inválidos", 400, "VALIDATION_ERROR");
+    }
+    try {
+      const ticket = await ticketService.adminUpdate(req.params.id, parsed.data);
+      return success(res, ticket);
+    } catch (e: any) {
+      if (e instanceof NotFoundError)
+        return error(res, e.message, 404, "NOT_FOUND");
+      throw e;
+    }
   }),
 };

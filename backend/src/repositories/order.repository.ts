@@ -31,6 +31,9 @@ export interface OrderItemRow {
   quantity: number;
   unit_price: string;
   line_total: string;
+  // Joined live from products/variants (for i18n resolution)
+  product_name_i18n?: Record<string, string> | null;
+  variant_label_i18n?: Record<string, string> | null;
 }
 
 export const orderRepository = {
@@ -180,7 +183,14 @@ export const orderRepository = {
     if (rows.length > 0) {
       const orderIds = rows.map((r) => r.id);
       const { rows: items } = await pool.query(
-        `SELECT * FROM order_items WHERE order_id = ANY($1) ORDER BY id`,
+        `SELECT oi.*,
+                p.name_i18n  AS product_name_i18n,
+                pv.label_i18n AS variant_label_i18n
+         FROM order_items oi
+         LEFT JOIN product_variants pv ON pv.id = oi.variant_id
+         LEFT JOIN products p ON p.id = pv.product_id
+         WHERE oi.order_id = ANY($1)
+         ORDER BY oi.id`,
         [orderIds],
       );
       const itemsByOrder: Record<string, OrderItemRow[]> = {};
@@ -212,7 +222,14 @@ export const orderRepository = {
     if (!orderRows[0]) return null;
 
     const { rows: items } = await pool.query(
-      "SELECT * FROM order_items WHERE order_id = $1 ORDER BY id",
+      `SELECT oi.*,
+              p.name_i18n   AS product_name_i18n,
+              pv.label_i18n AS variant_label_i18n
+       FROM order_items oi
+       LEFT JOIN product_variants pv ON pv.id = oi.variant_id
+       LEFT JOIN products p ON p.id = pv.product_id
+       WHERE oi.order_id = $1
+       ORDER BY oi.id`,
       [id],
     );
 

@@ -15,6 +15,8 @@ import DeliverySlotsPage from "./pages/DeliverySlotsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ReviewsPage from "./pages/ReviewsPage";
 import AuditLogPage from "./pages/AuditLogPage";
+import TicketsPage from "./pages/TicketsPage";
+import TicketDetailPage from "./pages/TicketDetailPage";
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -42,6 +44,8 @@ export default function App() {
         <Route path="delivery-slots" element={<DeliverySlotsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="reviews" element={<ReviewsPage />} />
+        <Route path="tickets" element={<TicketsPage />} />
+        <Route path="tickets/:id" element={<TicketDetailPage />} />
         <Route path="audit-log" element={<AuditLogPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
