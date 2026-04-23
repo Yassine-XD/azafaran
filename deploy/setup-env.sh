@@ -35,14 +35,12 @@ read -r STRIPE_SK
 echo "[?] Stripe Webhook Secret (whsec_..., Enter to skip):"
 read -r STRIPE_WH
 
-echo "[?] Domain name (e.g. api.azafaran.es, Enter to skip):"
+echo "[?] Domain name (e.g. azafaran.es, Enter to use default):"
 read -r DOMAIN
 
-if [ -n "$DOMAIN" ]; then
-    CLIENT_URL="https://${DOMAIN}"
-else
-    CLIENT_URL="http://YOUR_VPS_IP"
-fi
+DOMAIN="${DOMAIN:-azafaran.es}"
+CLIENT_URL="https://${DOMAIN}"
+ADMIN_URL="https://${DOMAIN}"
 
 echo "[?] SMTP Host (e.g. smtp.gmail.com, Enter to skip email):"
 read -r SMTP_HOST
@@ -72,6 +70,7 @@ DB_NAME=azafaran
 JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
 JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 CLIENT_URL=${CLIENT_URL}
+ADMIN_URL=${ADMIN_URL}
 STRIPE_SECRET_KEY=${STRIPE_SK:-}
 STRIPE_WEBHOOK_SECRET=${STRIPE_WH:-}
 DOMAIN=${DOMAIN:-}

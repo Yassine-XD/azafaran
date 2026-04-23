@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const API_BASE_URL = "http://187.77.169.76/api/v1";
-export const API_HOST = "http://187.77.169.76";
+export const API_BASE_URL = "https://azafaran.es/api/v1";
+export const API_HOST = "https://azafaran.es";
 
 let currentLang = "es";
 
