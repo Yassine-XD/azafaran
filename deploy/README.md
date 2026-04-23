@@ -103,23 +103,53 @@ curl http://localhost/api/v1/health
 
 ---
 
-## Step 5: SSL with Let's Encrypt (optional, requires domain)
+## Step 5: SSL with Let's Encrypt
 
-Make sure your domain DNS A record points to your VPS IP, then:
+Prereq: DNS A records for both `azafaran.es` and `www.azafaran.es` must
+resolve to the VPS (`187.77.169.76`). Verify from a machine outside the VPS:
 
 ```bash
-# Request certificate
+dig azafaran.es @8.8.8.8 +short      # expect 187.77.169.76
+dig www.azafaran.es @8.8.8.8 +short  # expect 187.77.169.76
+```
+
+Issue the certificate (the running nginx HTTP config already serves the
+ACME challenge path):
+
+```bash
+cd /opt/azafaran/deploy
+
+# Optional dry-run against the staging endpoint first:
+#   add --staging to the certbot args, verify it succeeds, then delete
+#   the staging cert directory before re-running without --staging:
+#     docker compose -f docker-compose.prod.yml run --rm --entrypoint sh certbot \
+#       -c 'rm -rf /etc/letsencrypt/live/azafaran.es* /etc/letsencrypt/archive/azafaran.es* /etc/letsencrypt/renewal/azafaran.es*.conf'
+
 docker compose -f docker-compose.prod.yml run --rm certbot \
   certbot certonly --webroot -w /var/www/certbot \
   --email YOUR_EMAIL --agree-tos --no-eff-email \
-  -d YOUR_DOMAIN
+  -d azafaran.es -d www.azafaran.es
+```
 
-# Edit nginx.conf — uncomment the HTTPS server block
-# and replace YOUR_DOMAIN with your actual domain
-nano /opt/azafaran/deploy/nginx.conf
+Swap in the production (HTTPS) nginx config and restart:
 
-# Restart nginx
+```bash
+cp nginx.prod.conf nginx.conf
 docker compose -f docker-compose.prod.yml restart nginx
+```
+
+Verify from outside the VPS:
+
+```bash
+curl -I https://azafaran.es/api/v1/health    # HTTP/2 200 + HSTS header
+curl -I http://azafaran.es/                  # 301 -> https://azafaran.es/
+curl -I https://www.azafaran.es/api/v1/health
+```
+
+Certbot auto-renews every 12h via the sidecar container; logs:
+
+```bash
+docker compose -f docker-compose.prod.yml logs certbot
 ```
 
 ---
@@ -161,7 +191,7 @@ docker system df
 After deployment, set your Stripe webhook URL in the Stripe Dashboard:
 
 ```
-https://YOUR_DOMAIN/api/v1/payments/webhook
+https://azafaran.es/api/v1/payments/webhook
 ```
 
 Events to listen for:

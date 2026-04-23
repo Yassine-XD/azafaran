@@ -1,4 +1,4 @@
-export const BASE = "http://187.77.169.76/api/v1";
+export const BASE = "/api/v1";
 
 type Tokens = { accessToken: string; refreshToken: string };
 
