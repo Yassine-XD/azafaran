@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { formatCurrency, formatDate } from "../lib/utils";
 import StatsCard from "../components/StatsCard";
 import DataTable, { type Column } from "../components/DataTable";
 import StatusBadge from "../components/StatusBadge";
 import OrderDetailModal from "../components/OrderDetailModal";
-import { Users, ShoppingCart, DollarSign, Clock } from "lucide-react";
+import { Users, ShoppingCart, DollarSign, Clock, LifeBuoy } from "lucide-react";
 
-type Stats = { total_users: number; orders_today: number; total_revenue: number; pending_orders: number };
+type Stats = {
+  total_users: number;
+  orders_today: number;
+  total_revenue: number;
+  pending_orders: number;
+  open_tickets?: number;
+  unread_tickets?: number;
+};
 type Order = { id: string; first_name: string; last_name: string; total: string; status: string; created_at: string };
 
 export default function DashboardPage() {
@@ -41,11 +49,21 @@ export default function DashboardPage() {
     <div>
       <h2 className="text-xl font-bold mb-6">Dashboard</h2>
       {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <StatsCard title="Usuarios" value={stats.total_users} icon={Users} color="bg-blue-500" />
           <StatsCard title="Pedidos hoy" value={stats.orders_today} icon={ShoppingCart} color="bg-orange-500" />
           <StatsCard title="Ingresos totales" value={formatCurrency(stats.total_revenue)} icon={DollarSign} color="bg-green-500" />
           <StatsCard title="Pendientes" value={stats.pending_orders} icon={Clock} color="bg-yellow-500" />
+          <Link to="/tickets" className="block">
+            <StatsCard
+              title={`Tickets abiertos${
+                stats.unread_tickets ? ` · ${stats.unread_tickets} sin leer` : ""
+              }`}
+              value={stats.open_tickets ?? 0}
+              icon={LifeBuoy}
+              color="bg-rose-500"
+            />
+          </Link>
         </div>
       )}
       <div className="bg-white rounded-xl border border-gray-200">

@@ -14,6 +14,8 @@ import {
   adminNewOrderEmail,
   adminNewReviewEmail,
   adminErrorEmail,
+  ticketReplyEmail,
+  adminNewTicketEmail,
 } from "../emails/templates";
 
 async function hasEmailEnabled(userId: string): Promise<boolean> {
@@ -218,6 +220,39 @@ export const emailService = {
       await sendMail(env.ADMIN_EMAIL, subject, html);
     } catch (err) {
       logger.error("Failed to send admin error email:", err);
+    }
+  },
+
+  async sendTicketReply(
+    userId: string,
+    ticket: { ticket_number: string; subject: string },
+    body: string,
+  ) {
+    try {
+      const user = await userRepository.findById(userId);
+      if (!user) return;
+      if (!(await hasEmailEnabled(user.id))) return;
+
+      const { subject, html } = ticketReplyEmail(user, ticket, body);
+      await sendMail(user.email, subject, html);
+    } catch (err) {
+      logger.error(`Failed to send ticket reply email to user ${userId}:`, err);
+    }
+  },
+
+  async notifyAdminNewTicket(
+    userId: string,
+    ticket: { ticket_number: string; subject: string; category: string },
+  ) {
+    try {
+      if (!env.ADMIN_EMAIL) return;
+      const user = await userRepository.findById(userId);
+      if (!user) return;
+
+      const { subject, html } = adminNewTicketEmail(user, ticket);
+      await sendMail(env.ADMIN_EMAIL, subject, html);
+    } catch (err) {
+      logger.error("Failed to send admin new ticket email:", err);
     }
   },
 };

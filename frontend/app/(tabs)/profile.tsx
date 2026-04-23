@@ -30,7 +30,7 @@ export default function ProfileScreen() {
     {
       title: t("profile.section_support"),
       items: [
-        { id: "7", label: t("profile.menu_help"), icon: HelpCircle, color: "text-indigo-500" },
+        { id: "7", label: t("profile.menu_help"), icon: HelpCircle, color: "text-indigo-500", route: "/support" },
       ],
     },
   ];

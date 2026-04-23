@@ -5,26 +5,39 @@ export const adminRepository = {
   // ─── Dashboard ──────────────────────────────────────
 
   async getDashboardStats() {
-    const [usersRes, ordersTodayRes, revenueRes, pendingOrdersRes] =
-      await Promise.all([
-        pool.query("SELECT COUNT(*) FROM users WHERE is_active = true"),
-        pool.query(
-          "SELECT COUNT(*) FROM orders WHERE created_at >= CURRENT_DATE",
-        ),
-        pool.query(
-          `SELECT COALESCE(SUM(total::numeric), 0) AS revenue
-           FROM orders WHERE status = 'delivered'`,
-        ),
-        pool.query(
-          "SELECT COUNT(*) FROM orders WHERE status = 'pending'",
-        ),
-      ]);
+    const [
+      usersRes,
+      ordersTodayRes,
+      revenueRes,
+      pendingOrdersRes,
+      openTicketsRes,
+      unreadTicketsRes,
+    ] = await Promise.all([
+      pool.query("SELECT COUNT(*) FROM users WHERE is_active = true"),
+      pool.query(
+        "SELECT COUNT(*) FROM orders WHERE created_at >= CURRENT_DATE",
+      ),
+      pool.query(
+        `SELECT COALESCE(SUM(total::numeric), 0) AS revenue
+         FROM orders WHERE status = 'delivered'`,
+      ),
+      pool.query("SELECT COUNT(*) FROM orders WHERE status = 'pending'"),
+      pool.query(
+        `SELECT COUNT(*) FROM support_tickets
+         WHERE status IN ('open', 'in_progress', 'waiting_user')`,
+      ),
+      pool.query(
+        "SELECT COUNT(*) FROM support_tickets WHERE unread_for_admin = true",
+      ),
+    ]);
 
     return {
       total_users: parseInt(usersRes.rows[0].count, 10),
       orders_today: parseInt(ordersTodayRes.rows[0].count, 10),
       total_revenue: parseFloat(revenueRes.rows[0].revenue),
       pending_orders: parseInt(pendingOrdersRes.rows[0].count, 10),
+      open_tickets: parseInt(openTicketsRes.rows[0].count, 10),
+      unread_tickets: parseInt(unreadTicketsRes.rows[0].count, 10),
     };
   },
 
