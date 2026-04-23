@@ -1,10 +1,32 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
+import multer from "multer";
 import { adminController } from "../controllers/admin.controller";
 import { authenticate } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { validateBody } from "../middleware/validate";
 import { updateOrderStatusSchema } from "../validators/order.schema";
+import { uploadTicketFiles } from "../middleware/uploadTicketFiles";
 import { sseClients } from "../utils/sseClients";
+import { error } from "../utils/apiResponse";
+
+function handleTicketUploadErrors(
+  err: any,
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE")
+      return error(res, "Archivo demasiado grande (máx 8 MB)", 400, "FILE_TOO_LARGE");
+    if (err.code === "LIMIT_FILE_COUNT")
+      return error(res, "Máximo 5 archivos", 400, "TOO_MANY_FILES");
+    return error(res, "Error al subir archivo", 400, "UPLOAD_ERROR");
+  }
+  if (err && err.message === "INVALID_FILE_TYPE") {
+    return error(res, "Tipo de archivo no permitido", 400, "INVALID_FILE_TYPE");
+  }
+  return next(err);
+}
 
 const router = Router();
 
@@ -100,5 +122,16 @@ router.delete("/categories/:id", adminController.deleteCategory);
 
 // Reviews
 router.get("/reviews", adminController.getReviews);
+
+// Support Tickets
+router.get("/tickets", adminController.getTickets);
+router.get("/tickets/:id", adminController.getTicketDetail);
+router.post(
+  "/tickets/:id/messages",
+  uploadTicketFiles,
+  handleTicketUploadErrors,
+  adminController.replyTicket,
+);
+router.patch("/tickets/:id", adminController.updateTicket);
 
 export default router;

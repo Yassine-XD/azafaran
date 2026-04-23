@@ -42,6 +42,8 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+    volumes:
+      - api-uploads:/app/uploads
     networks:
       - internal
       - web
@@ -76,6 +78,7 @@ services:
 
 volumes:
   pgdata:
+  api-uploads:
   certbot-etc:
   certbot-var:
   webroot:

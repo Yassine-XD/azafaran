@@ -94,3 +94,42 @@ api.put = <T = any>(path: string, body?: unknown) =>
 api.patch = <T = any>(path: string, body?: unknown) =>
   api<T>(path, { method: "PATCH", body });
 api.del = <T = any>(path: string) => api<T>(path, { method: "DELETE" });
+
+export async function apiForm<T = any>(
+  path: string,
+  formData: FormData,
+  method: "POST" | "PATCH" | "PUT" = "POST",
+): Promise<{
+  success: boolean;
+  data?: T;
+  meta?: any;
+  error?: { message: string; code: string };
+}> {
+  const headers: Record<string, string> = {};
+  const t = getTokens();
+  if (t?.accessToken) headers["Authorization"] = `Bearer ${t.accessToken}`;
+
+  let res = await fetch(`${BASE}${path}`, {
+    method,
+    headers,
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    if (!refreshing)
+      refreshing = refreshAccessToken().finally(() => {
+        refreshing = null;
+      });
+    const newToken = await refreshing;
+    if (newToken) {
+      headers["Authorization"] = `Bearer ${newToken}`;
+      res = await fetch(`${BASE}${path}`, {
+        method,
+        headers,
+        body: formData,
+      });
+    }
+  }
+
+  return res.json();
+}

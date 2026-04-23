@@ -319,3 +319,40 @@ export function adminErrorEmail(error: {
     `),
   };
 }
+
+export function ticketReplyEmail(
+  user: UserData,
+  ticket: { ticket_number: string; subject: string },
+  body: string,
+) {
+  return {
+    subject: `Respuesta a tu ticket ${ticket.ticket_number}`,
+    html: baseLayout(`
+      <h2>Hola ${user.first_name},</h2>
+      <p>Hemos respondido a tu ticket <strong>${ticket.ticket_number}</strong> — "${ticket.subject}".</p>
+      <div style="background:#f8f8f8; padding:16px; border-radius:6px; margin:16px 0;">
+        ${body.replace(/\n/g, "<br>")}
+      </div>
+      <p>Abre la app y entra en <strong>Centro de Ayuda</strong> para ver la conversación y responder.</p>
+      <p>— El equipo de Carnes Alhambra</p>
+    `),
+  };
+}
+
+export function adminNewTicketEmail(
+  user: UserData,
+  ticket: { ticket_number: string; subject: string; category: string },
+) {
+  return {
+    subject: `[Soporte] Nuevo ticket ${ticket.ticket_number}`,
+    html: baseLayout(`
+      <h2>Nuevo ticket de soporte</h2>
+      <p><strong>${user.first_name} ${user.last_name}</strong> (${user.email}) abrió un ticket.</p>
+      <table style="font-size:14px; margin:16px 0;">
+        <tr><td style="padding:4px 12px 4px 0"><strong>Número:</strong></td><td>${ticket.ticket_number}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0"><strong>Asunto:</strong></td><td>${ticket.subject}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0"><strong>Categoría:</strong></td><td>${ticket.category}</td></tr>
+      </table>
+    `),
+  };
+}

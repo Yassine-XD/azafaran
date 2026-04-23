@@ -2,10 +2,10 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
   LayoutDashboard, Package, Grid, ShoppingCart, Users, Tag, Image, Ticket,
-  Clock, Bell, Star, FileText, LogOut, Menu, X, ShoppingBag,
+  Clock, Bell, Star, FileText, LogOut, Menu, X, ShoppingBag, LifeBuoy,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { BASE, getTokens } from "../lib/api";
+import { api, BASE, getTokens } from "../lib/api";
 
 const NAV = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -13,6 +13,7 @@ const NAV = [
   { to: "/categories", icon: Grid, label: "Categorías" },
   { to: "/orders", icon: ShoppingCart, label: "Pedidos" },
   { to: "/users", icon: Users, label: "Usuarios" },
+  { to: "/tickets", icon: LifeBuoy, label: "Soporte", badge: "tickets" as const },
   { to: "/promotions", icon: Tag, label: "Promociones" },
   { to: "/banners", icon: Image, label: "Artículos" },
   { to: "/promo-codes", icon: Ticket, label: "Códigos" },
@@ -21,7 +22,9 @@ const NAV = [
   { to: "/audit-log", icon: FileText, label: "Auditoría" },
 ];
 
-type Toast = { id: number; total: string; payment: string };
+type Toast =
+  | { id: number; kind: "order"; total: string; payment: string }
+  | { id: number; kind: "ticket"; subject: string; ticket_number: string };
 
 let toastSeq = 0;
 
@@ -29,13 +32,37 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [unreadTickets, setUnreadTickets] = useState(0);
   const activeRef = useRef(true);
 
-  const addToast = (total: string, payment: string) => {
+  const addOrderToast = (total: string, payment: string) => {
     const id = ++toastSeq;
-    setToasts((prev) => [...prev, { id, total, payment }]);
+    setToasts((prev) => [...prev, { id, kind: "order", total, payment }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 6000);
   };
+
+  const addTicketToast = (subject: string, ticket_number: string) => {
+    const id = ++toastSeq;
+    setToasts((prev) => [...prev, { id, kind: "ticket", subject, ticket_number }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 6000);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadStats = () => {
+      api.get("/admin/dashboard").then((r) => {
+        if (!cancelled && r.success) {
+          setUnreadTickets(r.data?.unread_tickets || 0);
+        }
+      });
+    };
+    loadStats();
+    const iv = setInterval(loadStats, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, []);
 
   useEffect(() => {
     activeRef.current = true;
@@ -74,9 +101,25 @@ export default function Layout() {
               if (eventLine?.includes("new_order") && dataLine) {
                 try {
                   const data = JSON.parse(dataLine.slice(5).trim());
-                  addToast(data.total, data.payment_method ?? "");
+                  addOrderToast(data.total, data.payment_method ?? "");
                 } catch {
                   // malformed data — ignore
+                }
+              } else if (
+                eventLine &&
+                (eventLine.includes("new_ticket_message") ||
+                  eventLine.includes("new_ticket")) &&
+                dataLine
+              ) {
+                try {
+                  const data = JSON.parse(dataLine.slice(5).trim());
+                  addTicketToast(
+                    data.subject || "Mensaje de soporte",
+                    data.ticket_number || "",
+                  );
+                  setUnreadTickets((n) => n + 1);
+                } catch {
+                  // ignore
                 }
               }
             }
@@ -123,13 +166,21 @@ export default function Layout() {
             <NavLink
               key={n.to}
               to={n.to}
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                if (n.badge === "tickets") setUnreadTickets(0);
+              }}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? "bg-orange-600 text-white" : "text-gray-300 hover:bg-gray-800"}`
               }
             >
               <n.icon size={18} />
-              {n.label}
+              <span className="flex-1">{n.label}</span>
+              {n.badge === "tickets" && unreadTickets > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 min-w-[18px] text-center">
+                  {unreadTickets > 99 ? "99+" : unreadTickets}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -157,7 +208,7 @@ export default function Layout() {
         </main>
       </div>
 
-      {/* Order alert toasts */}
+      {/* Alert toasts */}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
         {toasts.map((t) => (
           <div
@@ -165,16 +216,35 @@ export default function Layout() {
             className="flex items-center gap-3 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg pointer-events-auto animate-in slide-in-from-right-4 duration-300"
           >
             <div className="flex-shrink-0 bg-orange-500 rounded-full p-1.5">
-              <ShoppingBag size={16} />
+              {t.kind === "order" ? (
+                <ShoppingBag size={16} />
+              ) : (
+                <LifeBuoy size={16} />
+              )}
             </div>
             <div>
-              <p className="text-sm font-semibold">Nuevo pedido</p>
-              <p className="text-xs text-gray-400">
-                €{t.total}{t.payment ? ` · ${t.payment}` : ""}
-              </p>
+              {t.kind === "order" ? (
+                <>
+                  <p className="text-sm font-semibold">Nuevo pedido</p>
+                  <p className="text-xs text-gray-400">
+                    €{t.total}
+                    {t.payment ? ` · ${t.payment}` : ""}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold">Soporte</p>
+                  <p className="text-xs text-gray-400">
+                    {t.ticket_number ? `${t.ticket_number} · ` : ""}
+                    {t.subject}
+                  </p>
+                </>
+              )}
             </div>
             <button
-              onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+              onClick={() =>
+                setToasts((prev) => prev.filter((x) => x.id !== t.id))
+              }
               className="ml-2 text-gray-400 hover:text-white"
             >
               <X size={14} />

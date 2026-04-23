@@ -23,11 +23,15 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
 COPY migrations ./migrations
 
-# Create logs directory and non-root user
+# Create logs + uploads directories and non-root user
 RUN addgroup -S azafaran && adduser -S azafaran -G azafaran \
-    && mkdir -p /app/logs && chown azafaran:azafaran /app/logs
+    && mkdir -p /app/logs /app/uploads/tickets \
+    && chown -R azafaran:azafaran /app/logs /app/uploads
 USER azafaran
 
 EXPOSE 3000
+
+# Mark uploads as a volume mount point so attachments persist across rebuilds
+VOLUME ["/app/uploads"]
 
 CMD ["node", "dist/server.js"]

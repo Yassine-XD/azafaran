@@ -1,3 +1,4 @@
+import path from "path";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -48,6 +49,15 @@ if (env.NODE_ENV !== "test") {
     }),
   );
 }
+
+// ─── Static uploads (ticket attachments, etc.) ───────
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"), {
+    fallthrough: true,
+    maxAge: "7d",
+  }),
+);
 
 // ─── API Routes ──────────────────────────────────────
 app.use("/api/v1", routes);

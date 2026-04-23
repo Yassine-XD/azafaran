@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = "http://187.77.169.76/api/v1";
+export const API_BASE_URL = "http://187.77.169.76/api/v1";
+export const API_HOST = "http://187.77.169.76";
 
 let currentLang = "es";
 
@@ -152,3 +153,55 @@ api.patch = <T = any>(path: string, body?: unknown, requireAuth = true) =>
 
 api.delete = <T = any>(path: string, requireAuth = true) =>
   api<T>(path, { method: "DELETE", requireAuth });
+
+export async function apiForm<T = any>(
+  path: string,
+  formData: FormData,
+  method: "POST" | "PATCH" | "PUT" = "POST",
+): Promise<{
+  success: boolean;
+  data?: T;
+  meta?: any;
+  error?: { message: string; code: string };
+}> {
+  try {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "X-Lang": currentLang,
+    };
+
+    const tokens = await tokenStorage.getTokens();
+    if (tokens?.accessToken)
+      headers["Authorization"] = `Bearer ${tokens.accessToken}`;
+
+    let res = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers,
+      body: formData as any,
+    });
+
+    if (res.status === 401) {
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => {
+          refreshPromise = null;
+        });
+      }
+      const newToken = await refreshPromise;
+      if (newToken) {
+        headers["Authorization"] = `Bearer ${newToken}`;
+        res = await fetch(`${API_BASE_URL}${path}`, {
+          method,
+          headers,
+          body: formData as any,
+        });
+      }
+    }
+
+    return await res.json();
+  } catch {
+    return {
+      success: false,
+      error: { message: "Error de conexión. Comprueba tu red.", code: "NETWORK_ERROR" },
+    };
+  }
+}
