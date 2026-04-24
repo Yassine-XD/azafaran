@@ -1,0 +1,28 @@
+{
+  "name": "azafaran-landing",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b --noEmit && vite-react-ssg build && node scripts/post-build.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "lucide-react": "^0.510.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^6.28.0",
+    "vite-react-ssg": "^0.8.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.4",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.5.2",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^5.9.3",
+    "vite": "^6.3.5"
+  }
+}

@@ -21,6 +21,23 @@ This creates `deploy/.env` with your database password, JWT secrets, and Stripe 
 
 ## Step 2: Copy project to VPS
 
+First build the static front-ends locally:
+
+```bash
+# Admin SPA (served at /admin/)
+cd admin && npm ci && npm run build && cd ..
+
+# Marketing landing page (served at /, ES + CA + EN)
+cd landing && npm ci && npm run build && cd ..
+
+# Copy the builds next to the deploy stack so nginx can mount them
+rm -rf deploy/admin deploy/landing
+cp -r admin/dist   deploy/admin
+cp -r landing/dist deploy/landing
+```
+
+Then ship the deploy folder (containing `admin/` + `landing/` + `backend/` + `deploy/`) to the VPS:
+
 ```bash
 # From the project root (azafaran/)
 scp -r backend deploy root@YOUR_VPS_IP:/opt/azafaran/
@@ -98,7 +115,11 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d
 
 # Verify
 docker compose -f docker-compose.prod.yml ps
-curl http://localhost/api/v1/health
+curl -I http://localhost/             # landing page (HTML)
+curl -I http://localhost/ca/          # landing page (Catalan)
+curl -I http://localhost/en/          # landing page (English)
+curl -I http://localhost/admin/       # admin SPA
+curl    http://localhost/api/v1/health # backend health
 ```
 
 ---
@@ -172,7 +193,7 @@ Events to listen for:
 
 ## Re-deploying updates
 
-From your local machine:
+### Backend only
 
 ```bash
 rsync -avz --exclude='node_modules' --exclude='dist' \
@@ -181,4 +202,25 @@ rsync -avz --exclude='node_modules' --exclude='dist' \
 ssh root@YOUR_VPS_IP 'cd /opt/azafaran/deploy && \
   docker compose -f docker-compose.prod.yml --env-file .env build api && \
   docker compose -f docker-compose.prod.yml --env-file .env up -d api'
+```
+
+### Landing page only (marketing site)
+
+```bash
+cd landing && npm run build && cd ..
+rsync -avz --delete landing/dist/ \
+  root@YOUR_VPS_IP:/opt/azafaran/deploy/landing/
+
+# Reload nginx to pick up new static files (cached files will expire via Cache-Control)
+ssh root@YOUR_VPS_IP 'docker compose -f /opt/azafaran/deploy/docker-compose.prod.yml exec nginx nginx -s reload'
+```
+
+### Admin dashboard only
+
+```bash
+cd admin && npm run build && cd ..
+rsync -avz --delete admin/dist/ \
+  root@YOUR_VPS_IP:/opt/azafaran/deploy/admin/
+
+ssh root@YOUR_VPS_IP 'docker compose -f /opt/azafaran/deploy/docker-compose.prod.yml exec nginx nginx -s reload'
 ```

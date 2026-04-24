@@ -1,0 +1,35 @@
+# Azafaran
+
+> Azafaran is a halal meat delivery mobile application serving Barcelona and its metropolitan area in Spain. Customers order halal-certified lamb, beef, chicken, ground meat, halal sausages and marinated cuts from the app; orders are delivered chilled within 24–48 hours, with free shipping on orders over €30.
+
+## Facts
+
+- **Name**: Azafaran
+- **What it is**: Halal meat delivery mobile app (iOS + Android)
+- **Where**: Barcelona, Spain — city and metropolitan area (L'Hospitalet de Llobregat, Badalona, Santa Coloma de Gramenet, Cornellà, Esplugues, Sant Adrià de Besòs, El Prat, Castelldefels, Gavà, Sant Boi, Sant Pere de Ribes, Vilanova i la Geltrú, Sitges)
+- **Languages**: Spanish, Catalan, English
+- **Certification**: 100% halal-certified meat from traceable suppliers
+- **Delivery time**: 24–48 hours, customer chooses the time slot
+- **Free shipping**: Orders over €30
+- **Payments**: Card, Apple Pay, Google Pay — processed by Stripe; card data is never stored
+- **Founded**: 2024
+- **Address**: Carrer de la Torreta, 37, 08810 Sant Pere de Ribes, Barcelona, Spain
+- **Contact**: hola@azafaran.es · +34 647 63 61 89
+- **Social**: instagram.com/azafaran1 · facebook.com/azafaran1
+- **Download**: App Store (https://apps.apple.com/app/azafaran) · Google Play (https://play.google.com/store/apps/details?id=es.azafaran.app)
+
+## Pages
+
+- [Home (Spanish)](https://www.azafaran.es/): Product overview, download links.
+- [Home (Catalan)](https://www.azafaran.es/ca/): Same content in Català.
+- [Home (English)](https://www.azafaran.es/en/): Same content in English.
+- [Privacy policy](https://www.azafaran.es/privacy): GDPR-compliant privacy policy.
+- [Terms and conditions](https://www.azafaran.es/terms): Terms of service.
+
+## Frequently asked
+
+- **What does halal-certified mean?** The slaughter follows halal precepts and the product is certified by a recognised body. Azafaran works only with certified, traceable suppliers.
+- **Which areas does Azafaran deliver to?** The city of Barcelona and its metropolitan area — including L'Hospitalet, Badalona, Sant Adrià, Castelldefels, Gavà, Sant Boi, Sant Pere de Ribes and Sitges.
+- **How much does shipping cost?** Free on orders over €30; a flat fee below that, shown before checkout.
+- **Is the meat fresh or frozen?** All orders ship fresh and chilled in insulated packaging.
+- **How do I download the app?** Free on the App Store (iPhone) or Google Play (Android); search "Azafaran".
