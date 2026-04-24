@@ -1,7 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const API_BASE_URL = "http://187.77.169.76/api/v1";
-export const API_HOST = "http://187.77.169.76";
+// Resolved from Expo public env at build time. Override with
+// `EXPO_PUBLIC_API_HOST` in `.env` / EAS secrets. Defaults to the public
+// prod HTTPS endpoint so a misconfigured build still talks to production
+// instead of a bare IP over cleartext HTTP.
+const DEFAULT_API_HOST = "https://www.azafaran.es";
+export const API_HOST: string =
+  process.env.EXPO_PUBLIC_API_HOST || DEFAULT_API_HOST;
+export const API_BASE_URL = `${API_HOST}/api/v1`;
 
 let currentLang = "es";
 
