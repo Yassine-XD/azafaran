@@ -13,7 +13,7 @@ const envSchema = z.object({
     .string()
     .min(32, "JWT_REFRESH_SECRET must be at least 32 chars"),
   CLIENT_URL: z.string().default("http://localhost:8081"), // Expo dev URL
-  ADMIN_URL: z.string().optional(), // Admin dashboard URL (e.g. http://187.77.169.76)
+  ADMIN_URL: z.string().optional(), // Admin dashboard URL (e.g. https://www.azafaran.es/admin)
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
 

@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://187.77.169.76/api/v1";
+import { API_BASE_URL } from "./api";
 
 let lastReportedAt = 0;
 const MIN_INTERVAL_MS = 10_000; // Throttle: max 1 report per 10 seconds

@@ -155,35 +155,70 @@ export const userRepository = {
     tokenHash: string;
     deviceInfo?: object;
     expiresAt: Date;
-  }): Promise<void> {
+    familyId?: string; // omit on a new login; reuse it when rotating
+  }): Promise<{ id: string; family_id: string }> {
+    const id = uuidv4();
+    const familyId = data.familyId || id;
     await pool.query(
-      `INSERT INTO refresh_tokens (id, user_id, token_hash, device_info, expires_at)
-       VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO refresh_tokens
+         (id, user_id, token_hash, device_info, expires_at, family_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
-        uuidv4(),
+        id,
         data.userId,
         data.tokenHash,
         JSON.stringify(data.deviceInfo || {}),
         data.expiresAt,
+        familyId,
       ],
     );
+    return { id, family_id: familyId };
   },
 
-  async findRefreshToken(
-    tokenHash: string,
-  ): Promise<{ id: string; user_id: string } | null> {
+  async findRefreshToken(tokenHash: string): Promise<{
+    id: string;
+    user_id: string;
+    family_id: string;
+    revoked_at: Date | null;
+    expires_at: Date;
+  } | null> {
+    // We intentionally return revoked rows so the service layer can detect
+    // reuse of an already-rotated token.
     const { rows } = await pool.query(
-      `SELECT id, user_id FROM refresh_tokens
-       WHERE token_hash = $1 AND expires_at > NOW()`,
+      `SELECT id, user_id, family_id, revoked_at, expires_at
+         FROM refresh_tokens
+        WHERE token_hash = $1`,
       [tokenHash],
     );
     return rows[0] || null;
+  },
+
+  async markRefreshTokenRotated(
+    oldId: string,
+    replacedById: string,
+  ): Promise<void> {
+    await pool.query(
+      `UPDATE refresh_tokens
+          SET revoked_at = NOW(),
+              replaced_by = $2
+        WHERE id = $1`,
+      [oldId, replacedById],
+    );
   },
 
   async deleteRefreshToken(tokenHash: string): Promise<void> {
     await pool.query("DELETE FROM refresh_tokens WHERE token_hash = $1", [
       tokenHash,
     ]);
+  },
+
+  async revokeRefreshTokenFamily(familyId: string): Promise<void> {
+    // Burns every token in this login session, both active and previously
+    // rotated. Used when we detect a reuse attack.
+    await pool.query(
+      `DELETE FROM refresh_tokens WHERE family_id = $1`,
+      [familyId],
+    );
   },
 
   async deleteAllRefreshTokens(userId: string): Promise<void> {

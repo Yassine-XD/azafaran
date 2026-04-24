@@ -1,4 +1,9 @@
-export const BASE = "http://187.77.169.76/api/v1";
+// Resolved from Vite build-time env. Override with `VITE_API_BASE_URL` in
+// `.env.production` / CI. Defaults to the public prod HTTPS endpoint so a
+// misconfigured build still talks to production instead of a bare IP.
+const API_BASE_FALLBACK = "https://www.azafaran.es/api/v1";
+export const BASE: string =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) || API_BASE_FALLBACK;
 
 type Tokens = { accessToken: string; refreshToken: string };
 

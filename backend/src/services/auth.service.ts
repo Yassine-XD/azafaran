@@ -43,8 +43,8 @@ export const authService = {
       logger.error(`Failed to send welcome email: ${err.message}`),
     )
 
-    // Generate tokens
-    return authService._issueTokens(user, deviceInfo)
+    const issued = await authService._issueTokens(user, deviceInfo)
+    return issued.payload
   },
 
   async login(input: LoginInput, deviceInfo?: object) {
@@ -60,7 +60,8 @@ export const authService = {
       throw createAppError('Credenciales incorrectas', 401, 'INVALID_CREDENTIALS')
     }
 
-    return authService._issueTokens(user, deviceInfo)
+    const issued = await authService._issueTokens(user, deviceInfo)
+    return issued.payload
   },
 
   async refresh(rawRefreshToken: string, deviceInfo?: object) {
@@ -68,22 +69,39 @@ export const authService = {
     const stored = await userRepository.findRefreshToken(tokenHash)
 
     if (!stored) {
-      // Token not found or expired
-      // Could be reuse attack — if you want, revoke all tokens for this user here
       throw createAppError('Token inválido o expirado', 401, 'INVALID_REFRESH_TOKEN')
     }
 
-    // Rotate — delete old token
-    await userRepository.deleteRefreshToken(tokenHash)
+    // Reuse-attack detection: the token exists but was already rotated.
+    // That means someone is replaying a stolen token. Burn the entire family
+    // so both the attacker and the legitimate client are forced to re-auth.
+    if (stored.revoked_at !== null) {
+      logger.warn(
+        `Refresh-token reuse detected for user ${stored.user_id} ` +
+          `(family ${stored.family_id}). Revoking family.`,
+      )
+      await userRepository.revokeRefreshTokenFamily(stored.family_id)
+      throw createAppError(
+        'Token inválido o expirado',
+        401,
+        'REFRESH_TOKEN_REUSED',
+      )
+    }
 
-    // Fetch user
+    if (stored.expires_at.getTime() <= Date.now()) {
+      throw createAppError('Token inválido o expirado', 401, 'INVALID_REFRESH_TOKEN')
+    }
+
     const user = await userRepository.findById(stored.user_id)
     if (!user) {
       throw createAppError('Usuario no encontrado', 401, 'USER_NOT_FOUND')
     }
 
-    // Issue new tokens
-    return authService._issueTokens(user, deviceInfo)
+    // Issue new tokens within the same family, then mark the old row as
+    // rotated (not deleted) so a replay of the old token can be detected.
+    const issued = await authService._issueTokens(user, deviceInfo, stored.family_id)
+    await userRepository.markRefreshTokenRotated(stored.id, issued._refreshTokenId)
+    return issued.payload
   },
 
   async logout(rawRefreshToken: string) {
@@ -95,8 +113,10 @@ export const authService = {
     await userRepository.deleteAllRefreshTokens(userId)
   },
 
-  // Internal helper — issues both tokens, saves refresh to DB
-  async _issueTokens(user: any, deviceInfo?: object) {
+  // Internal helper — issues both tokens, saves refresh to DB.
+  // `_refreshTokenId` is consumed by `refresh()` to link parent -> child;
+  // controllers send only `payload` back to the client.
+  async _issueTokens(user: any, deviceInfo?: object, familyId?: string) {
     const accessToken = signAccessToken({
       sub: user.id,
       role: user.role,
@@ -106,14 +126,15 @@ export const authService = {
     const rawRefreshToken = generateRefreshToken()
     const tokenHash = hashRefreshToken(rawRefreshToken)
 
-    await userRepository.saveRefreshToken({
+    const saved = await userRepository.saveRefreshToken({
       userId: user.id,
       tokenHash,
       deviceInfo,
       expiresAt: getRefreshTokenExpiry(),
+      familyId,
     })
 
-    return {
+    const payload = {
       user: {
         id: user.id,
         email: user.email,
@@ -125,5 +146,7 @@ export const authService = {
       accessToken,
       refreshToken: rawRefreshToken,
     }
+
+    return { payload, _refreshTokenId: saved.id }
   },
 }
