@@ -1,662 +1,271 @@
-# Layout Guide
+# Layout Guide — Azafarán
 
-This document provides instructions for creating layouts and screens in this Expo/NativeWind project.
-
-## Core Principles
-
-1. **Use Flexbox** - React Native uses flexbox for all layouts
-2. **Use gap** - Prefer `gap-*` over margins between siblings
-3. **Semantic colors** - Use theme colors (`bg-background`, `text-foreground`)
-4. **Bottom padding** - Add `pb-32` to ScrollView content for floating tab bar
-5. **SafeAreaProvider** - MUST wrap the root layout with SafeAreaProvider
-6. **SafeAreaView** - Always wrap screens in SafeAreaView
+How to build screens and compose primitives in this app. The design system is
+in `theme.ts` / `theme.md`. The reusable building blocks live under
+`components/ui/` and are re-exported from `@/components/ui`.
 
 ---
 
-## Screen Structure Template
+## Core principles
 
-Every screen should follow this basic structure:
-
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="app/screen.tsx"
-import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-export default function MyScreen() {
-  return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ paddingBottom: 128 }}>
-        {/* Header */}
-        <View className="p-6">
-          <Text className="text-2xl font-bold text-foreground">Screen Title</Text>
-        </View>
-
-        {/* Content */}
-        <View className="px-6 gap-4">
-          {/* Your content here */}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-\`\`\`
-</CodeProject>
-\`\`\`
-
-### Key Points:
-
-- **CRITICAL**: SafeAreaProvider must be in the root layout (`app/_layout.tsx`) - it's required for SafeAreaView to work
-- `SafeAreaView` with `flex-1 bg-background` as root
-- `ScrollView` with `contentContainerStyle={{ paddingBottom: 128 }}` for tab bar clearance
-- Header section with `p-6` padding
-- Content section with `px-6` horizontal padding and `gap-4` between items
+1. **Active, not passive** — every screen has a focal point and a strong CTA.
+2. **Depth through tone, not box shadows** — burgundy-tinted shadows + dark
+   coal slabs + parchment base do the heavy lifting. Avoid generic gray drop
+   shadows.
+3. **Typography hierarchy first** — display (Fraunces) for slow reading,
+   body (Inter) for fast reading. **Prices are always Fraunces.**
+4. **Edge-to-edge imagery** — kill white padding around food photos. Images
+   are full-bleed in cards and heroes.
+5. **Moroccan accent, sparingly** — the geometric motif appears only on the
+   splash and as subtle dividers. Don't overdo it.
 
 ---
 
+## Screen template
 
-## App Structure
+```tsx
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView, StatusBar, Text, View } from "react-native";
 
-Apps use bottom tab navigation by default. The structure is:
-
-```
-app/
-├── _layout.tsx          # Root layout (ThemeProvider, SafeAreaProvider, Stack)
-├── (tabs)/
-│   ├── _layout.tsx      # Tab bar configuration
-│   ├── index.tsx        # Home tab
-│   ├── search.tsx       # Search tab
-│   └── profile.tsx      # Profile tab
-└── other-screen.tsx     # Non-tab screens (modals, details, etc.)
-```
-
-### Root Layout (`app/_layout.tsx`)
-
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="app/_layout.tsx"
-import { Stack } from "expo-router";
-import { ThemeProvider } from "@/components/ThemeProvider";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import "@/global.css";
-
-export default function RootLayout() {
+export default function Screen() {
   return (
-    <ThemeProvider>
-      <SafeAreaProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-      </SafeAreaProvider>
-    </ThemeProvider>
-  );
-}
-\`\`\`
-</CodeProject>
-\`\`\`
+    <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
+      <StatusBar barStyle="dark-content" />
 
-### Tab Layout (`app/(tabs)/_layout.tsx`)
-
-**CRITICAL: Tab bar hex colors must match your app's theme.** Convert RGB values from `theme.ts` to hex (e.g., `'251 113 133'` → `'#fb7185'`).
-
-**CRITICAL: NEVER add `height`, `paddingBottom`, or `paddingTop` to `tabBarStyle`.** React Navigation handles safe area insets automatically — adding these values causes the tab bar to overflow and get cropped in the preview.
-
-| Theme Token          | Tab Bar Property          | Purpose            |
-|----------------------|---------------------------|--------------------|
-| `--background`       | `backgroundColor`         | Tab bar background |
-| `--border`           | `borderTopColor`          | Top border         |
-| `--primary`          | `tabBarActiveTintColor`   | Active icon/text   |
-| `--muted-foreground` | `tabBarInactiveTintColor` | Inactive icon/text |
-
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="app/(tabs)/_layout.tsx"
-import { Tabs } from 'expo-router';
-import { Home, Search, User } from 'lucide-react-native';
-import { cssInterop, useColorScheme } from 'nativewind';
-
-// Enable className styling for icons
-cssInterop(Home, { className: { target: 'style', nativeStyleToProp: { color: true } } });
-cssInterop(Search, { className: { target: 'style', nativeStyleToProp: { color: true } } });
-cssInterop(User, { className: { target: 'style', nativeStyleToProp: { color: true } } });
-
-export default function TabsLayout() {
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
-
-  // IMPORTANT: Replace hex values with colors from YOUR theme.ts
-  // Convert RGB to hex: '251 113 133' → '#fb7185'
-  return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          // Use your theme's background color
-          backgroundColor: isDark ? '#1c1917' : '#fffbfa',
-          borderTopColor: isDark ? '#44403c' : '#f5ebe9',
-        },
-        // Use your theme's primary color for active state
-        tabBarActiveTintColor: isDark ? '#fb7185' : '#fb7185',
-        // Use your theme's muted-foreground for inactive state
-        tabBarInactiveTintColor: isDark ? '#a8a29e' : '#78716c',
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ focused }) => (
-            <Home className={focused ? 'text-primary' : 'text-muted-foreground'} size={24} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: 'Search',
-          tabBarIcon: ({ focused }) => (
-            <Search className={focused ? 'text-primary' : 'text-muted-foreground'} size={24} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ focused }) => (
-            <User className={focused ? 'text-primary' : 'text-muted-foreground'} size={24} />
-          ),
-        }}
-      />
-    </Tabs>
-  );
-}
-\`\`\`
-</CodeProject>
-\`\`\`
-
-### Tab Screen Example (`app/(tabs)/index.tsx`)
-
-**CRITICAL**: Tab screens must use `edges={['top', 'left', 'right']}` on SafeAreaView. The tab bar already handles the bottom safe area inset — omitting the bottom edge prevents double bottom padding (a ~34px gap between content and the tab bar).
-
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="app/(tabs)/index.tsx"
-import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemeToggle } from '@/components/ThemeToggle';
-
-export default function HomeScreen() {
-  return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      {/* Header with ThemeToggle */}
-      <View className="flex-row items-center justify-between px-6 py-4">
-        <Text className="text-2xl font-bold text-foreground">Home</Text>
-        <ThemeToggle />
+      {/* Header */}
+      <View className="px-5 pt-2 pb-4">
+        <Text className="font-body-semibold text-[11px] uppercase tracking-widest text-muted-foreground mb-1">
+          Azafarán
+        </Text>
+        <Text className="font-display text-[30px] leading-9 text-foreground">
+          Screen Title
+        </Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 128, gap: 16 }}>
-        {/* Screen content */}
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 128, paddingHorizontal: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* content */}
       </ScrollView>
     </SafeAreaView>
   );
 }
-\`\`\`
-</CodeProject>
-\`\`\`
+```
+
+**Defaults:**
+- `bg-background` (parchment) on the root.
+- `edges={["top", "left", "right"]}` on tab screens. The tab bar handles the
+  bottom inset — adding `bottom` doubles the gap.
+- Horizontal page padding: **`px-5`** (20px) for tab screens; **`px-6`** is
+  fine for stacked screens that need a touch more breathing room.
+- Bottom padding for tab bar clearance: **`128`**.
 
 ---
 
-## Common Layout Patterns
+## Composition patterns
 
-### 1. Header with Actions
+### Section header with left accent bar
 
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="components/Header.tsx"
-<View className="p-6 flex-row justify-between items-center">
-  <View>
-    <Text className="text-muted-foreground">Welcome back,</Text>
-    <Text className="text-2xl font-bold text-foreground">User Name</Text>
-  </View>
-  <View className="flex-row items-center gap-4">
-    <ThemeToggle />
-    <TouchableOpacity>
-      <Bell className="text-foreground" size={24} />
-    </TouchableOpacity>
-  </View>
+```tsx
+import { SectionHeader } from "@/components/ui";
+
+<View className="px-5 mb-4">
+  <SectionHeader
+    title={t("home.featured")}
+    eyebrow={t("home.halal_badge")}
+    accent="gold"
+    actionLabel={t("home.see_all")}
+    onActionPress={openShop}
+  />
 </View>
-\`\`\`
-</CodeProject>
-\`\`\`
+```
 
-### 2. Section with Title
+Use `accent="gold"` on premium / halal-themed sections, `"burgundy"` (default)
+elsewhere.
 
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="components/Section.tsx"
-<View className="mb-6">
-  <Text className="text-xl font-bold text-foreground px-6 mb-4">Section Title</Text>
-  {/* Section content */}
-</View>
-\`\`\`
-</CodeProject>
-\`\`\`
+### Horizontal product rail
 
-### 3. Horizontal Scrolling List
+```tsx
+import { FlatList } from "react-native";
+import { ProductCard } from "@/components/ui";
 
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="components/HorizontalList.tsx"
 <FlatList
-  data={items}
+  data={products}
   horizontal
   showsHorizontalScrollIndicator={false}
-  contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
+  contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+  keyExtractor={(p) => p.id}
   renderItem={({ item }) => (
-    <Card className="w-64">
-      {/* Card content */}
-    </Card>
+    <ProductCard
+      image={getProductImage(item)}
+      name={item.name}
+      category={item.category_name}
+      price={getMinPrice(item)}
+      rating={item.avg_rating}
+      onPress={() => router.push({ pathname: "/product-detail", params: { id: item.id } })}
+    />
   )}
 />
-\`\`\`
-</CodeProject>
-\`\`\`
+```
 
-### 4. Stats Row (Equal Width Cards)
+### 2-column product grid
 
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="components/StatsRow.tsx"
-<View className="px-6">
-  <View className="flex-row gap-4">
-    <Card className="flex-1">
-      <CardContent className="items-center py-4">
-        <Icon className="text-primary mb-2" size={24} />
-        <Text className="font-bold text-xl">42</Text>
-        <Text className="text-sm text-muted-foreground">Label</Text>
-      </CardContent>
-    </Card>
-    {/* More cards with flex-1 */}
-  </View>
+```tsx
+<View className="flex-row flex-wrap" style={{ gap: 12 }}>
+  {items.map((item) => (
+    <View key={item.id} style={{ width: "48.5%" }}>
+      <ProductCard width="full" {...} />
+    </View>
+  ))}
 </View>
-\`\`\`
-</CodeProject>
-\`\`\`
+```
 
-### 5. Menu/Settings List
+### Filter chip rail
 
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="components/MenuList.tsx"
-<View className="px-6 gap-2">
-  <Text className="text-lg font-semibold text-foreground mb-2">Section</Text>
+```tsx
+import { Chip } from "@/components/ui";
 
-  <TouchableOpacity>
-    <Card>
-      <CardContent className="flex-row items-center justify-between py-3">
-        <Text>Menu Item</Text>
-        <ChevronRight className="text-muted-foreground" size={20} />
-      </CardContent>
-    </Card>
-  </TouchableOpacity>
-  {/* More items */}
-</View>
-\`\`\`
-</CodeProject>
-\`\`\`
+<ScrollView horizontal contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+  <Chip label="Todos" active={!filter} onPress={() => setFilter(null)} />
+  {categories.map((c) => (
+    <Chip key={c.id} label={c.name} active={filter === c.slug} onPress={() => setFilter(c.slug)} />
+  ))}
+  <Chip label="Ofertas" tone="wine" active={dealsOnly} onPress={toggleDeals} />
+</ScrollView>
+```
 
-### 6. Profile/Centered Content
+### Hero banner
 
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="components/ProfileCard.tsx"
-<View className="px-6 mb-6">
-  <Card>
-    <CardContent className="items-center py-6">
-      <Avatar size="2xl" source={{ uri: user.avatar }} />
-      <Text className="text-xl font-bold text-foreground mt-4">{user.name}</Text>
-      <Text className="text-muted-foreground text-center mt-1">
-        {user.bio}
-      </Text>
-    </CardContent>
-  </Card>
-</View>
-\`\`\`
-</CodeProject>
-\`\`\`
+Always pair a serif headline with a gold CTA pill. The gradient (top-light →
+bottom-coal) ensures the title is always legible regardless of image content.
 
-### 7. Hero Section with Overlay Search
+```tsx
+import { HeroBanner } from "@/components/ui";
 
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="components/HeroSearch.tsx"
-<View className="px-6 mb-8">
-  <HeroImage
-    source={{ uri: imageUrl }}
-    title="Hero Title"
+<View className="px-5 mb-7">
+  <HeroBanner
+    eyebrow={t("home.hero_eyebrow")}
+    title={t("home.hero_title")}
+    subtitle={t("home.hero_subtitle")}
+    ctaLabel={t("home.hero_cta")}
+    onCtaPress={() => router.push("/deals")}
+    imageUrl={banner?.image_url}
   />
-  {/* Floating search bar */}
-  <View className="mt-[-28px] mx-4">
-    <Input
-      variant="pill"
-      placeholder="Search..."
-      icon={<Search className="text-primary" size={20} />}
-    />
+</View>
+```
+
+### Sticky bottom CTA bar
+
+Use this on detail screens. The bar is **outside** the ScrollView and absolute-positioned with a SafeAreaView for bottom inset.
+
+```tsx
+<SafeAreaView edges={["bottom"]} style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
+  <View
+    className="bg-card px-5 pt-4 pb-4 flex-row items-center gap-4 border-t border-border"
+    style={shadows.sticky}
+  >
+    <View>
+      <Text className="font-body-semibold text-[11px] uppercase tracking-widest text-muted-foreground">
+        Total
+      </Text>
+      <PriceTag amount={total} size="lg" />
+    </View>
+    <View className="flex-1">
+      <Button label={t("product.add_to_cart")} onPress={addToCart} />
+    </View>
   </View>
+</SafeAreaView>
+```
+
+### Glassmorphism floating buttons (over images)
+
+Use `expo-blur`'s `BlurView` natively, plain `backdropFilter` on web. See
+`app/product-detail.tsx` for the `GlassIconButton` reference implementation.
+
+### Status accent bar on order cards
+
+5px-wide colored stripe on the left edge of the card, color-keyed to status:
+
+```tsx
+<View className="bg-card rounded-2xl overflow-hidden flex-row" style={shadows.card}>
+  <View style={{ width: 5, backgroundColor: status.accentHex }} />
+  <View className="flex-1 p-4">{/* … */}</View>
 </View>
-\`\`\`
-</CodeProject>
-\`\`\`
-
-### 8. Loading State
-
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="components/LoadingState.tsx"
-if (loading) {
-  return (
-    <SafeAreaView className="flex-1 bg-background items-center justify-center">
-      <ActivityIndicator size="large" />
-    </SafeAreaView>
-  );
-}
-\`\`\`
-</CodeProject>
-\`\`\`
-
-### 9. Empty State
-
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="components/EmptyState.tsx"
-<View className="flex-1 items-center justify-center p-6">
-  <Icon className="text-muted-foreground mb-4" size={48} />
-  <Text className="text-xl font-bold text-foreground text-center">No Items</Text>
-  <Text className="text-muted-foreground text-center mt-2">
-    You haven't added any items yet.
-  </Text>
-  <Button className="mt-6">Add First Item</Button>
-</View>
-\`\`\`
-</CodeProject>
-\`\`\`
+```
 
 ---
 
-## Flexbox Quick Reference
+## Tab bar
 
-### Direction
+`app/(tabs)/_layout.tsx` configures the bar. Active tint is `#7A0E1F`
+(burgundy 600), inactive is `#9A8C8C`. Labels use `Inter_600SemiBold` at 11px.
 
-| Class              | Direction                                             |
-|--------------------|-------------------------------------------------------|
-| `flex-row`         | Horizontal (default in web, but RN default is column) |
-| `flex-col`         | Vertical (React Native default)                       |
-| `flex-row-reverse` | Horizontal reversed                                   |
-| `flex-col-reverse` | Vertical reversed                                     |
-
-### Alignment (Main Axis - justify)
-
-| Class             | Alignment     |
-|-------------------|---------------|
-| `justify-start`   | Start         |
-| `justify-center`  | Center        |
-| `justify-end`     | End           |
-| `justify-between` | Space between |
-| `justify-around`  | Space around  |
-| `justify-evenly`  | Space evenly  |
-
-### Alignment (Cross Axis - items)
-
-| Class            | Alignment         |
-|------------------|-------------------|
-| `items-start`    | Start             |
-| `items-center`   | Center            |
-| `items-end`      | End               |
-| `items-stretch`  | Stretch (default) |
-| `items-baseline` | Baseline          |
-
-### Flex Sizing
-
-| Class         | Effect               |
-|---------------|----------------------|
-| `flex-1`      | Grow to fill space   |
-| `flex-none`   | Don't grow or shrink |
-| `flex-grow`   | Allow growing        |
-| `flex-shrink` | Allow shrinking      |
-| `basis-[x%]`  | Set base size        |
-
-### Wrapping
-
-| Class         | Effect                |
-|---------------|-----------------------|
-| `flex-wrap`   | Allow wrapping        |
-| `flex-nowrap` | No wrapping (default) |
+Never add `height`, `paddingBottom`, or `paddingTop` to `tabBarStyle` —
+React Navigation handles the safe-area inset and a manual override breaks
+the layout.
 
 ---
 
-## Spacing Reference
+## Buttons
 
-### Padding & Margin Scale
+Use the `Button` primitive — don't roll your own `<TouchableOpacity>` wrappers.
 
-| Size | Value | Common Usage    |
-|------|-------|-----------------|
-| `1`  | 4px   | Tiny spacing    |
-| `2`  | 8px   | Small spacing   |
-| `3`  | 12px  | Compact spacing |
-| `4`  | 16px  | Default spacing |
-| `5`  | 20px  | Medium spacing  |
-| `6`  | 24px  | Section padding |
-| `8`  | 32px  | Large spacing   |
-| `10` | 40px  | Extra large     |
-| `12` | 48px  | Huge spacing    |
+| Variant     | When to use                                              |
+| ----------- | -------------------------------------------------------- |
+| `primary`   | Default brand CTA — burgundy fill                        |
+| `dark`      | Dark surfaces (splash, hero overlays)                    |
+| `gold`      | Premium / heritage CTAs (halal-themed)                   |
+| `outline`   | Secondary action when there's already a primary on screen |
+| `ghost`     | Tertiary text-only action                                |
 
-### Standard Screen Padding
-- **Horizontal:** `px-6` (24px)
-- **Vertical sections:** `mb-6` or `mb-8`
-- **Between items:** `gap-4` (16px)
-- **Bottom for tab bar:** `pb-32` (128px)
+Default `size` is `lg` (56px). Use `md` (48px) only inside cards or rows.
 
 ---
 
-## Responsive Considerations
+## Spacing
 
-React Native doesn't have CSS breakpoints. For responsive layouts:
+All spacing comes from Tailwind's default scale. The most-used values:
 
-### Use Dimensions API
+| Class | Pixel | Use                              |
+| ----- | ----- | -------------------------------- |
+| `gap-1.5` | 6  | tight icon + label rows          |
+| `gap-2`   | 8  | chip rows                        |
+| `gap-3`   | 12 | card content rows                |
+| `gap-4`   | 16 | between sections inside a card   |
+| `mb-4`    | 16 | between section header and rail  |
+| `mb-6`    | 24 | between sections inside a screen |
+| `mb-8`    | 32 | between major content blocks     |
+| `pb-32`   | 128| ScrollView clearance for tab bar |
 
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="utils/responsive.tsx"
-import { Dimensions } from 'react-native';
-
-const { width } = Dimensions.get('window');
-const isTablet = width >= 768;
-
-// Adjust columns based on width
-const columns = isTablet ? 3 : 2;
-const basisClass = isTablet ? 'basis-[31%]' : 'basis-[48%]';
-\`\`\`
-</CodeProject>
-\`\`\`
-
-### Use useWindowDimensions Hook
-
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="hooks/useResponsive.tsx"
-import { useWindowDimensions } from 'react-native';
-
-function MyComponent() {
-  const { width, height } = useWindowDimensions();
-  // Respond to dimension changes
-}
-\`\`\`
-</CodeProject>
-\`\`\`
+Prefer `gap-*` on the parent over individual `mb-*` on children.
 
 ---
 
-## Common Mistakes to Avoid
+## i18n
 
-### DON'T: Forget bottom padding for tab bar
-\`\`\`tsx
-// ❌ Content will be hidden behind tab bar
-<ScrollView>
-\`\`\`
+All user-visible strings go through `t()` from `useLang()`. Keys are
+dot-notation (`t("home.hero_title")`). When adding a new key:
 
-### DO: Add pb-32 for floating tab bar
-\`\`\`tsx
-// ✅ Content clears the tab bar
-<ScrollView contentContainerStyle={{ paddingBottom: 128 }}>
-\`\`\`
+1. Add it to the `es` object first (source of truth).
+2. Add the matching key to `ca` and `en` — the `const ca: typeof es = …`
+   pattern enforces this with a TypeScript error.
+3. Don't interpolate Spanish-specific things (currency formatting,
+   pluralization) — keep those at the call site.
 
-### DON'T: Use hardcoded colors
-\`\`\`tsx
-// ❌ Won't adapt to theme
-<View className="bg-white">
-<Text className="text-gray-500">
-\`\`\`
-
-### DO: Use semantic colors
-\`\`\`tsx
-// ✅ Adapts to light/dark theme
-<View className="bg-background">
-<Text className="text-muted-foreground">
-\`\`\`
-
-### DON'T: Use margin for spacing between siblings
-\`\`\`tsx
-// ❌ Margin on each item is repetitive
-<View>
-  <Card className="mb-4">
-  <Card className="mb-4">
-  <Card className="mb-4">  // Last one doesn't need margin
-\`\`\`
-
-### DO: Use gap on parent
-\`\`\`tsx
-// ✅ Gap handles spacing cleanly
-<View className="gap-4">
-  <Card>
-  <Card>
-  <Card>
-\`\`\`
+Full guide: `frontend/I18N_MANUAL.md`.
 
 ---
 
-## Screen Templates
+## Don'ts
 
-### List Screen
-
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="app/list.tsx"
-export default function ListScreen() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => { loadItems(); }, []);
-
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" />
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView className="flex-1 bg-background">
-      <FlatList
-        data={items}
-        contentContainerStyle={{ padding: 24, paddingBottom: 128, gap: 16 }}
-        ListHeaderComponent={
-          <Text className="text-2xl font-bold text-foreground mb-4">Items</Text>
-        }
-        ListEmptyComponent={
-          <View className="items-center py-12">
-            <Text className="text-muted-foreground">No items found</Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <Card>{/* Item content */}</Card>
-        )}
-      />
-    </SafeAreaView>
-  );
-}
-\`\`\`
-</CodeProject>
-\`\`\`
-
-### Detail Screen
-
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="app/detail.tsx"
-export default function DetailScreen() {
-  return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ paddingBottom: 128 }}>
-        {/* Hero/Image */}
-        <HeroImage source={{ uri: imageUrl }} height="h-72" />
-
-        {/* Content */}
-        <View className="p-6 gap-6">
-          <View>
-            <Text className="text-3xl font-bold text-foreground">{title}</Text>
-            <Text className="text-muted-foreground mt-2">{subtitle}</Text>
-          </View>
-
-          <View className="gap-4">
-            <Text className="text-xl font-bold text-foreground">Details</Text>
-            <Text>{description}</Text>
-          </View>
-        </View>
-
-        {/* Fixed bottom action */}
-        <View className="p-6">
-          <Button fullWidth>Take Action</Button>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-\`\`\`
-</CodeProject>
-\`\`\`
-
-### Form Screen
-
-\`\`\`
-<CodeProject>
-\`\`\`tsx file="app/form.tsx"
-export default function FormScreen() {
-  return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 128 }}>
-        <Text className="text-2xl font-bold text-foreground mb-6">Form Title</Text>
-
-        <View className="gap-4">
-          <View>
-            <Text className="text-sm font-medium text-foreground mb-2">Field Label</Text>
-            <Input placeholder="Enter value..." />
-          </View>
-
-          <View>
-            <Text className="text-sm font-medium text-foreground mb-2">Another Field</Text>
-            <Input placeholder="Enter value..." />
-          </View>
-
-          <Button fullWidth className="mt-4">Submit</Button>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-\`\`\`
-</CodeProject>
-\`\`\`
+- ❌ Don't introduce gray text via Tailwind defaults (`text-gray-500`). Use
+  `text-muted-foreground` or `text-foreground/70`.
+- ❌ Don't roll your own card or button — extend `components/ui/` instead.
+- ❌ Don't put the halal badge anywhere small or grey. It's gold, prominent,
+  and always glows.
+- ❌ Don't pad meat product images with white. Image is the bleed layer of
+  the card.
+- ❌ Don't reorder providers in `app/_layout.tsx`. Order is:
+  `ErrorBoundary > ThemeProvider > SafeAreaProvider > StripeProviderWrapper >
+  LanguageProvider > AuthProvider > CartProvider > NavigationGuard`.

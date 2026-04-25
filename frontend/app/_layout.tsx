@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Stack, useRouter } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import StripeProviderWrapper from "@/components/StripeProviderWrapper";
@@ -11,7 +12,10 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import "@/lib/notifications";
+import { useAppFonts } from "@/hooks/useAppFonts";
 import "@/global.css";
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function NavigationGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -44,6 +48,14 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  const fontsLoaded = useAppFonts();
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
   return (
     <ErrorBoundary>
       <ThemeProvider>
