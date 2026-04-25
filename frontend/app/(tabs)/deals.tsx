@@ -1,15 +1,25 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  ImageBackground,
+  ActivityIndicator,
+  RefreshControl,
+  Pressable,
+  StatusBar,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Clock, Tag, Plus } from "lucide-react-native";
+import { Clock, Tag, ArrowRight } from "lucide-react-native";
 import { api } from "@/lib/api";
-import { useCart } from "@/contexts/CartContext";
+import { useLang } from "@/contexts/LanguageContext";
 import type { Promotion } from "@/lib/types";
+import { SectionHeader } from "@/components/ui";
+import { brand, shadows } from "@/theme";
 
 export default function DealsScreen() {
-  const router = useRouter();
-  const { addItem } = useCart();
+  const { t } = useLang();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -20,7 +30,9 @@ export default function DealsScreen() {
     setIsLoading(false);
   }, []);
 
-  useEffect(() => { fetchDeals(); }, [fetchDeals]);
+  useEffect(() => {
+    fetchDeals();
+  }, [fetchDeals]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -30,7 +42,7 @@ export default function DealsScreen() {
 
   const getRemainingTime = (endDate: string) => {
     const diff = new Date(endDate).getTime() - Date.now();
-    if (diff <= 0) return "Expirado";
+    if (diff <= 0) return "—";
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     if (days > 0) return `${days}d ${hours}h`;
@@ -41,70 +53,133 @@ export default function DealsScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#ea580c" />
+        <ActivityIndicator size="large" color={brand.burgundy[600]} />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
-      <View className="px-6 py-4 border-b border-border">
-        <Text className="text-2xl font-bold text-foreground">Ofertas</Text>
+      <StatusBar barStyle="dark-content" />
+
+      <View className="px-5 pt-2 pb-4">
+        <Text className="font-body-semibold text-[11px] uppercase tracking-widest text-muted-foreground mb-1">
+          Azafarán
+        </Text>
+        <Text className="font-display text-[30px] leading-9 text-foreground">
+          {t("tabs.deals")}
+        </Text>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 128 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 128 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ea580c" />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={brand.burgundy[600]} />
+        }
       >
         {promotions.length === 0 ? (
-          <View className="items-center justify-center py-20">
-            <Tag size={48} className="text-muted-foreground mb-4" />
-            <Text className="text-lg font-semibold text-foreground mb-1">Sin ofertas activas</Text>
-            <Text className="text-muted-foreground text-center">Vuelve pronto para nuevas promociones</Text>
+          <View className="items-center justify-center py-24">
+            <View className="w-16 h-16 rounded-full bg-primary-tint items-center justify-center mb-4">
+              <Tag size={26} color={brand.burgundy[600]} />
+            </View>
+            <Text className="font-display text-[20px] text-foreground mb-1">
+              Sin ofertas activas
+            </Text>
+            <Text className="font-body text-muted-foreground text-center">
+              Vuelve pronto para nuevas promociones
+            </Text>
           </View>
         ) : (
-          <View className="flex-row flex-wrap">
-            {promotions.map((promo) => (
-              <View key={promo.id} className="w-full p-2">
-                <View className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border">
-                  {promo.image_url && (
-                    <View className="relative">
-                      <Image source={{ uri: promo.image_url }} className="w-full h-32" resizeMode="cover" />
-                      {promo.discount_pct && (
-                        <View className="absolute top-2 left-2 bg-destructive px-2 py-1 rounded-md">
-                          <Text className="text-white text-xs font-bold">-{promo.discount_pct}%</Text>
-                        </View>
-                      )}
-                    </View>
+          <>
+            <SectionHeader
+              title="Ofertas activas"
+              eyebrow="Por tiempo limitado"
+              accent="gold"
+              className="mb-4"
+            />
+            <View className="gap-4">
+              {promotions.map((promo) => (
+                <PromoCard
+                  key={promo.id}
+                  promo={promo}
+                  remaining={getRemainingTime(
+                    (promo as { ends_at?: string; end_date?: string }).ends_at ??
+                      promo.end_date ??
+                      "",
                   )}
-                  <View className="p-3">
-                    <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={2}>
-                      {promo.title}
-                    </Text>
-                    {promo.subtitle && (
-                      <Text className="text-muted-foreground text-xs mb-2" numberOfLines={2}>
-                        {promo.subtitle}
-                      </Text>
-                    )}
-                    <View className="flex-row items-center">
-                      <Clock size={12} className="text-muted-foreground mr-1" />
-                      <Text className="text-muted-foreground text-xs px-2">
-                        {getRemainingTime(promo.ends_at)}
-                      </Text>
-                    </View>
-                    {promo.min_order_amount && (
-                      <Text className="text-xs text-muted-foreground mt-1">
-                        Pedido mín. €{Number(promo.min_order_amount).toFixed(0)}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
+                />
+              ))}
+            </View>
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function PromoCard({
+  promo,
+  remaining,
+}: {
+  promo: Promotion & { subtitle?: string };
+  remaining: string;
+}) {
+  const description = promo.description || promo.subtitle;
+  return (
+    <Pressable style={shadows.cardLift} className="rounded-3xl overflow-hidden bg-coal">
+      <ImageBackground
+        source={{ uri: promo.image_url || undefined }}
+        style={{ height: 200 }}
+        imageStyle={{ backgroundColor: "#1A0F0F" }}
+      >
+        <LinearGradient
+          colors={["rgba(26,15,15,0.05)", "rgba(26,15,15,0.4)", "rgba(26,15,15,0.92)"]}
+          locations={[0, 0.5, 1]}
+          style={{ flex: 1, padding: 20, justifyContent: "space-between" }}
+        >
+          <View className="flex-row items-start justify-between">
+            {promo.discount_pct ? (
+              <View className="bg-gold px-3 py-1.5 rounded-full" style={shadows.goldGlow}>
+                <Text className="font-body-bold text-coal text-xs tracking-wider">
+                  −{promo.discount_pct}%
+                </Text>
+              </View>
+            ) : (
+              <View />
+            )}
+            <View className="flex-row items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5">
+              <Clock size={12} color="#C9A961" strokeWidth={2.4} />
+              <Text className="font-body-semibold text-[11px] text-gold">{remaining}</Text>
+            </View>
+          </View>
+
+          <View>
+            <Text className="font-display text-white text-[22px] leading-7 mb-1.5" numberOfLines={2}>
+              {promo.title}
+            </Text>
+            {description && (
+              <Text className="font-body text-white/75 text-sm mb-3" numberOfLines={2}>
+                {description}
+              </Text>
+            )}
+
+            <View className="flex-row items-center justify-between">
+              {promo.min_order_amount ? (
+                <Text className="font-body text-white/65 text-xs">
+                  Mínimo €{Number(promo.min_order_amount).toFixed(0)}
+                </Text>
+              ) : (
+                <View />
+              )}
+              <View className="flex-row items-center gap-1">
+                <Text className="font-body-semibold text-gold text-sm">Ver detalle</Text>
+                <ArrowRight size={14} color="#C9A961" strokeWidth={2.4} />
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+      </ImageBackground>
+    </Pressable>
   );
 }

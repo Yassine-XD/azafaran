@@ -5,28 +5,13 @@ import {
   ScrollView,
   FlatList,
   Image,
-  TouchableOpacity,
+  Pressable,
   ActivityIndicator,
   RefreshControl,
-  ImageBackground,
-  StyleSheet,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  ChevronRight,
-  MapPin,
-  ShoppingCart,
-  Search,
-  Beef,
-  Drumstick,
-  Bird,
-  Rabbit,
-  Sandwich,
-  Flame,
-  BookOpen,
-  Star,
-} from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { MapPin, ShoppingCart, Search, ChevronRight, BookOpen } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
@@ -34,15 +19,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LanguageContext";
 import type { Category, Product, Banner } from "@/lib/types";
 import { getProductImage, getMinPrice } from "@/lib/types";
-
-const CATEGORY_ICONS: Record<string, any> = {
-  ternera: Beef,
-  cordero: Drumstick,
-  pollo: Bird,
-  conejo: Rabbit,
-  elaborados: Sandwich,
-  "bbq-packs": Flame,
-};
+import {
+  HeroBanner,
+  SectionHeader,
+  ProductCard,
+  Card,
+  HalalBadge,
+} from "@/components/ui";
+import { brand, shadows } from "@/theme";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -66,6 +50,8 @@ export default function HomeScreen() {
     if (featRes.success && featRes.data) setFeatured(featRes.data);
     if (bannerRes.success && bannerRes.data) setBanners(bannerRes.data as Banner[]);
     setIsLoading(false);
+    // `lang` triggers a refetch so localized API fields (category names, etc.) update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
   useEffect(() => {
@@ -78,333 +64,257 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [fetchData]);
 
-  const handleBannerPress = (banner: Banner) => {
-    router.push({ pathname: "/article", params: { id: banner.id } });
-  };
+  const openProduct = (id: string) =>
+    router.push({ pathname: "/product-detail", params: { id } });
 
-  const renderBanner = ({ item }: { item: Banner }) => (
-    <TouchableOpacity
-      className="mr-4 rounded-2xl overflow-hidden shadow-lg"
-      onPress={() => handleBannerPress(item)}
-      activeOpacity={0.7}
-    >
-      <ImageBackground
-        source={{ uri: item.image_url }}
-        style={{
-          height: 180,
-          borderRadius: 16,
-          padding: 20,
-          justifyContent: "space-between",
-          backgroundColor: "rgba(0,0,0,1)",
-        }}
-      >
-        <LinearGradient
-          colors={["rgba(0,0,0,0.7)", "transparent"]}
-          style={{ ...StyleSheet.absoluteFillObject }}
-        />
-        <View style={{ width: "90%" }}>
-          <Text className="text-white text-2xl font-bold">{item.title}</Text>
-          {item.subtitle && (
-            <Text className="text-white/80 text-sm mt-1">{item.subtitle}</Text>
-          )}
-        </View>
-      </ImageBackground>
-    </TouchableOpacity>
-  );
+  const openShop = (slug?: string, name?: string) =>
+    router.push({ pathname: "/shop", params: { category: slug ?? "", categoryName: name ?? "" } });
 
-  const renderProduct = ({ item }: { item: Product }) => (
-    <TouchableOpacity
-      onPress={() =>
-        router.push({ pathname: "/product-detail", params: { id: item.id } })
-      }
-      className="w-44 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
-    >
-      <View className="relative">
-        <Image
-          source={{ uri: getProductImage(item) }}
-          className="w-full h-32"
-          resizeMode="cover"
-        />
-        {item.is_featured && (
-          <View className="absolute top-2 left-2 bg-primary px-2 py-1 rounded-md">
-            <Text className="text-primary-foreground text-xs font-bold">
-              DESTACADO
-            </Text>
-          </View>
-        )}
-        <TouchableOpacity className="absolute bottom-2 right-2 bg-background rounded-full p-2 shadow-md">
-          <ShoppingCart size={18} className="text-foreground" />
-        </TouchableOpacity>
-      </View>
-      <View className="p-3">
-        <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>
-          {item.name}
-        </Text>
-        <View className="flex-row items-center mb-2">
-          {item.avg_rating ? (
-            <>
-              <Star size={12} className="text-yellow-500 mr-1" fill="#eab308" />
-              <Text className="text-xs text-muted-foreground">
-                {Number(item.avg_rating).toFixed(1)}
-              </Text>
-            </>
-          ) : (
-            <Text className="text-xs text-muted-foreground">{t("home.new")}</Text>
-          )}
-        </View>
-        <View className="flex-row items-center justify-between">
-          <Text className="text-primary font-bold">
-            €{getMinPrice(item).toFixed(2)}
-          </Text>
-          {item.category_name && (
-            <Text className="text-xs text-muted-foreground">
-              {item.category_name}
-            </Text>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+  const heroImage = banners[0]?.image_url;
+  const promoBanner = banners[1];
 
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#ea580c" />
+        <ActivityIndicator size="large" color={brand.burgundy[600]} />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
-      {/* Header */}
-      <View className="px-6 py-4">
-        <View className="flex-row items-center justify-between mb-4">
-          <View>
-            <View className="flex-row items-center">
-              <MapPin size={16} className="text-primary mr-1" />
-              <Text className="text-sm text-muted-foreground">{t("home.deliver_to")}</Text>
+      <StatusBar barStyle="dark-content" />
+
+      {/* Sticky-ish top block: address + cart + search */}
+      <View className="px-5 pt-2 pb-3 bg-background">
+        <View className="flex-row items-center justify-between mb-3">
+          <Pressable onPress={() => router.push("/addresses")} className="flex-row items-center gap-3 flex-1">
+            <View className="w-10 h-10 rounded-full bg-primary-tint items-center justify-center">
+              <MapPin size={18} color={brand.burgundy[600]} strokeWidth={2.4} />
             </View>
-            <Text className="text-lg font-bold text-foreground">
-              {user ? `${user.first_name}, Barcelona` : "Barcelona"}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push("/cart")} className="relative">
-            <ShoppingCart size={24} className="text-foreground" />
+            <View className="flex-1">
+              <Text className="font-body-medium text-[11px] uppercase tracking-widest text-muted-foreground">
+                {t("home.deliver_to")}
+              </Text>
+              <Text
+                className="font-display-semibold text-[17px] text-foreground"
+                numberOfLines={1}
+              >
+                {user ? `${user.first_name}, Barcelona` : "Barcelona"}
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/cart")}
+            className="w-11 h-11 rounded-full bg-card items-center justify-center relative"
+            style={shadows.card}
+          >
+            <ShoppingCart size={20} color={brand.coal[900]} strokeWidth={2.2} />
             {itemCount > 0 && (
-              <View className="absolute -top-1 -right-1 bg-primary w-5 h-5 rounded-full items-center justify-center">
-                <Text className="text-primary-foreground text-[10px] font-bold">
+              <View
+                className="absolute -top-1 -right-1 min-w-[20px] h-5 rounded-full bg-primary items-center justify-center px-1"
+                style={shadows.button}
+              >
+                <Text className="text-primary-foreground text-[10px] font-body-bold">
                   {itemCount}
                 </Text>
               </View>
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
-        {/* Search Bar */}
-        <TouchableOpacity onPress={() => router.push("/search")} className="flex-row items-center bg-input rounded-xl px-4 py-3">
-          <Search size={20} className="text-muted-foreground mr-3" />
-          <Text className="text-muted-foreground">{t("home.search_placeholder")}</Text>
-        </TouchableOpacity>
+        {/* Elevated pill search */}
+        <Pressable
+          onPress={() => router.push("/search")}
+          className="flex-row items-center gap-3 h-12 px-4 rounded-full bg-card"
+          style={shadows.card}
+        >
+          <Search size={18} color={brand.textSecondary} strokeWidth={2.2} />
+          <Text className="font-body text-[14px] text-muted-foreground">
+            {t("home.search_placeholder")}
+          </Text>
+        </Pressable>
       </View>
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 128 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ea580c" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={brand.burgundy[600]}
+          />
         }
       >
-        {/* Banner Carousel */}
-        {banners.length > 0 && (
-          <View className="mb-6">
+        {/* Hero */}
+        <View className="px-5 mb-7">
+          <HeroBanner
+            eyebrow={t("home.hero_eyebrow")}
+            title={t("home.hero_title")}
+            subtitle={t("home.hero_subtitle")}
+            ctaLabel={t("home.hero_cta")}
+            onCtaPress={() => router.push("/deals")}
+            imageUrl={heroImage}
+          />
+        </View>
+
+        {/* Category chips rail */}
+        {categories.length > 0 && (
+          <View className="mb-7">
             <FlatList
-              data={banners}
-              renderItem={renderBanner}
-              keyExtractor={(item) => item.id}
+              data={categories}
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 24 }}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+              keyExtractor={(c) => c.id}
+              renderItem={({ item }) => (
+                <CategoryChip
+                  name={item.name}
+                  imageUrl={item.image_url}
+                  onPress={() => openShop(item.slug, item.name)}
+                />
+              )}
             />
           </View>
         )}
 
-        {/* Featured Products */}
+        {/* Featured */}
         {featured.length > 0 && (
-          <View className="mb-6">
-            <View className="px-6 flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-foreground">{t("home.featured")}</Text>
+          <View className="mb-8">
+            <View className="px-5 mb-4">
+              <SectionHeader
+                eyebrow={t("home.halal_badge")}
+                title={t("home.featured")}
+                accent="gold"
+                actionLabel={t("home.see_all")}
+                onActionPress={() => openShop()}
+              />
             </View>
             <FlatList
               data={featured}
-              renderItem={renderProduct}
-              keyExtractor={(item) => item.id}
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 24 }}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+              keyExtractor={(p) => p.id}
+              renderItem={({ item }) => (
+                <ProductCard
+                  image={getProductImage(item)}
+                  name={item.name}
+                  category={item.category_name}
+                  price={getMinPrice(item)}
+                  rating={item.avg_rating ?? null}
+                  isPack={item.unit_type === "pack"}
+                  onPress={() => openProduct(item.id)}
+                />
+              )}
             />
           </View>
         )}
 
-        {/* Products by Category */}
+        {/* Category rows */}
         {categories.slice(0, 3).map((cat) => (
           <CategoryProductsSection
             key={cat.id}
             category={cat}
-            router={router}
+            onOpenProduct={openProduct}
+            onSeeAll={() => openShop(cat.slug, cat.name)}
             seeAllLabel={t("home.see_all")}
           />
         ))}
 
-        {/* Packs Section */}
-        <PacksSection
-          router={router}
-          category={packsCategory}
-          title={t("home.packs")}
-          seeAllLabel={t("home.see_all")}
+        {/* Mid-scroll promo */}
+        {promoBanner && (
+          <View className="px-5 mb-8">
+            <Pressable
+              onPress={() => router.push({ pathname: "/article", params: { id: promoBanner.id } })}
+            >
+              <HeroBanner
+                eyebrow={promoBanner.subtitle}
+                title={promoBanner.title}
+                imageUrl={promoBanner.image_url}
+                height={220}
+              />
+            </Pressable>
+          </View>
+        )}
+
+        {/* Packs */}
+        {packsCategory && (
+          <PacksSection
+            onOpenProduct={openProduct}
+            onSeeAll={() => openShop(packsCategory.slug, packsCategory.name)}
+            category={packsCategory}
+            title={t("home.packs")}
+            seeAllLabel={t("home.see_all")}
+          />
+        )}
+
+        {/* Recipes */}
+        <RecipesSection
+          banners={banners.filter((b) => b.link_type === "recipe")}
+          title={t("home.recipes")}
+          onPress={(b) => router.push({ pathname: "/article", params: { id: b.id } })}
         />
 
-        {/* Recipes Section */}
-        <RecipesSection
-          banners={banners}
-          onPress={handleBannerPress}
-          title={t("home.recipes")}
-        />
+        {/* Trust footer */}
+        <View className="px-5 mt-2">
+          <Card className="p-5 flex-row items-center gap-4">
+            <HalalBadge label={t("home.halal_badge")} />
+            <Text className="flex-1 font-body text-[13px] leading-5 text-muted-foreground">
+              {t("home.hero_subtitle")}
+            </Text>
+            <ChevronRight size={18} color={brand.textSecondary} />
+          </Card>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function PacksSection({
-  router,
-  category,
-  title,
-  seeAllLabel,
-}: {
-  router: any;
-  category?: Category;
-  title: string;
-  seeAllLabel: string;
-}) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const { lang } = useLang();
-
-  useEffect(() => {
-    if (!category) return;
-    (async () => {
-      const res = await api.get<Product[]>(`/categories/${category.slug}/products?limit=6`, false);
-      if (res.success && res.data) setProducts(res.data);
-    })();
-  }, [category, lang]);
-
-  if (!category || products.length === 0) return null;
-
-  return (
-    <View className="mb-6">
-      <View className="px-6 flex-row items-center justify-between mb-4">
-        <View className="flex-row items-center gap-2">
-          <Flame size={22} color="#ea580c" />
-          <Text className="text-xl font-bold text-foreground">{title}</Text>
-        </View>
-        <TouchableOpacity
-          onPress={() =>
-            router.push({ pathname: "/shop", params: { category: "bbq-packs", categoryName: title } })
-          }
-          className="flex-row items-center"
-        >
-          <Text className="text-sm text-primary font-medium">{seeAllLabel}</Text>
-          <ChevronRight size={16} className="text-primary" />
-        </TouchableOpacity>
-      </View>
-      <FlatList
-        data={products}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => router.push({ pathname: "/product-detail", params: { id: item.id } })}
-            className="w-96 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
-          >
-            <Image source={{ uri: item.images[0] }} className="w-full h-32" resizeMode="cover" />
-            <View className="p-3">
-              <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text className="text-primary font-bold">€{getMinPrice(item)}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-        keyExtractor={(item) => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 24 }}
-      />
-    </View>
-  );
-}
-
-function RecipesSection({
-  banners,
+function CategoryChip({
+  name,
+  imageUrl,
   onPress,
-  title,
 }: {
-  banners: Banner[];
-  onPress: (b: Banner) => void;
-  title: string;
+  name: string;
+  imageUrl?: string;
+  onPress?: () => void;
 }) {
-  const recipes = banners.filter((b) => b.link_type === "recipe");
-  if (recipes.length === 0) return null;
-
   return (
-    <View className="mb-6">
-      <View className="px-6 flex-row items-center justify-between mb-4">
-        <View className="flex-row items-center gap-2">
-          <BookOpen size={22} color="#ea580c" />
-          <Text className="text-xl font-bold text-foreground">{title}</Text>
-        </View>
-      </View>
-      <FlatList
-        data={recipes}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => onPress(item)}
-            className="w-64 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
-          >
-            {item.image_url ? (
-              <Image source={{ uri: item.image_url }} className="w-full h-36" resizeMode="cover" />
-            ) : (
-              <LinearGradient
-                colors={["#ea580c", "#c2410c"]}
-                style={{ height: 144, justifyContent: "center", alignItems: "center" }}
-              >
-                <BookOpen size={40} color="#fff" />
-              </LinearGradient>
-            )}
-            <View className="p-3">
-              <Text className="text-foreground font-semibold text-sm" numberOfLines={2}>
-                {item.title}
-              </Text>
-              {item.subtitle && (
-                <Text className="text-muted-foreground text-xs mt-1" numberOfLines={1}>
-                  {item.subtitle}
-                </Text>
-              )}
-            </View>
-          </TouchableOpacity>
+    <Pressable onPress={onPress} className="items-center" style={{ width: 76 }}>
+      <View
+        className="w-16 h-16 rounded-2xl bg-card items-center justify-center mb-2 overflow-hidden"
+        style={shadows.card}
+      >
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
+        ) : (
+          <Text className="font-display-semibold text-2xl text-primary">
+            {name.charAt(0).toUpperCase()}
+          </Text>
         )}
-        keyExtractor={(item) => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 24 }}
-      />
-    </View>
+      </View>
+      <Text
+        className="font-body-semibold text-[11px] text-foreground text-center"
+        numberOfLines={1}
+      >
+        {name}
+      </Text>
+    </Pressable>
   );
 }
 
 function CategoryProductsSection({
   category,
-  router,
+  onOpenProduct,
+  onSeeAll,
   seeAllLabel,
 }: {
   category: Category;
-  router: any;
+  onOpenProduct: (id: string) => void;
+  onSeeAll: () => void;
   seeAllLabel: string;
 }) {
   const [products, setProducts] = useState<Product[]>([]);
@@ -423,49 +333,151 @@ function CategoryProductsSection({
   if (products.length === 0) return null;
 
   return (
-    <View className="mb-6">
-      <View className="px-6 flex-row items-center justify-between mb-4">
-        <Text className="text-xl font-bold text-foreground">{category.name}</Text>
-        <TouchableOpacity
-          onPress={() =>
-            router.push({
-              pathname: "/shop",
-              params: { category: category.slug, categoryName: category.name },
-            })
-          }
-          className="flex-row items-center"
-        >
-          <Text className="text-sm text-primary font-medium">{seeAllLabel}</Text>
-          <ChevronRight size={16} className="text-primary" />
-        </TouchableOpacity>
+    <View className="mb-8">
+      <View className="px-5 mb-4">
+        <SectionHeader
+          title={category.name}
+          actionLabel={seeAllLabel}
+          onActionPress={onSeeAll}
+        />
       </View>
       <FlatList
         data={products}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() =>
-              router.push({ pathname: "/product-detail", params: { id: item.id } })
-            }
-            className="w-44 mr-4 bg-card rounded-2xl overflow-hidden shadow-sm border border-border"
-          >
-            <Image
-              source={{ uri: getProductImage(item) }}
-              className="w-full h-32"
-              resizeMode="cover"
-            />
-            <View className="p-3">
-              <Text className="text-foreground font-semibold text-sm mb-1" numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text className="text-primary font-bold">€{getMinPrice(item)}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-        keyExtractor={(item) => item.id}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 24 }}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+        keyExtractor={(p) => p.id}
+        renderItem={({ item }) => (
+          <ProductCard
+            image={getProductImage(item)}
+            name={item.name}
+            category={item.category_name}
+            price={getMinPrice(item)}
+            rating={item.avg_rating ?? null}
+            onPress={() => onOpenProduct(item.id)}
+          />
+        )}
       />
     </View>
   );
 }
+
+function PacksSection({
+  onOpenProduct,
+  onSeeAll,
+  category,
+  title,
+  seeAllLabel,
+}: {
+  onOpenProduct: (id: string) => void;
+  onSeeAll: () => void;
+  category: Category;
+  title: string;
+  seeAllLabel: string;
+}) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const { lang } = useLang();
+
+  useEffect(() => {
+    (async () => {
+      const res = await api.get<Product[]>(`/categories/${category.slug}/products?limit=6`, false);
+      if (res.success && res.data) setProducts(res.data);
+    })();
+  }, [category.slug, lang]);
+
+  if (products.length === 0) return null;
+
+  return (
+    <View className="mb-8">
+      <View className="px-5 mb-4">
+        <SectionHeader
+          title={title}
+          accent="gold"
+          actionLabel={seeAllLabel}
+          onActionPress={onSeeAll}
+        />
+      </View>
+      <FlatList
+        data={products}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+        keyExtractor={(p) => p.id}
+        renderItem={({ item }) => (
+          <ProductCard
+            width={260}
+            image={getProductImage(item)}
+            name={item.name}
+            category={item.category_name}
+            price={getMinPrice(item)}
+            isPack
+            onPress={() => onOpenProduct(item.id)}
+          />
+        )}
+      />
+    </View>
+  );
+}
+
+function RecipesSection({
+  banners,
+  onPress,
+  title,
+}: {
+  banners: Banner[];
+  onPress: (b: Banner) => void;
+  title: string;
+}) {
+  if (banners.length === 0) return null;
+
+  return (
+    <View className="mb-8">
+      <View className="px-5 mb-4">
+        <SectionHeader title={title} eyebrow="Inspiración" />
+      </View>
+      <FlatList
+        data={banners}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+        keyExtractor={(b) => b.id}
+        renderItem={({ item }) => (
+          <Card
+            onPress={() => onPress(item)}
+            className="rounded-2xl overflow-hidden"
+            style={{ width: 260 }}
+          >
+            <View className="h-36 w-full bg-coal items-center justify-center">
+              {item.image_url ? (
+                <Image
+                  source={{ uri: item.image_url }}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              ) : (
+                <BookOpen size={36} color={brand.gold[400]} />
+              )}
+            </View>
+            <View className="p-4">
+              <Text
+                className="font-display-semibold text-[15px] leading-5 text-foreground"
+                numberOfLines={2}
+              >
+                {item.title}
+              </Text>
+              {item.subtitle && (
+                <Text
+                  className="font-body text-xs text-muted-foreground mt-1"
+                  numberOfLines={1}
+                >
+                  {item.subtitle}
+                </Text>
+              )}
+            </View>
+          </Card>
+        )}
+      />
+    </View>
+  );
+}
+

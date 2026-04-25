@@ -17,11 +17,17 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#fffbf7",
-          borderTopColor: "#f5ebe6",
+          backgroundColor: "#FFFFFF",
+          borderTopColor: "#EADBD1",
+          borderTopWidth: 1,
         },
-        tabBarActiveTintColor: "#660710",
-        tabBarInactiveTintColor: "#78716c",
+        tabBarActiveTintColor: "#7A0E1F",
+        tabBarInactiveTintColor: "#9A8C8C",
+        tabBarLabelStyle: {
+          fontFamily: "Inter_600SemiBold",
+          fontSize: 11,
+          letterSpacing: 0.2,
+        },
       }}
     >
       <Tabs.Screen
@@ -29,7 +35,11 @@ export default function TabsLayout() {
         options={{
           title: t("tabs.home"),
           tabBarIcon: ({ focused }) => (
-            <Home className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
+            <Home
+              className={focused ? "text-primary" : "text-muted-foreground"}
+              size={22}
+              strokeWidth={focused ? 2.4 : 2}
+            />
           ),
         }}
       />
@@ -38,7 +48,11 @@ export default function TabsLayout() {
         options={{
           title: t("tabs.categories"),
           tabBarIcon: ({ focused }) => (
-            <Grid className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
+            <Grid
+              className={focused ? "text-primary" : "text-muted-foreground"}
+              size={22}
+              strokeWidth={focused ? 2.4 : 2}
+            />
           ),
         }}
       />
@@ -47,7 +61,11 @@ export default function TabsLayout() {
         options={{
           title: t("tabs.deals"),
           tabBarIcon: ({ focused }) => (
-            <Tag className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
+            <Tag
+              className={focused ? "text-primary" : "text-muted-foreground"}
+              size={22}
+              strokeWidth={focused ? 2.4 : 2}
+            />
           ),
         }}
       />
@@ -56,7 +74,11 @@ export default function TabsLayout() {
         options={{
           title: t("tabs.orders"),
           tabBarIcon: ({ focused }) => (
-            <ShoppingBag className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
+            <ShoppingBag
+              className={focused ? "text-primary" : "text-muted-foreground"}
+              size={22}
+              strokeWidth={focused ? 2.4 : 2}
+            />
           ),
         }}
       />
@@ -65,7 +87,11 @@ export default function TabsLayout() {
         options={{
           title: t("tabs.profile"),
           tabBarIcon: ({ focused }) => (
-            <User className={focused ? "text-primary" : "text-muted-foreground"} size={24} />
+            <User
+              className={focused ? "text-primary" : "text-muted-foreground"}
+              size={22}
+              strokeWidth={focused ? 2.4 : 2}
+            />
           ),
         }}
       />
