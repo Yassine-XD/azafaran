@@ -21,6 +21,8 @@ This creates `deploy/.env` with your database password, JWT secrets, and Stripe 
 
 ## Step 2: Copy project to VPS
 
+> **Important:** `deploy/landing/` and `deploy/admin/` must exist as populated directories before `docker compose up`, otherwise nginx will return **403** for `/` and the admin SPA will not load. Run `bash deploy/preflight.sh` to verify.
+
 First build the static front-ends locally:
 
 ```bash
@@ -99,6 +101,9 @@ ufw --force enable
 
 ```bash
 cd /opt/azafaran/deploy
+
+# Verify the static dirs are populated (avoids 403 from empty bind-mounts)
+bash preflight.sh
 
 # Build the API image
 docker compose -f docker-compose.prod.yml --env-file .env build

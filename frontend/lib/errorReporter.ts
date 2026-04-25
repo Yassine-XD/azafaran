@@ -20,8 +20,8 @@ export async function reportError(error: {
       body: JSON.stringify({
         message: error.message.slice(0, 2000),
         stack: error.stack?.slice(0, 5000),
-        url: error.url,
-        component: error.component,
+        url: error.url?.slice(0, 500),
+        component: error.component?.slice(0, 5000),
       }),
     });
   } catch {

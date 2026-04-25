@@ -35,11 +35,19 @@ read -r STRIPE_SK
 echo "[?] Stripe Webhook Secret (whsec_..., Enter to skip):"
 read -r STRIPE_WH
 
-echo "[?] Domain name (e.g. api.azafaran.es, Enter to skip):"
+echo "[?] Public site domain (e.g. azafaran.es — apex and www are both auto-allowed by CORS, Enter to skip):"
 read -r DOMAIN
 
+CORS_ORIGINS=""
 if [ -n "$DOMAIN" ]; then
     CLIENT_URL="https://${DOMAIN}"
+    if [ "${DOMAIN#www.}" != "$DOMAIN" ]; then
+        APEX="${DOMAIN#www.}"
+        CORS_ORIGINS="https://${DOMAIN},https://${APEX}"
+    else
+        CORS_ORIGINS="https://${DOMAIN},https://www.${DOMAIN}"
+    fi
+    echo "[+] CORS_ORIGINS=${CORS_ORIGINS}"
 else
     CLIENT_URL="http://YOUR_VPS_IP"
 fi
@@ -72,6 +80,7 @@ DB_NAME=azafaran
 JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
 JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 CLIENT_URL=${CLIENT_URL}
+CORS_ORIGINS=${CORS_ORIGINS:-}
 STRIPE_SECRET_KEY=${STRIPE_SK:-}
 STRIPE_WEBHOOK_SECRET=${STRIPE_WH:-}
 DOMAIN=${DOMAIN:-}
