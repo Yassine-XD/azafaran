@@ -1,5 +1,9 @@
 import { pool } from "../config/database";
-import { notificationRepository } from "../repositories/notification.repository";
+import { adminRepository } from "../repositories/admin.repository";
+import {
+  notificationService,
+  NotificationPayload,
+} from "../services/notification.service";
 import { emailService } from "../services/email.service";
 import { logger } from "../utils/logger";
 
@@ -8,7 +12,6 @@ import { logger } from "../utils/logger";
  */
 export async function processScheduledCampaigns() {
   try {
-    // Find campaigns that are due
     const { rows: campaigns } = await pool.query(
       `SELECT * FROM notification_campaigns
        WHERE status = 'draft'
@@ -23,11 +26,9 @@ export async function processScheduledCampaigns() {
 
     for (const campaign of campaigns) {
       try {
-        // Determine target users
         let userIds: string[] = [];
 
         if (campaign.target === "all") {
-          // Include users with push tokens OR email notifications enabled
           const { rows } = await pool.query(
             `SELECT DISTINCT u.id AS user_id
              FROM users u
@@ -45,61 +46,54 @@ export async function processScheduledCampaigns() {
           userIds = campaign.target_user_ids;
         }
 
-        // Send notification to each user
-        let totalSent = 0;
+        // Build the canonical payload. campaign.payload (JSONB) is the
+        // structured destination; fall back to a generic "campaign" type.
+        const stored = (campaign.payload || {}) as Partial<NotificationPayload>;
+        const payload: NotificationPayload = {
+          v: 1,
+          type: stored.type || "campaign",
+          ...stored,
+          campaignId: campaign.id,
+        };
+
+        const result = await notificationService.sendCustomNotification({
+          userIds,
+          title: campaign.title,
+          body: campaign.body,
+          payload,
+          campaignId: campaign.id,
+          imageUrl: campaign.image_url,
+          eventType: "campaign",
+        });
+
+        // Fire-and-forget campaign emails (does not block push).
         for (const userId of userIds) {
-          try {
-            await notificationRepository.createLog({
-              userId,
-              campaignId: campaign.id,
-              eventType: "campaign",
+          emailService
+            .sendCampaignEmail(userId, {
               title: campaign.title,
               body: campaign.body,
-              notifData: {
-                campaignId: campaign.id,
-                deepLink: campaign.deep_link,
-              },
-            });
-            // TODO: actual Expo push when SDK is installed
-
-            // Send campaign email
-            emailService
-              .sendCampaignEmail(userId, {
-                title: campaign.title,
-                body: campaign.body,
-                image_url: campaign.image_url,
-                deep_link: campaign.deep_link,
-              })
-              .catch((err) =>
-                logger.error(
-                  `Campaign ${campaign.id}: email failed for user ${userId}: ${err.message}`,
-                ),
-              );
-
-            totalSent++;
-          } catch (err) {
-            logger.error(
-              `Campaign ${campaign.id}: failed to notify user ${userId}`,
+              image_url: campaign.image_url,
+              deep_link: campaign.deep_link,
+            })
+            .catch((err) =>
+              logger.error(
+                `Campaign ${campaign.id}: email failed for user ${userId}: ${err.message}`,
+              ),
             );
-          }
         }
 
-        // Update campaign status
-        await pool.query(
-          `UPDATE notification_campaigns
-           SET status = 'sent', sent_at = NOW(), total_sent = $1
-           WHERE id = $2`,
-          [totalSent, campaign.id],
+        await adminRepository.updateCampaignStatus(
+          campaign.id,
+          "sent",
+          result.sent + result.logged,
         );
-
         logger.info(
-          `Campaign ${campaign.id} sent to ${totalSent} users`,
+          `Campaign ${campaign.id}: pushed=${result.sent} failed=${result.failed} logged-only=${result.logged}`,
         );
       } catch (err) {
-        await pool.query(
-          "UPDATE notification_campaigns SET status = 'failed' WHERE id = $1",
-          [campaign.id],
-        );
+        await adminRepository
+          .updateCampaignStatus(campaign.id, "failed")
+          .catch(() => {});
         logger.error(`Campaign ${campaign.id} failed:`, err);
       }
     }

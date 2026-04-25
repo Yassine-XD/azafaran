@@ -1,9 +1,14 @@
+import { pool } from "../config/database";
 import { adminRepository } from "../repositories/admin.repository";
 import { orderRepository } from "../repositories/order.repository";
 import { productRepository } from "../repositories/product.repository";
 import { notificationService } from "./notification.service";
 import { emailService } from "./email.service";
 import { logger } from "../utils/logger";
+import {
+  AdminSendNotificationInput,
+  ALLOWED_NOTIFICATION_SCREENS,
+} from "../validators/notification.schema";
 
 type AuditCtx = { ipAddress?: string; userAgent?: string };
 
@@ -612,18 +617,49 @@ export const adminService = {
     };
   },
 
-  async createCampaign(data: any, adminId: string, ctx?: AuditCtx) {
+  async createCampaign(
+    data: AdminSendNotificationInput,
+    adminId: string,
+    ctx?: AuditCtx,
+  ) {
+    // Validate destination targets exist before persisting / sending.
+    const payload = data.payload;
+    if (payload.type === "product") {
+      const product = await productRepository.findById(payload.productId);
+      if (!product) {
+        throw appError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
+      }
+    } else if (payload.type === "coupon") {
+      const { rows } = await pool.query(
+        "SELECT id, is_active FROM promo_codes WHERE code = $1 LIMIT 1",
+        [payload.promoCode],
+      );
+      if (rows.length === 0 || !rows[0].is_active) {
+        throw appError("Código promocional inválido", 400, "INVALID_PROMO_CODE");
+      }
+    } else if (payload.type === "screen") {
+      if (!ALLOWED_NOTIFICATION_SCREENS.includes(payload.screen as any)) {
+        throw appError("Pantalla destino no permitida", 400, "INVALID_SCREEN");
+      }
+    }
+
+    // If scheduled in the future, persist as draft and let the scheduler fire it.
+    const scheduledAt = data.scheduled_at;
+    const isFutureScheduled =
+      scheduledAt && new Date(scheduledAt).getTime() > Date.now();
+
     const campaign = await adminRepository.createCampaign({
       title: data.title,
       body: data.body,
       type: data.type,
       target: data.target,
-      targetUserIds: data.target_user_ids || data.targetUserIds,
-      deepLink: data.deep_link || data.deepLink,
-      imageUrl: data.image_url || data.imageUrl,
-      scheduledAt: data.scheduled_at || data.scheduledAt,
+      targetUserIds: data.target_user_ids,
+      imageUrl: data.image_url,
+      scheduledAt: scheduledAt,
+      payload: { v: 1, ...payload },
       createdBy: adminId,
     });
+
     await adminRepository.createAuditLog({
       adminId,
       action: "create",
@@ -632,6 +668,50 @@ export const adminService = {
       after: campaign,
       ...ctx,
     });
+
+    if (!isFutureScheduled) {
+      // Fire immediately. Resolve recipient list with the same logic the
+      // scheduler uses, then send + mark as sent.
+      try {
+        let userIds: string[] = [];
+        if (data.target === "all") {
+          const { rows } = await pool.query(
+            `SELECT DISTINCT u.id AS user_id
+               FROM users u
+               LEFT JOIN push_tokens pt ON pt.user_id = u.id AND pt.is_active = true
+               LEFT JOIN notification_preferences np ON np.user_id = u.id
+              WHERE u.is_active = true
+                AND (pt.id IS NOT NULL OR COALESCE(np.email_notifications, true) = true)
+                AND COALESCE(np.promotions, false) = true`,
+          );
+          userIds = rows.map((r) => r.user_id);
+        } else if (data.target === "user" && data.target_user_ids) {
+          userIds = data.target_user_ids;
+        }
+
+        const result = await notificationService.sendCustomNotification({
+          userIds,
+          title: data.title,
+          body: data.body,
+          payload: { v: 1, ...payload, campaignId: campaign.id },
+          campaignId: campaign.id,
+          imageUrl: data.image_url,
+          eventType: "campaign",
+        });
+        await adminRepository.updateCampaignStatus(
+          campaign.id,
+          "sent",
+          result.sent + result.logged,
+        );
+      } catch (err) {
+        await adminRepository
+          .updateCampaignStatus(campaign.id, "failed")
+          .catch(() => {});
+        logger.error(`Immediate send for campaign ${campaign.id} failed:`, err);
+        throw appError("Error al enviar notificación push", 500, "EXPO_PUSH_FAILED");
+      }
+    }
+
     return campaign;
   },
 

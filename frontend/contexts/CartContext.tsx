@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import { useAuth } from "./AuthContext";
+import { pendingNotificationAction } from "@/lib/pendingNotificationAction";
 import type { CartItem } from "@/lib/types";
 
 const GUEST_CART_KEY = "guest_cart";
@@ -271,6 +273,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearPromo = useCallback(() => {
     setAppliedPromo(null);
   }, []);
+
+  // Drain a pending "coupon" notification action: navigate to /cart and
+  // auto-apply silently. Runs whenever auth flips to authenticated.
+  const router = useRouter();
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const action = pendingNotificationAction.peek();
+    if (!action || action.type !== "coupon") return;
+    pendingNotificationAction.consume();
+    router.push("/cart");
+    applyPromo(action.promoCode).catch(() => {});
+  }, [isAuthenticated, applyPromo, router]);
 
   return (
     <CartContext.Provider value={{ ...state, fetchCart, addItem, updateItem, removeItem, clearCart, applyPromo, appliedPromo, clearPromo }}>

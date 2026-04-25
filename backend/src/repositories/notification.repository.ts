@@ -27,6 +27,13 @@ export const notificationRepository = {
     );
   },
 
+  async deactivateByToken(token: string) {
+    await pool.query(
+      "UPDATE push_tokens SET is_active = false WHERE token = $1",
+      [token],
+    );
+  },
+
   async deleteAllPushTokens(userId: string) {
     await pool.query(
       "UPDATE push_tokens SET is_active = false WHERE user_id = $1",
@@ -185,5 +192,31 @@ export const notificationRepository = {
        WHERE id = $3`,
       [status, errorMessage || null, logId],
     );
+  },
+
+  async updateReceiptId(logId: string, receiptId: string) {
+    await pool.query(
+      "UPDATE notification_log SET expo_receipt_id = $1 WHERE id = $2",
+      [receiptId, logId],
+    );
+  },
+
+  async findPendingReceipts(limit: number = 100) {
+    const { rows } = await pool.query(
+      `SELECT nl.id, nl.expo_receipt_id, nl.push_token_id, pt.token AS push_token
+         FROM notification_log nl
+         LEFT JOIN push_tokens pt ON pt.id = nl.push_token_id
+        WHERE nl.status = 'sent'
+          AND nl.expo_receipt_id IS NOT NULL
+          AND nl.sent_at > NOW() - INTERVAL '24 hours'
+        LIMIT $1`,
+      [limit],
+    );
+    return rows as Array<{
+      id: string;
+      expo_receipt_id: string;
+      push_token_id: string | null;
+      push_token: string | null;
+    }>;
   },
 };

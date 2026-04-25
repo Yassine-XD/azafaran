@@ -1,37 +1,45 @@
-import { pool } from "../config/database";
+import { ExpoPushReceiptId } from "expo-server-sdk";
 import { notificationRepository } from "../repositories/notification.repository";
+import { expoPush } from "../services/expoPush.service";
 import { logger } from "../utils/logger";
 
 /**
  * Periodic job: Check Expo push notification delivery receipts.
- * Verifies that sent notifications were actually delivered.
+ * Verifies that sent notifications were actually delivered, marks failures,
+ * and deactivates tokens that Expo reports as DeviceNotRegistered.
  */
 export async function checkPushReceipts() {
   try {
-    // Find notifications with expo_receipt_id that are still in 'sent' status
-    const { rows: pendingReceipts } = await pool.query(
-      `SELECT id, expo_receipt_id
-       FROM notification_log
-       WHERE status = 'sent'
-         AND expo_receipt_id IS NOT NULL
-         AND sent_at > NOW() - INTERVAL '24 hours'
-       LIMIT 100`,
-    );
+    const pending = await notificationRepository.findPendingReceipts(100);
+    if (pending.length === 0) return;
 
-    if (pendingReceipts.length === 0) return;
+    logger.info(`Receipt checker: ${pending.length} receipts to verify`);
 
-    logger.info(
-      `Receipt checker: ${pendingReceipts.length} receipts to verify`,
-    );
+    const ids = pending
+      .map((p) => p.expo_receipt_id)
+      .filter((id): id is string => Boolean(id)) as ExpoPushReceiptId[];
 
-    // TODO: When expo-server-sdk is installed, use:
-    // const receiptIds = pendingReceipts.map(r => r.expo_receipt_id);
-    // const receipts = await expo.getPushNotificationReceiptsAsync(receiptIds);
-    // For each receipt, update status to 'delivered' or 'failed'
+    const receipts = await expoPush.getReceipts(ids);
 
-    for (const receipt of pendingReceipts) {
-      // Placeholder: mark as delivered for now
-      await notificationRepository.updateLogStatus(receipt.id, "delivered");
+    for (const row of pending) {
+      const receipt = receipts[row.expo_receipt_id];
+      if (!receipt) continue; // Expo doesn't have it yet — try again next run.
+
+      if (receipt.status === "ok") {
+        await notificationRepository.updateLogStatus(row.id, "delivered");
+        continue;
+      }
+
+      const detailsErr = (receipt.details as { error?: string } | undefined)
+        ?.error;
+      await notificationRepository.updateLogStatus(
+        row.id,
+        "failed",
+        receipt.message || detailsErr || "Expo receipt error",
+      );
+      if (detailsErr === "DeviceNotRegistered" && row.push_token) {
+        await notificationRepository.deactivateByToken(row.push_token);
+      }
     }
   } catch (err) {
     logger.error("Receipt checker job failed:", err);

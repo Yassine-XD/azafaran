@@ -4,10 +4,13 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import StripeProviderWrapper from "@/components/StripeProviderWrapper";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { NotificationsBridge } from "@/components/NotificationsBridge";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import "@/lib/notifications";
 import "@/global.css";
 
 function NavigationGuard({ children }: { children: React.ReactNode }) {
@@ -48,9 +51,11 @@ export default function RootLayout() {
           <StripeProviderWrapper>
             <LanguageProvider>
               <AuthProvider>
-                <CartProvider>
-                  <NavigationGuard>
-                    <Stack screenOptions={{ headerShown: false }}>
+                <NotificationProvider>
+                  <CartProvider>
+                    <NavigationGuard>
+                      <NotificationsBridge />
+                      <Stack screenOptions={{ headerShown: false }}>
                       <Stack.Screen name="(tabs)" />
                       <Stack.Screen name="onboarding" />
                       <Stack.Screen name="language-select" />
@@ -71,9 +76,10 @@ export default function RootLayout() {
                       <Stack.Screen name="support" options={{ presentation: "card" }} />
                       <Stack.Screen name="support-new" options={{ presentation: "card" }} />
                       <Stack.Screen name="support-ticket" options={{ presentation: "card" }} />
-                    </Stack>
-                  </NavigationGuard>
-                </CartProvider>
+                      </Stack>
+                    </NavigationGuard>
+                  </CartProvider>
+                </NotificationProvider>
               </AuthProvider>
             </LanguageProvider>
           </StripeProviderWrapper>

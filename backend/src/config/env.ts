@@ -24,6 +24,9 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),
   ADMIN_EMAIL: z.string().optional(),
+
+  // Expo push notifications (optional access token strengthens auth)
+  EXPO_ACCESS_TOKEN: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

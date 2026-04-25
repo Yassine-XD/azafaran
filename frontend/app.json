@@ -47,6 +47,14 @@
           "merchantIdentifier": "merchant.com.azafaran",
           "enableGooglePay": true
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#fffbf7",
+          "defaultChannel": "default"
+        }
       ]
     ],
     "experiments": {
