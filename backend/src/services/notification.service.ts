@@ -1,12 +1,22 @@
+import { ExpoPushMessage } from "expo-server-sdk";
 import { notificationRepository } from "../repositories/notification.repository";
+import { expoPush } from "./expoPush.service";
 import { logger } from "../utils/logger";
 
-function appError(message: string, statusCode: number, code: string) {
-  const err: any = new Error(message);
-  err.statusCode = statusCode;
-  err.code = code;
-  return err;
-}
+// ─── Deep-link payload contract ─────────────────────
+// This is the canonical shape sent in Expo `data` and persisted in
+// notification_log.data. The frontend has a single switch on `type`.
+export type NotificationPayload = {
+  v: 1;
+  type: "screen" | "product" | "coupon" | "order" | "campaign" | "none";
+  screen?: string;
+  productId?: string;
+  promoCode?: string;
+  orderId?: string;
+  logId?: string;
+  campaignId?: string;
+  imageUrl?: string;
+};
 
 // Event type → user-facing notification text (Spanish)
 const ORDER_EVENT_MESSAGES: Record<string, { title: string; body: string }> = {
@@ -31,6 +41,104 @@ const ORDER_EVENT_MESSAGES: Record<string, { title: string; body: string }> = {
     body: "Tu pedido ha sido cancelado.",
   },
 };
+
+type DispatchTarget = {
+  userId: string;
+  pushTokenId: string;
+  token: string;
+};
+
+type DispatchInput = {
+  eventType: string;
+  title: string;
+  body: string;
+  payload: NotificationPayload;
+  campaignId?: string;
+  orderId?: string;
+  imageUrl?: string;
+};
+
+// Build messages, persist log rows, send via Expo, persist receipt IDs / failures.
+async function dispatchToTokens(
+  targets: DispatchTarget[],
+  input: DispatchInput,
+) {
+  if (targets.length === 0) return { sent: 0, failed: 0 };
+
+  // Create one log row per (user, token), so we can stamp logId into the
+  // device payload (used by the device to POST /notifications/opened/:logId).
+  const logs = await Promise.all(
+    targets.map((t) =>
+      notificationRepository.createLog({
+        userId: t.userId,
+        pushTokenId: t.pushTokenId,
+        campaignId: input.campaignId,
+        orderId: input.orderId,
+        eventType: input.eventType,
+        title: input.title,
+        body: input.body,
+        notifData: input.payload,
+      }),
+    ),
+  );
+
+  const messages: ExpoPushMessage[] = [];
+  const validIndexes: number[] = [];
+
+  targets.forEach((t, i) => {
+    if (!expoPush.isExpoPushToken(t.token)) {
+      // Not an Expo token — mark log failed and deactivate.
+      notificationRepository
+        .updateLogStatus(logs[i].id, "failed", "Invalid Expo push token")
+        .catch(() => {});
+      notificationRepository.deactivateByToken(t.token).catch(() => {});
+      return;
+    }
+    const data: NotificationPayload = { ...input.payload, logId: logs[i].id };
+    const msg: ExpoPushMessage = {
+      to: t.token,
+      sound: "default",
+      title: input.title,
+      body: input.body,
+      data,
+    };
+    if (input.imageUrl) {
+      // Rich notification (Android big-picture / iOS attachment).
+      (msg as any).richContent = { image: input.imageUrl };
+    }
+    messages.push(msg);
+    validIndexes.push(i);
+  });
+
+  if (messages.length === 0) return { sent: 0, failed: targets.length };
+
+  const tickets = await expoPush.sendChunked(messages);
+
+  let sent = 0;
+  let failed = 0;
+  for (let i = 0; i < tickets.length; i++) {
+    const ticket = tickets[i];
+    const log = logs[validIndexes[i]];
+    if (ticket.status === "ok") {
+      await notificationRepository.updateReceiptId(log.id, ticket.id);
+      sent++;
+    } else {
+      const detailsErr = (ticket.details as { error?: string } | undefined)?.error;
+      await notificationRepository.updateLogStatus(
+        log.id,
+        "failed",
+        ticket.message || detailsErr || "Expo error",
+      );
+      if (detailsErr === "DeviceNotRegistered") {
+        await notificationRepository.deactivateByToken(
+          targets[validIndexes[i]].token,
+        );
+      }
+      failed++;
+    }
+  }
+  return { sent, failed };
+}
 
 export const notificationService = {
   // ─── Push Token Management ──────────────────────────
@@ -79,56 +187,85 @@ export const notificationService = {
       return;
     }
 
-    // Get user's push tokens
     const tokens = await notificationRepository.findActivePushTokens(userId);
+    const payload: NotificationPayload = { v: 1, type: "order", orderId };
 
     if (tokens.length === 0) {
-      logger.debug(`No active push tokens for user ${userId}`);
-      // Still log the notification
+      // Still log so the in-app notification history shows the event.
       await notificationRepository.createLog({
         userId,
         orderId,
         eventType,
         title: template.title,
         body: template.body,
-        notifData: { orderId, eventType },
+        notifData: payload,
       });
+      logger.debug(`No active push tokens for user ${userId}`);
       return;
     }
 
-    // Send to each token via Expo
-    for (const pushToken of tokens) {
-      const logEntry = await notificationRepository.createLog({
-        userId,
-        pushTokenId: pushToken.id,
-        orderId,
-        eventType,
-        title: template.title,
-        body: template.body,
-        notifData: { orderId, eventType },
-      });
+    const targets = tokens.map((t) => ({
+      userId,
+      pushTokenId: t.id,
+      token: t.token,
+    }));
 
-      try {
-        // TODO: Replace with actual Expo push when expo-server-sdk is installed
-        // const ticket = await expo.sendPushNotificationsAsync([{
-        //   to: pushToken.token,
-        //   title: template.title,
-        //   body: template.body,
-        //   data: { orderId, eventType },
-        // }]);
-        // await notificationRepository.updateLogStatus(logEntry.id, 'delivered');
-        logger.info(
-          `Push notification queued for user ${userId}: ${eventType}`,
-        );
-      } catch (err) {
-        logger.error(`Failed to send push to ${pushToken.token}:`, err);
-        await notificationRepository.updateLogStatus(
-          logEntry.id,
-          "failed",
-          (err as Error).message,
-        );
+    const result = await dispatchToTokens(targets, {
+      eventType,
+      title: template.title,
+      body: template.body,
+      payload,
+      orderId,
+    });
+    logger.info(
+      `Order push ${eventType} for user ${userId}: sent=${result.sent} failed=${result.failed}`,
+    );
+  },
+
+  // Send a custom (admin one-off or campaign) notification to a list of users.
+  async sendCustomNotification(opts: {
+    userIds: string[];
+    title: string;
+    body: string;
+    payload: NotificationPayload;
+    campaignId?: string;
+    imageUrl?: string;
+    eventType?: string;
+  }) {
+    if (opts.userIds.length === 0) return { sent: 0, failed: 0, logged: 0 };
+
+    // Build a flat list of (user, token) targets in a single query.
+    const allTargets: DispatchTarget[] = [];
+    let loggedNoToken = 0;
+    for (const userId of opts.userIds) {
+      const tokens = await notificationRepository.findActivePushTokens(userId);
+      if (tokens.length === 0) {
+        // Log without push so the user has an in-app history.
+        await notificationRepository.createLog({
+          userId,
+          campaignId: opts.campaignId,
+          eventType: opts.eventType || opts.payload.type,
+          title: opts.title,
+          body: opts.body,
+          notifData: opts.payload,
+        });
+        loggedNoToken++;
+        continue;
+      }
+      for (const t of tokens) {
+        allTargets.push({ userId, pushTokenId: t.id, token: t.token });
       }
     }
+
+    const result = await dispatchToTokens(allTargets, {
+      eventType: opts.eventType || opts.payload.type,
+      title: opts.title,
+      body: opts.body,
+      payload: opts.payload,
+      campaignId: opts.campaignId,
+      imageUrl: opts.imageUrl,
+    });
+    return { ...result, logged: loggedNoToken };
   },
 
   // ─── Notification History ───────────────────────────

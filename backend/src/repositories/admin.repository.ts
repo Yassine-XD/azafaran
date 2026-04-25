@@ -951,13 +951,14 @@ export const adminRepository = {
     promotionId?: string;
     imageUrl?: string;
     scheduledAt?: string;
+    payload?: object;
     createdBy: string;
   }) {
     const { rows } = await pool.query(
       `INSERT INTO notification_campaigns
          (id, title, body, type, target, target_user_ids,
-          deep_link, promotion_id, image_url, scheduled_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          deep_link, promotion_id, image_url, scheduled_at, payload, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         uuidv4(),
@@ -970,10 +971,33 @@ export const adminRepository = {
         data.promotionId || null,
         data.imageUrl || null,
         data.scheduledAt || null,
+        JSON.stringify(data.payload || {}),
         data.createdBy,
       ],
     );
     return rows[0];
+  },
+
+  async updateCampaignStatus(
+    id: string,
+    status: string,
+    totalSent?: number,
+  ) {
+    const fields: string[] = ["status = $1"];
+    const values: any[] = [status];
+    let idx = 2;
+    if (status === "sent") {
+      fields.push("sent_at = NOW()");
+    }
+    if (totalSent !== undefined) {
+      fields.push(`total_sent = $${idx++}`);
+      values.push(totalSent);
+    }
+    values.push(id);
+    await pool.query(
+      `UPDATE notification_campaigns SET ${fields.join(", ")} WHERE id = $${idx}`,
+      values,
+    );
   },
 
   // ─── Categories ────────────────────────────────────

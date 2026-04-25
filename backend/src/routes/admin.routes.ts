@@ -5,6 +5,7 @@ import { authenticate } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { validateBody } from "../middleware/validate";
 import { updateOrderStatusSchema } from "../validators/order.schema";
+import { adminSendNotificationSchema } from "../validators/notification.schema";
 import { uploadTicketFiles } from "../middleware/uploadTicketFiles";
 import { sseClients } from "../utils/sseClients";
 import { error } from "../utils/apiResponse";
@@ -109,7 +110,11 @@ router.post("/delivery-slots", adminController.createDeliverySlots);
 
 // Notifications / Campaigns
 router.get("/notifications/campaigns", adminController.getCampaigns);
-router.post("/notifications/send", adminController.createCampaign);
+router.post(
+  "/notifications/send",
+  validateBody(adminSendNotificationSchema),
+  adminController.createCampaign,
+);
 
 // Audit Log
 router.get("/audit-log", adminController.getAuditLog);
