@@ -215,7 +215,7 @@ export default function ShopScreen() {
             </Text>
           </View>
         ) : (
-          <View className="flex-row flex-wrap" style={{ gap: 12 }}>
+          <View className="flex-row flex-wrap" style={{ gap: 10 }}>
             {filteredProducts.map((item) => {
               const isDeal = item.variants?.some(
                 (v) => v.compare_at_price && v.compare_at_price > Number(v.price),

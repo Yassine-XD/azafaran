@@ -110,7 +110,7 @@ export function ProductCard({
           </Text>
         )}
         <Text
-          className="font-display-semibold text-[15px] leading-5 text-foreground mb-2"
+          className="font-display-semibold text-[15px] leading-5 text-foreground mb-2 h-10"
           numberOfLines={2}
         >
           {name}

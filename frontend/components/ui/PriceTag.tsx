@@ -64,7 +64,7 @@ export function PriceTag({
       </View>
       {compareAt != null && Number(compareAt) > Number(amount) && (
         <Text className={`font-body-medium ${s.cmp} text-muted-foreground line-through`}>
-          {format(compareAt, currency)}
+          {format(compareAt, currency)}per unidad
         </Text>
       )}
     </View>
