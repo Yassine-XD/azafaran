@@ -14,6 +14,7 @@
     },
     "android": {
       "package": "es.azafaran.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#fffbf7",
         "foregroundImage": "./assets/images/icon.png",
