@@ -1,0 +1,555 @@
+#!/usr/bin/env bash
+# azafaran — repo-wide ops helper.
+#
+# Use this script as the single entry point for every repeated task across the
+# Azafaran monorepo (backend, admin, landing, frontend, deploy stack).
+#
+#   ./azafaran                       → categorized cheat sheet
+#   ./azafaran help <category>       → only that category's commands
+#   ./azafaran <subcommand> [args]   → run a subcommand
+#
+# Conventions:
+#   - Subcommands are namespaced: dev:* build:* ship:* prod:* db:* notif:* mobile:*
+#   - prod:* commands assume you `ssh` into the VPS first and run them inside
+#     /opt/azafaran (or wherever the repo lives there).
+#   - Destructive commands prompt unless `-y` / `--yes` is passed.
+#   - The script is `cwd`-independent: it always operates relative to the repo
+#     root computed from BASH_SOURCE.
+
+set -euo pipefail
+
+# ── Repo root resolution (works no matter where you invoke from) ────────────
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND="$ROOT/backend"
+ADMIN="$ROOT/admin"
+LANDING="$ROOT/landing"
+FRONTEND="$ROOT/frontend"
+DEPLOY="$ROOT/deploy"
+
+# ── Colors ──────────────────────────────────────────────────────────────────
+if [[ -t 1 ]]; then
+  C_INFO=$'\e[36m'; C_OK=$'\e[32m'; C_WARN=$'\e[33m'; C_ERR=$'\e[31m'
+  C_DIM=$'\e[2m'; C_BOLD=$'\e[1m'; C_RESET=$'\e[0m'
+else
+  C_INFO=''; C_OK=''; C_WARN=''; C_ERR=''; C_DIM=''; C_BOLD=''; C_RESET=''
+fi
+
+info() { printf "%s→%s %s\n" "$C_INFO" "$C_RESET" "$*"; }
+ok()   { printf "%s✓%s %s\n" "$C_OK" "$C_RESET" "$*"; }
+warn() { printf "%s!%s %s\n" "$C_WARN" "$C_RESET" "$*" >&2; }
+die()  { printf "%s✗%s %s\n" "$C_ERR" "$C_RESET" "$*" >&2; exit 1; }
+
+# Echo the command, then run it.
+run() {
+  printf "%s$%s %s\n" "$C_DIM" "$C_RESET" "$*"
+  "$@"
+}
+
+confirm() {
+  local prompt="${1:-Are you sure?}"
+  if [[ "${YES:-0}" == "1" ]]; then return 0; fi
+  read -r -p "$(printf "%s%s%s [y/N] " "$C_WARN" "$prompt" "$C_RESET")" reply
+  [[ "$reply" =~ ^[Yy]$ ]] || die "Aborted."
+}
+
+# ── Argument parsing for global flags ───────────────────────────────────────
+YES=0
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    -y|--yes) YES=1 ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
+set -- "${ARGS[@]:-}"
+
+# ── Compose helpers ─────────────────────────────────────────────────────────
+# Local Postgres container (for dev): backend/docker-compose.yml
+dev_compose() {
+  ( cd "$BACKEND" && docker compose "$@" )
+}
+
+# Production stack: deploy/docker-compose.prod.yml + deploy/.env
+prod_compose() {
+  [[ -f "$DEPLOY/docker-compose.prod.yml" ]] \
+    || die "Not a deploy host (deploy/docker-compose.prod.yml not found)."
+  [[ -f "$DEPLOY/.env" ]] \
+    || die "deploy/.env not found. Run './azafaran prod:setup-env' first, or you may not be on the VPS."
+  ( cd "$DEPLOY" && docker compose -f docker-compose.prod.yml --env-file .env "$@" )
+}
+
+# ── DEV ─────────────────────────────────────────────────────────────────────
+
+# dev:db:up — start local Postgres on :5432 (postgres/password)
+dev:db:up()      { dev_compose up -d; }
+
+# dev:db:down — stop the local Postgres container (volume preserved)
+dev:db:down()    { dev_compose down; }
+
+# dev:db:psql — open psql against the local DB
+dev:db:psql()    { dev_compose exec postgres psql -U postgres -d azafaran; }
+
+# dev:db:reset — DESTRUCTIVE: drop volume, recreate, migrate, seed
+dev:db:reset() {
+  confirm "This will WIPE the local database and reseed it. Continue?"
+  dev_compose down -v
+  dev_compose up -d
+  info "Waiting for Postgres to accept connections..."
+  for _ in {1..30}; do
+    if dev_compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1; then break; fi
+    sleep 1
+  done
+  dev:migrate:up
+  dev:seed
+  ok "Local DB reset, migrated, seeded."
+}
+
+# dev:migrate:up — apply pending migrations against the local DB
+dev:migrate:up()     { ( cd "$BACKEND" && npm run migrate:up ); }
+
+# dev:migrate:down — roll back the most recent migration
+dev:migrate:down()   { ( cd "$BACKEND" && npm run migrate:down ); }
+
+# dev:migrate:status — show which migrations are applied
+dev:migrate:status() { ( cd "$BACKEND" && npm run migrate:status ); }
+
+# dev:seed — load backend/seed.sql into the local DB
+dev:seed() {
+  if [[ -z "${DATABASE_URL:-}" ]]; then
+    DATABASE_URL="postgresql://postgres:password@localhost:5432/azafaran"
+    info "DATABASE_URL not set, using local default."
+  fi
+  run psql "$DATABASE_URL" -f "$BACKEND/seed.sql"
+}
+
+# dev:start:backend — ts-node-dev hot reload (port 3000)
+dev:start:backend()  { ( cd "$BACKEND" && npm run dev ); }
+
+# dev:start:admin — Vite dev server (port 5173)
+dev:start:admin()    { ( cd "$ADMIN" && npm run dev ); }
+
+# dev:start:landing — Vite dev server for landing
+dev:start:landing()  { ( cd "$LANDING" && npm run dev ); }
+
+# dev:start:frontend — Expo dev (npm start)
+dev:start:frontend() { ( cd "$FRONTEND" && npm start ); }
+
+# dev:test [pattern] — run backend tests, optionally filtered by name
+dev:test() {
+  if [[ $# -gt 0 ]]; then
+    ( cd "$BACKEND" && npm test -- -t "$*" )
+  else
+    ( cd "$BACKEND" && npm test )
+  fi
+}
+
+# dev:typecheck — tsc across backend, admin, landing, frontend
+dev:typecheck() {
+  info "backend"  && ( cd "$BACKEND"  && npx tsc --noEmit )
+  info "admin"    && ( cd "$ADMIN"    && npx tsc -b --noEmit )
+  info "landing"  && ( cd "$LANDING"  && npm run typecheck )
+  info "frontend" && ( cd "$FRONTEND" && npx tsc --noEmit )
+  ok "All apps type-check clean."
+}
+
+# dev:lint — run lint where available
+dev:lint() {
+  info "frontend" && ( cd "$FRONTEND" && npm run lint )
+}
+
+# ── BUILD ───────────────────────────────────────────────────────────────────
+
+# build:admin — npm ci + npm run build → admin/dist
+build:admin()   { ( cd "$ADMIN"   && npm ci && npm run build ); }
+
+# build:landing — npm ci + npm run build (SSG + post-build) → landing/dist
+build:landing() { ( cd "$LANDING" && npm ci && npm run build ); }
+
+# build:all — admin + landing
+build:all() { build:admin && build:landing; }
+
+# ── SHIP (stage builds for VPS rsync) ───────────────────────────────────────
+
+# ship:admin — copy admin/dist into deploy/admin
+ship:admin() {
+  [[ -d "$ADMIN/dist" ]] || die "admin/dist not found. Run: ./azafaran build:admin"
+  run rm -rf "$DEPLOY/admin"
+  run cp -r "$ADMIN/dist" "$DEPLOY/admin"
+  ok "Staged admin/ in deploy/."
+}
+
+# ship:landing — copy landing/dist into deploy/landing
+ship:landing() {
+  [[ -d "$LANDING/dist" ]] || die "landing/dist not found. Run: ./azafaran build:landing"
+  run rm -rf "$DEPLOY/landing"
+  run cp -r "$LANDING/dist" "$DEPLOY/landing"
+  ok "Staged landing/ in deploy/."
+}
+
+# ship:all — stage admin + landing
+ship:all() { ship:admin && ship:landing; }
+
+# ship:rsync <user@host:/path> — rsync backend/ + deploy/ to a VPS target
+ship:rsync() {
+  [[ $# -ge 1 ]] || die "Usage: ./azafaran ship:rsync user@host:/opt/azafaran"
+  local target="$1"
+  confirm "Rsync backend/ + deploy/ to ${target}?"
+  run rsync -avz --delete \
+      --exclude node_modules --exclude dist --exclude .env --exclude .env.* \
+      "$BACKEND" "$target/"
+  run rsync -avz --delete \
+      --exclude .env \
+      "$DEPLOY" "$target/"
+  ok "Rsync complete."
+}
+
+# ── PROD (run on the VPS) ───────────────────────────────────────────────────
+
+# prod:up — start the full stack
+prod:up()      { prod_compose up -d; }
+
+# prod:down — stop the full stack
+prod:down()    { confirm "Stop the production stack?"; prod_compose down; }
+
+# prod:status — docker compose ps
+prod:status()  { prod_compose ps; }
+
+# prod:logs <service> [-n N] — follow service logs (api / nginx / postgres / certbot)
+prod:logs() {
+  local svc="${1:-api}" tail="100"
+  shift || true
+  while [[ $# -gt 0 ]]; do
+    case "$1" in -n) tail="$2"; shift 2 ;; *) shift ;; esac
+  done
+  prod_compose logs -f --tail="$tail" "$svc"
+}
+
+# prod:restart <service> — restart one service
+prod:restart() {
+  [[ $# -ge 1 ]] || die "Usage: ./azafaran prod:restart <service>"
+  prod_compose restart "$1"
+}
+
+# prod:rebuild <service=api> — rebuild image + recreate container
+prod:rebuild() {
+  local svc="${1:-api}"
+  confirm "Rebuild & recreate '$svc' container?"
+  prod_compose build "$svc"
+  prod_compose up -d "$svc"
+  ok "$svc rebuilt and running."
+}
+
+# prod:reload-nginx — graceful nginx reload (after admin/landing rsync)
+prod:reload-nginx() { prod_compose exec nginx nginx -s reload; }
+
+# prod:exec <service> <cmd...> — escape hatch for one-offs
+prod:exec() {
+  [[ $# -ge 2 ]] || die "Usage: ./azafaran prod:exec <service> <cmd...>"
+  local svc="$1"; shift
+  prod_compose exec "$svc" "$@"
+}
+
+# prod:migrate:up — apply pending migrations inside the api container
+prod:migrate:up() {
+  prod_compose run --rm api npx node-pg-migrate up --migration-file-language sql
+}
+
+# prod:migrate:down — roll back the latest migration
+prod:migrate:down() {
+  confirm "Roll back the most recent migration in PRODUCTION?"
+  prod_compose run --rm api npx node-pg-migrate down --migration-file-language sql
+}
+
+# prod:migrate:status — show migration status
+prod:migrate:status() {
+  prod_compose run --rm api npx node-pg-migrate status --migration-file-language sql
+}
+
+# prod:psql — interactive psql against the prod DB
+prod:psql() { prod_compose exec postgres psql -U azafaran -d azafaran; }
+
+# prod:psql:run "<sql>" — one-shot SQL exec
+prod:psql:run() {
+  [[ $# -ge 1 ]] || die "Usage: ./azafaran prod:psql:run \"SELECT now();\""
+  prod_compose exec -T postgres psql -U azafaran -d azafaran -c "$*"
+}
+
+# prod:health — hit the API health endpoint via the local nginx
+prod:health() { run curl -fsS http://localhost/api/v1/health; echo; }
+
+# prod:setup-env — re-run the env generator (writes deploy/.env)
+prod:setup-env() { ( cd "$DEPLOY" && bash setup-env.sh ); }
+
+# ── DB (local by default; pass --prod to target the VPS DB) ────────────────
+
+# Internal: choose the right psql/pg_dump invocation.
+db_psql_cmd() {
+  if [[ "${DB_TARGET:-local}" == "prod" ]]; then
+    prod_compose exec -T postgres "$@"
+  else
+    if [[ -z "${DATABASE_URL:-}" ]]; then
+      DATABASE_URL="postgresql://postgres:password@localhost:5432/azafaran"
+    fi
+    "$@" --dbname "$DATABASE_URL"
+  fi
+}
+
+# db:dump [out.sql.gz] — pg_dump (default file: azafaran-<env>-<timestamp>.sql.gz)
+db:dump() {
+  local env="local"; [[ "${DB_TARGET:-local}" == "prod" ]] && env="prod"
+  local out="${1:-azafaran-${env}-$(date +%Y%m%d-%H%M%S).sql.gz}"
+  if [[ "$env" == "prod" ]]; then
+    prod_compose exec -T postgres pg_dump -U azafaran -d azafaran | gzip > "$out"
+  else
+    pg_dump "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}" | gzip > "$out"
+  fi
+  ok "Dumped to $out ($(du -h "$out" | cut -f1))"
+}
+
+# db:restore <in.sql.gz> — DESTRUCTIVE: replace DB contents
+db:restore() {
+  [[ $# -ge 1 ]] || die "Usage: ./azafaran db:restore <file.sql.gz>"
+  local file="$1"
+  [[ -f "$file" ]] || die "$file not found."
+  local env="local"; [[ "${DB_TARGET:-local}" == "prod" ]] && env="PROD ⚠"
+  confirm "Restore '$file' into ${env} DB? This will overwrite existing data."
+  if [[ "${DB_TARGET:-local}" == "prod" ]]; then
+    gunzip -c "$file" | prod_compose exec -T postgres psql -U azafaran -d azafaran
+  else
+    gunzip -c "$file" | psql "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}"
+  fi
+  ok "Restore complete."
+}
+
+# db:size — DB size + top tables
+db:size() {
+  local q="
+    SELECT pg_size_pretty(pg_database_size(current_database())) AS db_size;
+    SELECT relname AS table, pg_size_pretty(pg_total_relation_size(relid)) AS size
+      FROM pg_catalog.pg_statio_user_tables
+      ORDER BY pg_total_relation_size(relid) DESC LIMIT 15;
+  "
+  if [[ "${DB_TARGET:-local}" == "prod" ]]; then
+    prod_compose exec -T postgres psql -U azafaran -d azafaran -c "$q"
+  else
+    psql "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}" -c "$q"
+  fi
+}
+
+# ── NOTIF (notification debugging — works against local OR prod) ───────────
+
+# Run a SQL query against whichever DB is selected.
+notif_psql() {
+  if [[ "${DB_TARGET:-local}" == "prod" || -f "$DEPLOY/docker-compose.prod.yml" && ! -f "$BACKEND/docker-compose.yml" ]]; then
+    prod_compose exec -T postgres psql -U azafaran -d azafaran -c "$1"
+  else
+    psql "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}" -c "$1"
+  fi
+}
+
+# notif:campaigns [N=10] — last N notification_campaigns rows
+notif:campaigns() {
+  local n="${1:-10}"
+  notif_psql "
+    SELECT id, title, status, scheduled_at, sent_at, total_sent, total_opened
+      FROM notification_campaigns
+     ORDER BY created_at DESC LIMIT $n;
+  "
+}
+
+# notif:log <campaign_id> — per-user delivery rows for that campaign
+notif:log() {
+  [[ $# -ge 1 ]] || die "Usage: ./azafaran notif:log <campaign_id>"
+  notif_psql "
+    SELECT id, user_id, status, error_message,
+           expo_receipt_id, opened_at, sent_at
+      FROM notification_log
+     WHERE campaign_id = '$1'
+     ORDER BY sent_at DESC;
+  "
+}
+
+# notif:tokens [user_id] — active push tokens (optionally filtered)
+notif:tokens() {
+  if [[ $# -ge 1 ]]; then
+    notif_psql "SELECT id, user_id, platform, is_active, created_at
+                  FROM push_tokens WHERE user_id = '$1' ORDER BY created_at DESC;"
+  else
+    notif_psql "SELECT id, user_id, platform, is_active, created_at
+                  FROM push_tokens WHERE is_active = true ORDER BY created_at DESC LIMIT 50;"
+  fi
+}
+
+# notif:opt-in <user_id> — flip notification_preferences.promotions = true
+notif:opt-in() {
+  [[ $# -ge 1 ]] || die "Usage: ./azafaran notif:opt-in <user_id>"
+  confirm "Enable promotions notifications for user $1?"
+  notif_psql "
+    INSERT INTO notification_preferences (id, user_id, promotions)
+    VALUES (gen_random_uuid(), '$1', true)
+    ON CONFLICT (user_id) DO UPDATE SET promotions = true, updated_at = NOW()
+    RETURNING user_id, promotions;
+  "
+}
+
+# notif:tail-failed [hours=24] — failed log rows in the last N hours
+notif:tail-failed() {
+  local hours="${1:-24}"
+  notif_psql "
+    SELECT id, user_id, event_type, error_message, sent_at
+      FROM notification_log
+     WHERE status = 'failed'
+       AND sent_at > NOW() - INTERVAL '$hours hours'
+     ORDER BY sent_at DESC LIMIT 50;
+  "
+}
+
+# ── MOBILE (Expo / EAS) ────────────────────────────────────────────────────
+
+# mobile:start — Expo dev (Metro bundler)
+mobile:start()             { ( cd "$FRONTEND" && npm start ); }
+
+# mobile:build:dev:android — EAS dev-client APK for Android
+mobile:build:dev:android() { ( cd "$FRONTEND" && eas build --profile development --platform android ); }
+
+# mobile:build:dev:ios — EAS dev-client for iOS
+mobile:build:dev:ios()     { ( cd "$FRONTEND" && eas build --profile development --platform ios ); }
+
+# mobile:build:prod:android — EAS production build for Play Store
+mobile:build:prod:android(){ ( cd "$FRONTEND" && eas build --profile production --platform android ); }
+
+# mobile:build:prod:ios — EAS production build for App Store
+mobile:build:prod:ios()    { ( cd "$FRONTEND" && eas build --profile production --platform ios ); }
+
+# mobile:credentials — interactive EAS credentials manager (FCM / APNs)
+mobile:credentials()       { ( cd "$FRONTEND" && eas credentials ); }
+
+# ── HELP ────────────────────────────────────────────────────────────────────
+
+help_dev() {
+cat <<EOF
+${C_BOLD}dev:${C_RESET}    local development on the laptop
+  dev:db:up                 start local Postgres (backend/docker-compose.yml)
+  dev:db:down               stop local Postgres
+  dev:db:psql               open psql against the local DB
+  dev:db:reset              ⚠ wipe + recreate + migrate + seed (asks)
+  dev:migrate:up|down|status
+  dev:seed                  load backend/seed.sql
+  dev:start:{backend,admin,landing,frontend}
+  dev:test [pattern]        backend Jest, optionally filter by test name
+  dev:typecheck             tsc across all four apps
+  dev:lint                  run lint where available
+EOF
+}
+help_build() {
+cat <<EOF
+${C_BOLD}build:${C_RESET}  produce shippable artifacts on the laptop
+  build:admin               admin/dist via Vite
+  build:landing             landing/dist via vite-react-ssg + post-build
+  build:all                 admin + landing
+EOF
+}
+help_ship() {
+cat <<EOF
+${C_BOLD}ship:${C_RESET}   stage builds for VPS rsync
+  ship:admin                copy admin/dist  → deploy/admin
+  ship:landing              copy landing/dist → deploy/landing
+  ship:all                  both
+  ship:rsync user@host:/opt/azafaran
+                            rsync backend/ + deploy/ to the VPS
+EOF
+}
+help_prod() {
+cat <<EOF
+${C_BOLD}prod:${C_RESET}   run on the VPS, inside the repo (e.g. /opt/azafaran)
+  prod:up | prod:down       bring the full stack up / down
+  prod:status               docker compose ps
+  prod:logs <svc> [-n N]    follow logs (api / nginx / postgres / certbot)
+  prod:restart <svc>        restart one service
+  prod:rebuild [svc=api]    ⚠ rebuild image + recreate container
+  prod:reload-nginx         graceful nginx reload (after static rsync)
+  prod:exec <svc> <cmd...>  one-off command in a container
+  prod:migrate:up|down|status
+  prod:psql                 interactive psql
+  prod:psql:run "<sql>"     one-shot SQL
+  prod:health               curl /api/v1/health
+  prod:setup-env            re-run deploy/setup-env.sh
+EOF
+}
+help_db() {
+cat <<EOF
+${C_BOLD}db:${C_RESET}     backups & inspection — set DB_TARGET=prod for the VPS DB
+  db:dump [out.sql.gz]      pg_dump | gzip
+  db:restore <in.sql.gz>    ⚠ overwrite DB contents
+  db:size                   DB total + top 15 tables
+EOF
+}
+help_notif() {
+cat <<EOF
+${C_BOLD}notif:${C_RESET}  notification debugging — set DB_TARGET=prod for the VPS DB
+  notif:campaigns [N=10]    last N notification_campaigns rows
+  notif:log <campaign_id>   per-user delivery rows for that campaign
+  notif:tokens [user_id]    active push tokens
+  notif:opt-in <user_id>    ⚠ enable 'promotions' for testing
+  notif:tail-failed [hours] failed notification_log in the last N hours
+EOF
+}
+help_mobile() {
+cat <<EOF
+${C_BOLD}mobile:${C_RESET} Expo / EAS shortcuts
+  mobile:start              expo start (Metro)
+  mobile:build:dev:{android,ios}     EAS dev-client builds
+  mobile:build:prod:{android,ios}    EAS production builds
+  mobile:credentials        EAS credentials (FCM v1 / APNs uploads)
+EOF
+}
+
+show_help() {
+cat <<EOF
+${C_BOLD}azafaran${C_RESET} — repo-wide ops helper
+
+  Usage: ./azafaran <subcommand> [args]    [-y to skip confirms]
+         ./azafaran help <category>        only that category
+
+EOF
+  help_dev;    echo
+  help_build;  echo
+  help_ship;   echo
+  help_prod;   echo
+  help_db;     echo
+  help_notif;  echo
+  help_mobile
+}
+
+help() {
+  case "${1:-}" in
+    dev)    help_dev ;;
+    build)  help_build ;;
+    ship)   help_ship ;;
+    prod)   help_prod ;;
+    db)     help_db ;;
+    notif)  help_notif ;;
+    mobile) help_mobile ;;
+    "")     show_help ;;
+    *)      die "Unknown help category: $1 (try: dev build ship prod db notif mobile)" ;;
+  esac
+}
+
+# ── Dispatch ────────────────────────────────────────────────────────────────
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  ""|help|-h|--help) help "${1:-}" ;;
+  *)
+    # Allow only known function names to be called.
+    if declare -F "$cmd" >/dev/null; then
+      "$cmd" "$@"
+    else
+      warn "Unknown subcommand: $cmd"
+      echo
+      show_help
+      exit 1
+    fi
+    ;;
+esac
