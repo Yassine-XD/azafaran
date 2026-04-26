@@ -7,3 +7,7 @@ dist/
 .DS_Store
 admin/tsconfig.tsbuildinfo
 .expo/
+
+# Firebase / FCM credentials — project-specific; do not commit
+frontend/google-services.json
+frontend/GoogleService-Info.plist
