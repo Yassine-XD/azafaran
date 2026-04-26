@@ -78,6 +78,31 @@ prod_compose() {
   ( cd "$DEPLOY" && docker compose -f docker-compose.prod.yml --env-file .env "$@" )
 }
 
+# Read DB_USER / DB_NAME from deploy/.env (matches the compose file's defaults).
+# Echoes the value to stdout. Falls back to "azafaran" when the var is unset.
+prod_env_var() {
+  local var="$1" default="${2:-}"
+  if [[ -f "$DEPLOY/.env" ]]; then
+    local val
+    val=$(grep -E "^${var}=" "$DEPLOY/.env" | tail -n1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//')
+    if [[ -n "$val" ]]; then printf "%s" "$val"; return; fi
+  fi
+  printf "%s" "$default"
+}
+
+prod_db_user() { prod_env_var DB_USER azafaran; }
+prod_db_name() { prod_env_var DB_NAME azafaran; }
+
+# Wrapper: psql against the prod DB (interactive). Reads creds from deploy/.env.
+prod_psql_interactive() {
+  prod_compose exec postgres psql -U "$(prod_db_user)" -d "$(prod_db_name)" "$@"
+}
+
+# Wrapper: non-interactive psql against the prod DB (for piped/SQL-string use).
+prod_psql_exec() {
+  prod_compose exec -T postgres psql -U "$(prod_db_user)" -d "$(prod_db_name)" "$@"
+}
+
 # ── DEV ─────────────────────────────────────────────────────────────────────
 
 # dev:db:up — start local Postgres on :5432 (postgres/password)
@@ -266,12 +291,12 @@ prod:migrate:status() {
 }
 
 # prod:psql — interactive psql against the prod DB
-prod:psql() { prod_compose exec postgres psql -U azafaran -d azafaran; }
+prod:psql() { prod_psql_interactive; }
 
 # prod:psql:run "<sql>" — one-shot SQL exec
 prod:psql:run() {
   [[ $# -ge 1 ]] || die "Usage: ./azafaran prod:psql:run \"SELECT now();\""
-  prod_compose exec -T postgres psql -U azafaran -d azafaran -c "$*"
+  prod_psql_exec -c "$*"
 }
 
 # prod:health — hit the API health endpoint via the local nginx
@@ -280,26 +305,14 @@ prod:health() { run curl -fsS http://localhost/api/v1/health; echo; }
 # prod:setup-env — re-run the env generator (writes deploy/.env)
 prod:setup-env() { ( cd "$DEPLOY" && bash setup-env.sh ); }
 
-# ── DB (local by default; pass --prod to target the VPS DB) ────────────────
-
-# Internal: choose the right psql/pg_dump invocation.
-db_psql_cmd() {
-  if [[ "${DB_TARGET:-local}" == "prod" ]]; then
-    prod_compose exec -T postgres "$@"
-  else
-    if [[ -z "${DATABASE_URL:-}" ]]; then
-      DATABASE_URL="postgresql://postgres:password@localhost:5432/azafaran"
-    fi
-    "$@" --dbname "$DATABASE_URL"
-  fi
-}
+# ── DB (local by default; set DB_TARGET=prod to target the VPS DB) ─────────
 
 # db:dump [out.sql.gz] — pg_dump (default file: azafaran-<env>-<timestamp>.sql.gz)
 db:dump() {
   local env="local"; [[ "${DB_TARGET:-local}" == "prod" ]] && env="prod"
   local out="${1:-azafaran-${env}-$(date +%Y%m%d-%H%M%S).sql.gz}"
   if [[ "$env" == "prod" ]]; then
-    prod_compose exec -T postgres pg_dump -U azafaran -d azafaran | gzip > "$out"
+    prod_compose exec -T postgres pg_dump -U "$(prod_db_user)" -d "$(prod_db_name)" | gzip > "$out"
   else
     pg_dump "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}" | gzip > "$out"
   fi
@@ -314,7 +327,7 @@ db:restore() {
   local env="local"; [[ "${DB_TARGET:-local}" == "prod" ]] && env="PROD ⚠"
   confirm "Restore '$file' into ${env} DB? This will overwrite existing data."
   if [[ "${DB_TARGET:-local}" == "prod" ]]; then
-    gunzip -c "$file" | prod_compose exec -T postgres psql -U azafaran -d azafaran
+    gunzip -c "$file" | prod_psql_exec
   else
     gunzip -c "$file" | psql "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}"
   fi
@@ -330,7 +343,7 @@ db:size() {
       ORDER BY pg_total_relation_size(relid) DESC LIMIT 15;
   "
   if [[ "${DB_TARGET:-local}" == "prod" ]]; then
-    prod_compose exec -T postgres psql -U azafaran -d azafaran -c "$q"
+    prod_psql_exec -c "$q"
   else
     psql "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}" -c "$q"
   fi
@@ -339,9 +352,19 @@ db:size() {
 # ── NOTIF (notification debugging — works against local OR prod) ───────────
 
 # Run a SQL query against whichever DB is selected.
+# Auto-detects prod when running on the VPS (deploy/.env present and
+# backend/docker-compose.yml absent), unless DB_TARGET overrides it.
 notif_psql() {
-  if [[ "${DB_TARGET:-local}" == "prod" || -f "$DEPLOY/docker-compose.prod.yml" && ! -f "$BACKEND/docker-compose.yml" ]]; then
-    prod_compose exec -T postgres psql -U azafaran -d azafaran -c "$1"
+  local target="${DB_TARGET:-}"
+  if [[ -z "$target" ]]; then
+    if [[ -f "$DEPLOY/.env" && ! -f "$BACKEND/docker-compose.yml" ]]; then
+      target="prod"
+    else
+      target="local"
+    fi
+  fi
+  if [[ "$target" == "prod" ]]; then
+    prod_psql_exec -c "$1"
   else
     psql "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}" -c "$1"
   fi
