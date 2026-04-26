@@ -307,11 +307,11 @@ prod:setup-env() { ( cd "$DEPLOY" && bash setup-env.sh ); }
 
 # ── DB (local by default; set DB_TARGET=prod to target the VPS DB) ─────────
 
-# db:dump [out.sql.gz] — pg_dump (default file: azafaran-<env>-<timestamp>.sql.gz)
+# db:dump [out.sql.gz] — pg_dump (default file: azafaran-<target>-<timestamp>.sql.gz)
 db:dump() {
-  local env="local"; [[ "${DB_TARGET:-local}" == "prod" ]] && env="prod"
-  local out="${1:-azafaran-${env}-$(date +%Y%m%d-%H%M%S).sql.gz}"
-  if [[ "$env" == "prod" ]]; then
+  local target; target="$(db_target)"
+  local out="${1:-azafaran-${target}-$(date +%Y%m%d-%H%M%S).sql.gz}"
+  if [[ "$target" == "prod" ]]; then
     prod_compose exec -T postgres pg_dump -U "$(prod_db_user)" -d "$(prod_db_name)" | gzip > "$out"
   else
     pg_dump "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}" | gzip > "$out"
@@ -324,9 +324,10 @@ db:restore() {
   [[ $# -ge 1 ]] || die "Usage: ./azafaran db:restore <file.sql.gz>"
   local file="$1"
   [[ -f "$file" ]] || die "$file not found."
-  local env="local"; [[ "${DB_TARGET:-local}" == "prod" ]] && env="PROD ⚠"
-  confirm "Restore '$file' into ${env} DB? This will overwrite existing data."
-  if [[ "${DB_TARGET:-local}" == "prod" ]]; then
+  local target; target="$(db_target)"
+  local label="local"; [[ "$target" == "prod" ]] && label="PROD ⚠"
+  confirm "Restore '$file' into ${label} DB? This will overwrite existing data."
+  if [[ "$target" == "prod" ]]; then
     gunzip -c "$file" | prod_psql_exec
   else
     gunzip -c "$file" | psql "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}"
@@ -342,7 +343,7 @@ db:size() {
       FROM pg_catalog.pg_statio_user_tables
       ORDER BY pg_total_relation_size(relid) DESC LIMIT 15;
   "
-  if [[ "${DB_TARGET:-local}" == "prod" ]]; then
+  if [[ "$(db_target)" == "prod" ]]; then
     prod_psql_exec -c "$q"
   else
     psql "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}" -c "$q"
@@ -351,19 +352,21 @@ db:size() {
 
 # ── NOTIF (notification debugging — works against local OR prod) ───────────
 
-# Run a SQL query against whichever DB is selected.
-# Auto-detects prod when running on the VPS (deploy/.env present and
-# backend/docker-compose.yml absent), unless DB_TARGET overrides it.
-notif_psql() {
-  local target="${DB_TARGET:-}"
-  if [[ -z "$target" ]]; then
-    if [[ -f "$DEPLOY/.env" && ! -f "$BACKEND/docker-compose.yml" ]]; then
-      target="prod"
-    else
-      target="local"
-    fi
+# Resolve which DB to talk to. DB_TARGET overrides; otherwise auto-detect:
+# deploy/.env exists → we're on a deploy host (VPS), use prod. Otherwise local.
+db_target() {
+  if [[ -n "${DB_TARGET:-}" ]]; then
+    printf "%s" "$DB_TARGET"
+  elif [[ -f "$DEPLOY/.env" ]]; then
+    printf "prod"
+  else
+    printf "local"
   fi
-  if [[ "$target" == "prod" ]]; then
+}
+
+# Run a SQL query against whichever DB is selected.
+notif_psql() {
+  if [[ "$(db_target)" == "prod" ]]; then
     prod_psql_exec -c "$1"
   else
     psql "${DATABASE_URL:-postgresql://postgres:password@localhost:5432/azafaran}" -c "$1"
@@ -501,7 +504,9 @@ EOF
 }
 help_db() {
 cat <<EOF
-${C_BOLD}db:${C_RESET}     backups & inspection — set DB_TARGET=prod for the VPS DB
+${C_BOLD}db:${C_RESET}     backups & inspection
+  Auto-targets prod when deploy/.env exists, else local.
+  Override: DB_TARGET=local|prod ./azafaran db:...
   db:dump [out.sql.gz]      pg_dump | gzip
   db:restore <in.sql.gz>    ⚠ overwrite DB contents
   db:size                   DB total + top 15 tables
@@ -509,7 +514,9 @@ EOF
 }
 help_notif() {
 cat <<EOF
-${C_BOLD}notif:${C_RESET}  notification debugging — set DB_TARGET=prod for the VPS DB
+${C_BOLD}notif:${C_RESET}  notification debugging
+  Auto-targets prod when deploy/.env exists, else local.
+  Override: DB_TARGET=local|prod ./azafaran notif:...
   notif:campaigns [N=10]    last N notification_campaigns rows
   notif:log <campaign_id>   per-user delivery rows for that campaign
   notif:tokens [user_id]    active push tokens
