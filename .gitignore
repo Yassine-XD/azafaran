@@ -11,3 +11,6 @@ admin/tsconfig.tsbuildinfo
 # Firebase / FCM credentials — project-specific; do not commit
 frontend/google-services.json
 frontend/GoogleService-Info.plist
+
+# Database dumps from ./azafaran db:dump
+*.sql.gz

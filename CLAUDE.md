@@ -16,6 +16,31 @@ Azafaran is a halal-meat-delivery platform organised as a monorepo of four indep
 
 Single nginx in front routes: `/` → landing static, `/admin/` → admin static, `/api/` → backend container, `/uploads/` → backend static files.
 
+## Ops shortcuts (`./azafaran`)
+
+Repo-wide bash helper at `./azafaran` wraps every common task. Run with no args for the categorized cheat-sheet, or `./azafaran help <category>` for a single namespace.
+
+```bash
+./azafaran                              # full help
+./azafaran dev:db:up                    # local Postgres
+./azafaran dev:migrate:up               # apply migrations locally
+./azafaran dev:test                     # backend Jest
+
+./azafaran build:all                    # build admin + landing
+./azafaran ship:all                     # stage builds into deploy/
+
+# On the VPS, inside the repo dir:
+./azafaran prod:rebuild api             # redeploy the api container
+./azafaran prod:migrate:up              # apply pending migrations
+./azafaran prod:logs api -n 200         # tail api logs
+./azafaran notif:campaigns 5            # debug push delivery
+./azafaran notif:log <campaign_id>      # per-user delivery rows
+```
+
+Destructive commands (`*:reset`, `*:rebuild`, `db:restore`, `notif:opt-in`, `prod:down`) prompt for confirmation; pass `-y` to skip.
+
+The raw `npm run …` / `docker compose …` commands below still work — `./azafaran` is a thin convenience layer, not a replacement.
+
 ## Commands
 
 ### Backend (`backend/`)
