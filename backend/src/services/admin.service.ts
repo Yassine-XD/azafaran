@@ -644,9 +644,15 @@ export const adminService = {
     }
 
     // If scheduled in the future, persist as draft and let the scheduler fire it.
-    const scheduledAt = data.scheduled_at;
+    // Empty/missing scheduled_at means "fire immediately" — but the column is
+    // NOT NULL, so we stamp NOW() and let the immediate-send path below run.
+    const rawScheduledAt = data.scheduled_at;
     const isFutureScheduled =
-      scheduledAt && new Date(scheduledAt).getTime() > Date.now();
+      rawScheduledAt && new Date(rawScheduledAt).getTime() > Date.now();
+    const scheduledAt =
+      rawScheduledAt && rawScheduledAt.length > 0
+        ? rawScheduledAt
+        : new Date().toISOString();
 
     const campaign = await adminRepository.createCampaign({
       title: data.title,
