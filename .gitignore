@@ -14,3 +14,7 @@ frontend/GoogleService-Info.plist
 
 # Database dumps from ./azafaran db:dump
 *.sql.gz
+
+frontend/azafaran-01-firebase-adminsdk-fbsvc-edbeaf935e.json
+frontend/removed.bun.lock
+.gitignore
