@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Globe,
   Calendar,
+  Trash2,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
@@ -109,6 +110,32 @@ export default function ProfileScreen() {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t("profile.delete_account_title"),
+      t("profile.delete_account_message"),
+      [
+        { text: t("profile.logout_cancel"), style: "cancel" },
+        {
+          text: t("profile.delete_account_confirm"),
+          style: "destructive",
+          onPress: async () => {
+            const res = await api.delete("/users/");
+            if (!res.success) {
+              Alert.alert(
+                t("profile.delete_account_title"),
+                res.error?.message || t("profile.delete_account_error"),
+              );
+              return;
+            }
+            await logout();
+            router.replace("/login");
+          },
+        },
+      ],
+    );
   };
 
   if (!isAuthenticated || !user) {
@@ -280,6 +307,20 @@ export default function ProfileScreen() {
           <LogOut size={18} color="#B91C1C" strokeWidth={2.4} />
           <Text className="font-body-bold text-destructive text-[15px]">
             {t("profile.logout")}
+          </Text>
+        </Pressable>
+
+        {/* Delete account (Play Store policy: in-app account deletion) */}
+        <Text className="font-body-semibold text-[11px] uppercase tracking-widest text-muted-foreground mb-3 px-1 mt-2">
+          {t("profile.section_danger")}
+        </Text>
+        <Pressable
+          onPress={handleDeleteAccount}
+          className="flex-row items-center justify-center gap-3 h-14 rounded-2xl border border-destructive/40 mb-4"
+        >
+          <Trash2 size={18} color="#B91C1C" strokeWidth={2.4} />
+          <Text className="font-body-bold text-destructive text-[15px]">
+            {t("profile.delete_account")}
           </Text>
         </Pressable>
 
