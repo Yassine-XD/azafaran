@@ -103,7 +103,7 @@ Request flow: `server.ts` → `app.ts` (helmet + global rate-limit + JSON parser
 ## Frontend architecture
 
 - **expo-router** file-based routing in `frontend/app/`. `_layout.tsx` is the root shell; `(tabs)/` is the bottom-tab group (`index`, `categories`, `deals`, `orders`, `profile`). Other top-level screens (product-detail, cart, payment, support, …) are registered as `Stack.Screen` in the root layout.
-- **Provider order** (root → leaf, in `_layout.tsx`): `ErrorBoundary` › `ThemeProvider` › `SafeAreaProvider` › `StripeProviderWrapper` › `LanguageProvider` › `AuthProvider` › `CartProvider` › `NavigationGuard`. Don't reorder without checking dependencies — `CartProvider` reads from `AuthProvider`, etc.
+- **Provider order** (root → leaf, in `_layout.tsx`): `ErrorBoundary` › `ThemeProvider` › `SafeAreaProvider` › `StripeProviderWrapper` › `LanguageProvider` › `AuthProvider` › `NotificationProvider` › `CartProvider` › `NavigationGuard` (with `<NotificationsBridge />` mounted inside it). Don't reorder without checking dependencies — `CartProvider` reads from `AuthProvider`; `NotificationProvider` watches auth to register/unregister the Expo push token; the bridge needs router + cart for tap routing.
 - **NavigationGuard** inside `_layout.tsx` drives onboarding: unauthenticated users without `preferred_lang` go to `language-select`, then `onboarding`, then `login/register`; authenticated users without completed onboarding (`onboarding_done` in AsyncStorage) go to `terms-accept`.
 - **Stripe** has platform-split implementations — `StripeProviderWrapper.native.tsx` / `.web.tsx` and `useStripePay.native.ts` / `.web.ts`. Metro picks the right file by extension; never import the wrapper directly without the split suffix present.
 - **API client** is `lib/api.ts`: auto-refresh on 401, token persistence via `AsyncStorage` under `auth_tokens`, `API_HOST` comes from `EXPO_PUBLIC_API_HOST` (defaults to prod HTTPS).
@@ -114,9 +114,52 @@ Request flow: `server.ts` → `app.ts` (helmet + global rate-limit + JSON parser
 
 Standard Vite React SPA. `App.tsx` defines all routes; `ProtectedRoute` redirects unauthenticated users to `/login`. All authenticated routes render inside `<Layout />`. The build output is mounted into the nginx container at `/var/www/admin` and served under the `/admin/` prefix.
 
+The send-notification form is `src/pages/NotificationsPage.tsx`. It posts a structured `payload` to `POST /admin/notifications/send` whose shape depends on the chosen destination (none / screen / product / coupon) — see the *Push notifications* section below.
+
 ## Landing architecture
 
 Pre-renders one static `index.html` per route via `vite-react-ssg`. `src/routes.tsx` declares the same three pages (`/`, `/privacy`, `/terms`) three times — once each for ES/CA/EN via `<LangContext.Provider>`. When adding a new page, add **nine** route entries (3 paths × 3 languages) and update `src/seo/constants.ts` hreflang alternates + `public/sitemap.xml`. Translations live in `src/i18n/{es,ca,en}.ts` and must share the same shape (`typeof es`).
+
+## Push notifications
+
+End-to-end Expo push: admin sends → backend pushes via Expo → device receives even when app is closed → tap routes to a screen, product, or cart with auto-applied coupon.
+
+**Wire-format payload** (canonical contract — same shape on backend, on the wire in Expo `data`, persisted in `notification_log.data`):
+
+```jsonc
+{ "v": 1, "type": "none|screen|product|coupon|order|campaign",
+  "screen?": "deals|orders|profile|categories|index",
+  "productId?": "uuid", "promoCode?": "WELCOME10", "orderId?": "uuid",
+  "logId?": "uuid", "campaignId?": "uuid" }
+```
+
+Validated by `notificationPayloadSchema` (zod discriminated union on `type`) in `backend/src/validators/notification.schema.ts`. The legacy `notification_campaigns.deep_link` text column is kept only for admin display — never read on the device.
+
+**Backend** (key files):
+- `services/expoPush.service.ts` — singleton `Expo` SDK wrapper (chunked send, chunked receipt fetch).
+- `services/notification.service.ts` — `sendOrderNotification` and `sendCustomNotification(userIds, …, payload)`. Embeds `logId` into `data` so the device can `POST /notifications/opened/:logId`.
+- `services/admin.service.ts.createCampaign` — validates the destination (product exists / promo code is active / screen is allowed), persists the campaign with `payload` JSONB, then either fires immediately (no `scheduled_at`, or it's in the past) or leaves it `draft` for the cron. Empty `scheduled_at` is stamped with `NOW()` because the column is `NOT NULL`.
+- `jobs/campaignScheduler.job.ts` — hourly cron that picks up `status='draft' AND scheduled_at <= NOW()` rows.
+- `jobs/receiptChecker.job.ts` — every 30 min, calls `expo.getPushNotificationReceiptsAsync`, flips `sent → delivered|failed`, deactivates tokens reported as `DeviceNotRegistered`.
+- Migration `029_add-campaign-payload.sql` adds the `payload` column.
+- Optional env: `EXPO_ACCESS_TOKEN` for stronger auth on Expo's push API.
+
+**Frontend** (key files):
+- `lib/notifications.ts` — permission, `getExpoPushTokenAsync({ projectId })`, Android channel setup, register/unregister with backend. Skips silently in Expo Go.
+- `lib/notificationPayload.ts` — runtime parser mirroring the backend contract.
+- `lib/notificationRouter.ts` — pure function `routeFromPayload(payload, { router, applyPromo, isAuthenticated })`; one switch on `type`.
+- `lib/pendingNotificationAction.ts` — in-memory stash for cold-start replay (the listener may fire before `CartProvider`/auth are ready).
+- `contexts/NotificationContext.tsx` — registers the Expo token on first auth, unregisters on logout. `useRef` dedupes.
+- `contexts/CartContext.tsx` — drains pending `coupon` actions: navigates to `/cart` and silently calls `applyPromo`.
+- `components/NotificationsBridge.tsx` — handles cold-start (`getLastNotificationResponseAsync`) + warm taps (`addNotificationResponseReceivedListener`); marks `logId` opened.
+
+**Admin**: `src/pages/NotificationsPage.tsx` has a "Al pulsar la notificación" destination dropdown (none / screen / product autocomplete via `GET /admin/products?search=` / coupon code).
+
+**Recipient gating**: campaigns with `target=all` only push to users with `notification_preferences.promotions = true` (default `false` for new users). For testing, opt a user in with `./azafaran notif:opt-in <user_id>`. Order events bypass this gate.
+
+**Build / credentials**: requires an EAS dev-client — push does **not** work in Expo Go on SDK 53+. `frontend/app.json` references `./google-services.json` (gitignored, drop in locally before building). FCM v1 service account JSON is uploaded once via `eas credentials` (Android → Push Notifications: FCM V1). The legacy FCM key path is shut down by Google as of 2024-06-20 and must be removed from EAS credentials, or it sabotages the v1 path.
+
+**Debugging**: see `./azafaran notif:campaigns`, `notif:log <id>`, `notif:tokens`, `notif:tail-failed`. A row with `status='sent'` AND `expo_receipt_id IS NULL` means the user had no active push tokens (in-app history only); a real push has a populated receipt id.
 
 ## Deployment
 
