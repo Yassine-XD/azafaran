@@ -1,10 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
-  Alert,
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,7 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LanguageContext";
 import { LANGUAGES, type Lang } from "@/lib/i18n";
 import { api } from "@/lib/api";
-import { Button, Card, HalalBadge } from "@/components/ui";
+import { Button, Card, ConfirmModal, HalalBadge } from "@/components/ui";
 import { brand, shadows } from "@/theme";
 
 type MenuItem = {
@@ -40,6 +39,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, isAuthenticated, logout, refreshProfile } = useAuth();
   const { lang, setLang, t } = useLang();
+  const [logoutModal, setLogoutModal] = useState(false);
 
   const MENU_SECTIONS: { title: string; items: MenuItem[] }[] = [
     {
@@ -97,18 +97,10 @@ export default function ProfileScreen() {
     await refreshProfile();
   };
 
-  const handleLogout = () => {
-    Alert.alert(t("profile.logout_title"), t("profile.logout_message"), [
-      { text: t("profile.logout_cancel"), style: "cancel" },
-      {
-        text: t("profile.logout"),
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/login");
-        },
-      },
-    ]);
+  const handleLogoutConfirm = async () => {
+    setLogoutModal(false);
+    await logout();
+    router.replace("/login");
   };
 
   if (!isAuthenticated || !user) {
@@ -274,7 +266,7 @@ export default function ProfileScreen() {
 
         {/* Logout */}
         <Pressable
-          onPress={handleLogout}
+          onPress={() => setLogoutModal(true)}
           className="flex-row items-center justify-center gap-3 h-14 rounded-2xl bg-destructive/10 border border-destructive/20 mb-4"
         >
           <LogOut size={18} color="#B91C1C" strokeWidth={2.4} />
@@ -289,6 +281,17 @@ export default function ProfileScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      <ConfirmModal
+        visible={logoutModal}
+        tone="destructive"
+        title={t("profile.logout_title")}
+        message={t("profile.logout_message")}
+        confirmLabel={t("profile.logout")}
+        cancelLabel={t("profile.logout_cancel")}
+        onConfirm={handleLogoutConfirm}
+        onCancel={() => setLogoutModal(false)}
+      />
     </SafeAreaView>
   );
 }
