@@ -1,22 +1,45 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Pressable,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, User, Phone } from "lucide-react-native";
+import { ArrowLeft, User, Phone, Trash2 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLang } from "@/contexts/LanguageContext";
 import { api } from "@/lib/api";
+import { ConfirmModal } from "@/components/ui";
+
+type FeedbackState =
+  | { kind: "validation"; message: string }
+  | { kind: "saveError"; message: string }
+  | { kind: "saved" }
+  | { kind: "deleteConfirm" }
+  | { kind: "deleteError"; message: string }
+  | null;
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, logout } = useAuth();
+  const { t } = useLang();
   const [firstName, setFirstName] = useState(user?.first_name || "");
   const [lastName, setLastName] = useState(user?.last_name || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackState>(null);
 
   const handleSave = async () => {
     if (!firstName.trim() || !lastName.trim()) {
-      Alert.alert("Error", "Nombre y apellido son obligatorios");
+      setFeedback({ kind: "validation", message: "Nombre y apellido son obligatorios" });
       return;
     }
     setSaving(true);
@@ -28,11 +51,26 @@ export default function EditProfileScreen() {
     setSaving(false);
     if (res.success) {
       await refreshProfile();
-      Alert.alert("Guardado", "Perfil actualizado correctamente");
-      router.back();
+      setFeedback({ kind: "saved" });
     } else {
-      Alert.alert("Error", res.error?.message || "No se pudo guardar");
+      setFeedback({ kind: "saveError", message: res.error?.message || "No se pudo guardar" });
     }
+  };
+
+  const handleDeleteConfirm = async () => {
+    setDeleting(true);
+    const res = await api.delete("/users/");
+    setDeleting(false);
+    if (!res.success) {
+      setFeedback({
+        kind: "deleteError",
+        message: res.error?.message || t("profile.delete_account_error"),
+      });
+      return;
+    }
+    setFeedback(null);
+    await logout();
+    router.replace("/login");
   };
 
   return (
@@ -45,7 +83,7 @@ export default function EditProfileScreen() {
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <ScrollView contentContainerStyle={{ padding: 24 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
           <View className="mb-4">
             <Text className="text-muted-foreground text-sm mb-1">Nombre</Text>
             <View className="flex-row items-center bg-card border border-border rounded-xl px-4 py-3">
@@ -99,8 +137,83 @@ export default function EditProfileScreen() {
           <TouchableOpacity onPress={handleSave} disabled={saving} className="bg-primary py-4 rounded-xl items-center mt-4">
             {saving ? <ActivityIndicator color="white" /> : <Text className="text-primary-foreground font-bold text-lg">Guardar</Text>}
           </TouchableOpacity>
+
+          {/* Account deletion (Play Store policy) — kept low-key under personal info */}
+          <View className="mt-10 pt-6 border-t border-border">
+            <Pressable
+              onPress={() => setFeedback({ kind: "deleteConfirm" })}
+              className="flex-row items-center justify-center gap-2 py-3"
+            >
+              <Trash2 size={16} color="#B91C1C" strokeWidth={2.4} />
+              <Text className="font-body-semibold text-destructive text-[14px]">
+                {t("profile.delete_account")}
+              </Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={feedback?.kind === "validation"}
+        tone="destructive"
+        title="Falta información"
+        message={feedback?.kind === "validation" ? feedback.message : undefined}
+        confirmLabel="Entendido"
+        onConfirm={() => setFeedback(null)}
+        onCancel={() => setFeedback(null)}
+      />
+
+      <ConfirmModal
+        visible={feedback?.kind === "saveError"}
+        tone="destructive"
+        title="No se pudo guardar"
+        message={feedback?.kind === "saveError" ? feedback.message : undefined}
+        confirmLabel="Reintentar"
+        cancelLabel="Cancelar"
+        onConfirm={() => {
+          setFeedback(null);
+          handleSave();
+        }}
+        onCancel={() => setFeedback(null)}
+      />
+
+      <ConfirmModal
+        visible={feedback?.kind === "saved"}
+        tone="success"
+        title="Guardado"
+        message="Perfil actualizado correctamente"
+        confirmLabel="Continuar"
+        onConfirm={() => {
+          setFeedback(null);
+          router.back();
+        }}
+        onCancel={() => {
+          setFeedback(null);
+          router.back();
+        }}
+      />
+
+      <ConfirmModal
+        visible={feedback?.kind === "deleteConfirm"}
+        tone="destructive"
+        title={t("profile.delete_account_title")}
+        message={t("profile.delete_account_message")}
+        confirmLabel={t("profile.delete_account_confirm")}
+        cancelLabel={t("profile.logout_cancel")}
+        loading={deleting}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => (deleting ? null : setFeedback(null))}
+      />
+
+      <ConfirmModal
+        visible={feedback?.kind === "deleteError"}
+        tone="destructive"
+        title={t("profile.delete_account_title")}
+        message={feedback?.kind === "deleteError" ? feedback.message : undefined}
+        confirmLabel="Entendido"
+        onConfirm={() => setFeedback(null)}
+        onCancel={() => setFeedback(null)}
+      />
     </SafeAreaView>
   );
 }

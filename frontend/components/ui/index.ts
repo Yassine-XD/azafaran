@@ -8,3 +8,5 @@ export { Chip } from "./Chip";
 export { HeroBanner } from "./HeroBanner";
 export { MoroccanPattern } from "./MoroccanPattern";
 export { ProductCard } from "./ProductCard";
+export { ConfirmModal } from "./ConfirmModal";
+export type { ConfirmModalTone } from "./ConfirmModal";
