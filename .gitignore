@@ -6,6 +6,7 @@ dist/
 *.log
 .DS_Store
 admin/tsconfig.tsbuildinfo
+backend/tsconfig.tsbuildinfo
 .expo/
 
 # Firebase / FCM credentials — project-specific; do not commit

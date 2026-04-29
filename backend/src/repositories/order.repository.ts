@@ -270,6 +270,15 @@ export const orderRepository = {
     return parseInt(rows[0].count, 10);
   },
 
+  async countCompletedOrdersByUser(userId: string): Promise<number> {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*) FROM orders
+       WHERE user_id = $1 AND status NOT IN ('cancelled', 'refunded')`,
+      [userId],
+    );
+    return parseInt(rows[0].count, 10);
+  },
+
   async existsReview(orderId: string): Promise<boolean> {
     const { rows } = await pool.query(
       "SELECT COUNT(*) FROM reviews WHERE order_id = $1",
