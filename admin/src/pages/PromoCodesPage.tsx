@@ -11,9 +11,10 @@ type PromoCode = {
   id: string; code: string; type: string; value: string;
   min_order_amount: string; max_uses: number; max_uses_per_user: number;
   used_count: number; is_active: boolean; expires_at: string;
+  first_order_only: boolean;
 };
 
-const empty = { code: "", type: "percentage", value: "", min_order_amount: "", max_uses: "", max_uses_per_user: "1", is_active: true, expires_at: "" };
+const empty = { code: "", type: "percentage", value: "", min_order_amount: "", max_uses: "", max_uses_per_user: "1", is_active: true, expires_at: "", first_order_only: false };
 
 export default function PromoCodesPage() {
   const [data, setData] = useState<PromoCode[]>([]);
@@ -43,6 +44,7 @@ export default function PromoCodesPage() {
       min_order_amount: p.min_order_amount || "", max_uses: String(p.max_uses || ""),
       max_uses_per_user: String(p.max_uses_per_user || "1"),
       is_active: p.is_active, expires_at: p.expires_at?.slice(0, 16) || "",
+      first_order_only: !!p.first_order_only,
     });
     setModal(true);
   };
@@ -57,6 +59,7 @@ export default function PromoCodesPage() {
       max_uses_per_user: Number(form.max_uses_per_user),
       is_active: form.is_active,
       expires_at: form.expires_at || undefined,
+      first_order_only: form.first_order_only,
     };
     const res = editing
       ? await api.put(`/admin/promo-codes/${editing.id}`, body)
@@ -72,6 +75,9 @@ export default function PromoCodesPage() {
     { key: "min_order_amount", header: "Mín. pedido", render: (r) => r.min_order_amount ? formatCurrency(Number(r.min_order_amount)) : "—" },
     { key: "max_uses", header: "Máx. usos", render: (r) => r.max_uses || "∞" },
     { key: "used_count", header: "Usados" },
+    { key: "first_order_only", header: "Solo nuevos", render: (r) => r.first_order_only ? (
+      <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Sí</span>
+    ) : <span className="text-gray-400">—</span> },
     { key: "is_active", header: "Estado", render: (r) => (
       <button
         onClick={async (e) => {
@@ -133,6 +139,10 @@ export default function PromoCodesPage() {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
             Activo
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.first_order_only} onChange={(e) => setForm({ ...form, first_order_only: e.target.checked })} />
+            Solo nuevos clientes (primer pedido)
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => setModal(false)} className={btnSecondary}>Cancelar</button>

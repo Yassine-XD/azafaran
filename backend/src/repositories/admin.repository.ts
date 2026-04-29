@@ -700,11 +700,12 @@ export const adminRepository = {
     max_uses?: number;
     max_uses_per_user?: number;
     expires_at?: string;
+    first_order_only?: boolean;
   }) {
     const { rows } = await pool.query(
       `INSERT INTO promo_codes
-         (id, code, type, value, min_order_amount, max_uses, max_uses_per_user, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         (id, code, type, value, min_order_amount, max_uses, max_uses_per_user, expires_at, first_order_only)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         uuidv4(),
@@ -715,6 +716,7 @@ export const adminRepository = {
         data.max_uses || null,
         data.max_uses_per_user || 1,
         data.expires_at || null,
+        data.first_order_only ?? false,
       ],
     );
     return rows[0];
@@ -728,6 +730,7 @@ export const adminRepository = {
     const allowed = [
       "code", "type", "value", "min_order_amount",
       "max_uses", "max_uses_per_user", "expires_at", "is_active",
+      "first_order_only",
     ];
 
     for (const key of allowed) {

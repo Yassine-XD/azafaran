@@ -186,6 +186,19 @@ export const cartService = {
       );
     }
 
+    if (promo.first_order_only) {
+      const orderCount = await orderRepository.countCompletedOrdersByUser(
+        userId,
+      );
+      if (orderCount > 0) {
+        throw appError(
+          "Este código es solo para nuevos clientes",
+          400,
+          "PROMO_NEW_CUSTOMERS_ONLY",
+        );
+      }
+    }
+
     // Check min order amount
     const cart = await cartService.getCart(userId);
     if (cart.subtotal < parseFloat(promo.min_order_amount)) {
