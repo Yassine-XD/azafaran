@@ -412,4 +412,62 @@ export const adminController = {
       throw e;
     }
   }),
+
+  // ─── Surveys ───────────────────────────────────────
+
+  getSurveys: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const published =
+      req.query.published === "true"
+        ? true
+        : req.query.published === "false"
+          ? false
+          : undefined;
+    const result = await adminService.getSurveys({ page, limit, published });
+    return success(res, result.data, 200, result.meta);
+  }),
+
+  getSurveyById: asyncHandler(async (req: Request, res: Response) => {
+    const survey = await adminService.getSurveyById(req.params.id);
+    return success(res, survey);
+  }),
+
+  createSurvey: asyncHandler(async (req: Request, res: Response) => {
+    const survey = await adminService.createSurvey(
+      req.body,
+      req.user!.sub,
+      auditCtx(req),
+    );
+    return success(res, survey, 201);
+  }),
+
+  updateSurvey: asyncHandler(async (req: Request, res: Response) => {
+    const survey = await adminService.updateSurvey(
+      req.params.id,
+      req.body,
+      req.user!.sub,
+      auditCtx(req),
+    );
+    return success(res, survey);
+  }),
+
+  deleteSurvey: asyncHandler(async (req: Request, res: Response) => {
+    const result = await adminService.deleteSurvey(
+      req.params.id,
+      req.user!.sub,
+      auditCtx(req),
+    );
+    return success(res, result);
+  }),
+
+  getSurveyResponses: asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const result = await adminService.getSurveyResponses(req.params.id, {
+      page,
+      limit,
+    });
+    return success(res, result.data, 200, result.meta);
+  }),
 };

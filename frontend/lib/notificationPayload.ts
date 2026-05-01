@@ -36,6 +36,13 @@ export type NotificationPayload =
       logId?: string;
       campaignId?: string;
       screen?: string;
+    }
+  | {
+      v: 1;
+      type: "survey";
+      surveyId: string;
+      logId?: string;
+      campaignId?: string;
     };
 
 // Best-effort runtime parser — Expo `data` is an arbitrary record.
@@ -71,6 +78,11 @@ export function parseNotificationPayload(
     }
     case "campaign":
       return { ...base, type: "campaign", screen: (data as any).screen };
+    case "survey": {
+      const surveyId = (data as any).surveyId;
+      if (typeof surveyId !== "string") return null;
+      return { ...base, type: "survey", surveyId };
+    }
     default:
       return null;
   }

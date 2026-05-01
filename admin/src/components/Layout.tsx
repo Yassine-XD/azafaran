@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
   LayoutDashboard, Package, Grid, ShoppingCart, Users, Tag, Image, Ticket,
-  Clock, Bell, Star, FileText, LogOut, Menu, X, ShoppingBag, LifeBuoy,
+  Clock, Bell, ClipboardList, Star, FileText, LogOut, Menu, X, ShoppingBag, LifeBuoy,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, BASE, getTokens } from "../lib/api";
@@ -18,6 +18,7 @@ const NAV = [
   { to: "/banners", icon: Image, label: "Artículos" },
   { to: "/promo-codes", icon: Ticket, label: "Códigos" },
   { to: "/notifications", icon: Bell, label: "Notificaciones" },
+  { to: "/surveys", icon: ClipboardList, label: "Encuestas" },
   { to: "/reviews", icon: Star, label: "Reseñas" },
   { to: "/audit-log", icon: FileText, label: "Auditoría" },
 ];

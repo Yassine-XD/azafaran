@@ -12,6 +12,7 @@ import paymentRoutes from "./payment.routes";
 import adminRoutes from "./admin.routes";
 import errorReportRoutes from "./error-report.routes";
 import ticketRoutes from "./ticket.routes";
+import surveyRoutes from "./survey.routes";
 
 const router = Router();
 
@@ -41,5 +42,6 @@ router.use("/payments", paymentRoutes);
 router.use("/admin", adminRoutes);
 router.use("/errors", errorReportRoutes);
 router.use("/tickets", ticketRoutes);
+router.use("/surveys", surveyRoutes);
 
 export default router;

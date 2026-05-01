@@ -6,6 +6,10 @@ import { requireAdmin } from "../middleware/requireAdmin";
 import { validateBody } from "../middleware/validate";
 import { updateOrderStatusSchema } from "../validators/order.schema";
 import { adminSendNotificationSchema } from "../validators/notification.schema";
+import {
+  createSurveySchema,
+  updateSurveySchema,
+} from "../validators/survey.schema";
 import { uploadTicketFiles } from "../middleware/uploadTicketFiles";
 import { sseClients } from "../utils/sseClients";
 import { error } from "../utils/apiResponse";
@@ -127,6 +131,22 @@ router.delete("/categories/:id", adminController.deleteCategory);
 
 // Reviews
 router.get("/reviews", adminController.getReviews);
+
+// Surveys
+router.get("/surveys", adminController.getSurveys);
+router.get("/surveys/:id", adminController.getSurveyById);
+router.post(
+  "/surveys",
+  validateBody(createSurveySchema),
+  adminController.createSurvey,
+);
+router.patch(
+  "/surveys/:id",
+  validateBody(updateSurveySchema),
+  adminController.updateSurvey,
+);
+router.delete("/surveys/:id", adminController.deleteSurvey);
+router.get("/surveys/:id/responses", adminController.getSurveyResponses);
 
 // Support Tickets
 router.get("/tickets", adminController.getTickets);

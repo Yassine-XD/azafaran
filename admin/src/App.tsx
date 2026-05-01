@@ -13,6 +13,8 @@ import BannersPage from "./pages/BannersPage";
 import PromoCodesPage from "./pages/PromoCodesPage";
 import DeliverySlotsPage from "./pages/DeliverySlotsPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import SurveysPage from "./pages/SurveysPage";
+import SurveyResponsesPage from "./pages/SurveyResponsesPage";
 import ReviewsPage from "./pages/ReviewsPage";
 import AuditLogPage from "./pages/AuditLogPage";
 import TicketsPage from "./pages/TicketsPage";
@@ -43,6 +45,8 @@ export default function App() {
         <Route path="promo-codes" element={<PromoCodesPage />} />
         <Route path="delivery-slots" element={<DeliverySlotsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="surveys" element={<SurveysPage />} />
+        <Route path="surveys/:id/responses" element={<SurveyResponsesPage />} />
         <Route path="reviews" element={<ReviewsPage />} />
         <Route path="tickets" element={<TicketsPage />} />
         <Route path="tickets/:id" element={<TicketDetailPage />} />

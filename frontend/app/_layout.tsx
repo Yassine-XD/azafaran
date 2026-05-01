@@ -88,6 +88,7 @@ export default function RootLayout() {
                       <Stack.Screen name="support" options={{ presentation: "card" }} />
                       <Stack.Screen name="support-new" options={{ presentation: "card" }} />
                       <Stack.Screen name="support-ticket" options={{ presentation: "card" }} />
+                      <Stack.Screen name="survey" options={{ presentation: "card" }} />
                       </Stack>
                     </NavigationGuard>
                   </CartProvider>

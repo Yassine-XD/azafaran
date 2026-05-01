@@ -127,9 +127,10 @@ End-to-end Expo push: admin sends → backend pushes via Expo → device receive
 **Wire-format payload** (canonical contract — same shape on backend, on the wire in Expo `data`, persisted in `notification_log.data`):
 
 ```jsonc
-{ "v": 1, "type": "none|screen|product|coupon|order|campaign",
+{ "v": 1, "type": "none|screen|product|coupon|order|campaign|survey",
   "screen?": "deals|orders|profile|categories|index",
   "productId?": "uuid", "promoCode?": "WELCOME10", "orderId?": "uuid",
+  "surveyId?": "uuid",
   "logId?": "uuid", "campaignId?": "uuid" }
 ```
 
@@ -153,7 +154,9 @@ Validated by `notificationPayloadSchema` (zod discriminated union on `type`) in 
 - `contexts/CartContext.tsx` — drains pending `coupon` actions: navigates to `/cart` and silently calls `applyPromo`.
 - `components/NotificationsBridge.tsx` — handles cold-start (`getLastNotificationResponseAsync`) + warm taps (`addNotificationResponseReceivedListener`); marks `logId` opened.
 
-**Admin**: `src/pages/NotificationsPage.tsx` has a "Al pulsar la notificación" destination dropdown (none / screen / product autocomplete via `GET /admin/products?search=` / coupon code).
+**Admin**: `src/pages/NotificationsPage.tsx` has a "Al pulsar la notificación" destination dropdown (none / screen / product autocomplete via `GET /admin/products?search=` / coupon code / survey via `GET /admin/surveys?published=true`).
+
+**Surveys** (in-app forms): admins build a survey at `/admin/surveys` (title + dynamic question list with types `text`, `single_choice`, `multi_choice`, `rating`, `yes_no`, `number`), publish it, then send a campaign with `payload.type = "survey"` so taps open `frontend/app/survey.tsx`. Backend layering: `routes/survey.routes.ts` → `controllers/survey.controller.ts` → `services/survey.service.ts` (validates each answer against its question type) → `repositories/survey.repository.ts`. Schema: `migrations/031_create-surveys.sql` (`surveys` + `survey_responses` with `UNIQUE (survey_id, user_id)` enforcing one response per user). Admin survey CRUD lives in `admin.service.ts` / `admin.controller.ts`; user-facing endpoints `GET /surveys/:id`, `GET /surveys/:id/me` (returns `{ submitted: boolean }`), `POST /surveys/:id/responses`. Responses can be exported to CSV from `/admin/surveys/:id/responses`.
 
 **Recipient gating**: campaigns with `target=all` only push to users with `notification_preferences.promotions = true` (default `false` for new users). For testing, opt a user in with `./azafaran notif:opt-in <user_id>`. Order events bypass this gate.
 

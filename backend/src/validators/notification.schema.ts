@@ -45,6 +45,10 @@ export const notificationPayloadSchema = z.discriminatedUnion("type", [
     type: z.literal("order"),
     orderId: z.string().uuid(),
   }),
+  z.object({
+    type: z.literal("survey"),
+    surveyId: z.string().uuid(),
+  }),
 ]);
 
 export const adminSendNotificationSchema = z.object({

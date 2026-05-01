@@ -2,6 +2,7 @@ import { pool } from "../config/database";
 import { adminRepository } from "../repositories/admin.repository";
 import { orderRepository } from "../repositories/order.repository";
 import { productRepository } from "../repositories/product.repository";
+import { surveyRepository } from "../repositories/survey.repository";
 import { notificationService } from "./notification.service";
 import { emailService } from "./email.service";
 import { logger } from "../utils/logger";
@@ -9,6 +10,10 @@ import {
   AdminSendNotificationInput,
   ALLOWED_NOTIFICATION_SCREENS,
 } from "../validators/notification.schema";
+import {
+  CreateSurveyInput,
+  UpdateSurveyInput,
+} from "../validators/survey.schema";
 
 type AuditCtx = { ipAddress?: string; userAgent?: string };
 
@@ -641,6 +646,15 @@ export const adminService = {
       if (!ALLOWED_NOTIFICATION_SCREENS.includes(payload.screen as any)) {
         throw appError("Pantalla destino no permitida", 400, "INVALID_SCREEN");
       }
+    } else if (payload.type === "survey") {
+      const survey = await surveyRepository.findById(payload.surveyId);
+      if (!survey || !survey.is_published) {
+        throw appError(
+          "Encuesta no encontrada o no publicada",
+          404,
+          "SURVEY_NOT_FOUND",
+        );
+      }
     }
 
     // If scheduled in the future, persist as draft and let the scheduler fire it.
@@ -769,5 +783,105 @@ export const adminService = {
       ...ctx,
     });
     return { message: "Categoría desactivada" };
+  },
+
+  // ─── Surveys ───────────────────────────────────────
+
+  async getSurveys(filters: { page: number; limit: number; published?: boolean }) {
+    const { rows, total } = await surveyRepository.findAll(filters);
+    return {
+      data: rows,
+      meta: {
+        total,
+        page: filters.page,
+        limit: filters.limit,
+        total_pages: Math.ceil(total / filters.limit),
+      },
+    };
+  },
+
+  async getSurveyById(id: string) {
+    const survey = await surveyRepository.findById(id);
+    if (!survey)
+      throw appError("Encuesta no encontrada", 404, "SURVEY_NOT_FOUND");
+    return survey;
+  },
+
+  async createSurvey(data: CreateSurveyInput, adminId: string, ctx?: AuditCtx) {
+    const survey = await surveyRepository.create(data);
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "create",
+      entity: "survey",
+      entityId: survey.id,
+      after: survey,
+      ...ctx,
+    });
+    return survey;
+  },
+
+  async updateSurvey(
+    id: string,
+    data: UpdateSurveyInput,
+    adminId: string,
+    ctx?: AuditCtx,
+  ) {
+    const before = await surveyRepository.findById(id);
+    if (!before)
+      throw appError("Encuesta no encontrada", 404, "SURVEY_NOT_FOUND");
+    const updated = await surveyRepository.update(id, data);
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "update",
+      entity: "survey",
+      entityId: id,
+      before,
+      after: updated,
+      ...ctx,
+    });
+    return updated;
+  },
+
+  async deleteSurvey(id: string, adminId: string, ctx?: AuditCtx) {
+    const deleted = await surveyRepository.remove(id);
+    if (!deleted)
+      throw appError("Encuesta no encontrada", 404, "SURVEY_NOT_FOUND");
+    await adminRepository.createAuditLog({
+      adminId,
+      action: "delete",
+      entity: "survey",
+      entityId: id,
+      ...ctx,
+    });
+    return { message: "Encuesta eliminada" };
+  },
+
+  async getSurveyResponses(
+    surveyId: string,
+    filters: { page: number; limit: number },
+  ) {
+    const survey = await surveyRepository.findById(surveyId);
+    if (!survey)
+      throw appError("Encuesta no encontrada", 404, "SURVEY_NOT_FOUND");
+    const { rows, total } = await surveyRepository.findResponsesBySurvey(
+      surveyId,
+      filters,
+    );
+    return {
+      data: {
+        survey: {
+          id: survey.id,
+          title: survey.title,
+          questions: survey.questions,
+        },
+        responses: rows,
+      },
+      meta: {
+        total,
+        page: filters.page,
+        limit: filters.limit,
+        total_pages: Math.ceil(total / filters.limit),
+      },
+    };
   },
 };

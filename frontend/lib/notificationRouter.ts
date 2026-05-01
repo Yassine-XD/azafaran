@@ -60,6 +60,14 @@ export async function routeFromPayload(
       // Generic campaign with no specific destination — open the deals tab.
       router.push("/(tabs)/deals" as any);
       return true;
+    case "survey":
+      // Survey screen requires auth to record the response.
+      if (!isAuthenticated) return false;
+      router.push({
+        pathname: "/survey",
+        params: { id: payload.surveyId },
+      });
+      return true;
     default:
       return true;
   }

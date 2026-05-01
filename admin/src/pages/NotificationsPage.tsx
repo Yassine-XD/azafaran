@@ -12,7 +12,7 @@ type Campaign = {
   scheduled_at: string; created_at: string;
 };
 
-type Destination = "none" | "screen" | "product" | "coupon";
+type Destination = "none" | "screen" | "product" | "coupon" | "survey";
 type ScreenName = "index" | "categories" | "deals" | "orders" | "profile";
 
 type FormState = {
@@ -26,6 +26,7 @@ type FormState = {
   productId: string;
   productLabel: string;
   promoCode: string;
+  surveyId: string;
 };
 
 const empty: FormState = {
@@ -39,9 +40,11 @@ const empty: FormState = {
   productId: "",
   productLabel: "",
   promoCode: "",
+  surveyId: "",
 };
 
 type ProductHit = { id: string; name: string };
+type SurveyOption = { id: string; title: string };
 
 export default function NotificationsPage() {
   const [data, setData] = useState<Campaign[]>([]);
@@ -57,6 +60,8 @@ export default function NotificationsPage() {
   const [productHits, setProductHits] = useState<ProductHit[]>([]);
   const [productLoading, setProductLoading] = useState(false);
   const productSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [surveyOptions, setSurveyOptions] = useState<SurveyOption[]>([]);
 
   const load = () => {
     setLoading(true);
@@ -92,6 +97,16 @@ export default function NotificationsPage() {
     };
   }, [productQuery, form.destination]);
 
+  // Load published surveys when the user picks "survey" as the destination.
+  useEffect(() => {
+    if (form.destination !== "survey" || surveyOptions.length > 0) return;
+    api
+      .get<SurveyOption[]>("/admin/surveys?published=true&limit=100")
+      .then((r) => {
+        if (r.success) setSurveyOptions((r.data as SurveyOption[]) || []);
+      });
+  }, [form.destination, surveyOptions.length]);
+
   function buildPayload(f: FormState) {
     switch (f.destination) {
       case "screen":
@@ -100,6 +115,8 @@ export default function NotificationsPage() {
         return { type: "product", productId: f.productId };
       case "coupon":
         return { type: "coupon", promoCode: f.promoCode };
+      case "survey":
+        return { type: "survey", surveyId: f.surveyId };
       case "none":
       default:
         return { type: "none" };
@@ -116,6 +133,10 @@ export default function NotificationsPage() {
     }
     if (form.destination === "coupon" && !form.promoCode.trim()) {
       setSendError("Introduce un código promocional.");
+      return;
+    }
+    if (form.destination === "survey" && !form.surveyId) {
+      setSendError("Selecciona una encuesta.");
       return;
     }
 
@@ -177,6 +198,7 @@ export default function NotificationsPage() {
                 <option value="screen">Abrir pantalla</option>
                 <option value="product">Abrir producto</option>
                 <option value="coupon">Aplicar cupón</option>
+                <option value="survey">Abrir encuesta</option>
               </select>
             </FormField>
           </div>
@@ -231,6 +253,28 @@ export default function NotificationsPage() {
                     </ul>
                   )}
                 </div>
+              )}
+            </FormField>
+          )}
+
+          {form.destination === "survey" && (
+            <FormField label="Encuesta">
+              <select
+                className={selectClass}
+                value={form.surveyId}
+                onChange={(e) => setForm({ ...form, surveyId: e.target.value })}
+              >
+                <option value="">— Selecciona una encuesta publicada —</option>
+                {surveyOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title}
+                  </option>
+                ))}
+              </select>
+              {surveyOptions.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  No hay encuestas publicadas. Crea una en la sección Encuestas.
+                </p>
               )}
             </FormField>
           )}

@@ -8,11 +8,12 @@ import { logger } from "../utils/logger";
 // notification_log.data. The frontend has a single switch on `type`.
 export type NotificationPayload = {
   v: 1;
-  type: "screen" | "product" | "coupon" | "order" | "campaign" | "none";
+  type: "screen" | "product" | "coupon" | "order" | "campaign" | "none" | "survey";
   screen?: string;
   productId?: string;
   promoCode?: string;
   orderId?: string;
+  surveyId?: string;
   logId?: string;
   campaignId?: string;
   imageUrl?: string;
