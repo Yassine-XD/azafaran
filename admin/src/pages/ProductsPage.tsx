@@ -17,6 +17,7 @@ const emptyI18n = (): I18nMap => ({ es: "", ca: "", en: "" });
 type Product = {
   id: string; name: string; slug: string; description: string; short_desc: string;
   category_id: string; category_name: string; price_per_kg: string; unit_type: string;
+  unit_label_override: string | null;
   images: string[]; tags: string[]; halal_cert_id: string; is_featured: boolean; is_active: boolean;
   name_i18n?: I18nMap; description_i18n?: I18nMap; short_desc_i18n?: I18nMap;
 };
@@ -25,6 +26,9 @@ type Variant = {
   id: string; product_id: string; label: string; weight_grams: number;
   price: string; stock_qty: number; sku: string; is_active: boolean;
   label_i18n?: I18nMap;
+  compare_at_price: string | null;
+  low_stock_threshold: number | null;
+  badge_label: string | null;
 };
 
 type PackItem = {
@@ -37,11 +41,23 @@ type Category = { id: string; name: string };
 
 const emptyForm = () => ({
   name: "", slug: "", category_id: "",
-  price_per_kg: "", unit_type: "kg", halal_cert_id: "", is_featured: false, is_active: true,
+  price_per_kg: "", unit_type: "kg", unit_label_override: "",
+  halal_cert_id: "", is_featured: false, is_active: true,
   images: [""], tags: "",
   name_i18n: emptyI18n(),
   description_i18n: emptyI18n(),
   short_desc_i18n: emptyI18n(),
+});
+
+const emptyVarForm = () => ({
+  label_i18n: emptyI18n(),
+  weight_grams: "",
+  price: "",
+  compare_at_price: "",
+  stock_qty: "",
+  low_stock_threshold: "",
+  badge_label: "",
+  sku: "",
 });
 
 function LangTabs({ active, onChange }: { active: LangCode; onChange: (l: LangCode) => void }) {
@@ -76,7 +92,7 @@ export default function ProductsPage() {
   const [varModal, setVarModal] = useState(false);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [varProduct, setVarProduct] = useState<Product | null>(null);
-  const [varForm, setVarForm] = useState({ label_i18n: emptyI18n(), weight_grams: "", price: "", stock_qty: "", sku: "" });
+  const [varForm, setVarForm] = useState(emptyVarForm());
   const [varLangTab, setVarLangTab] = useState<LangCode>("es");
   const [editingVar, setEditingVar] = useState<Variant | null>(null);
 
@@ -121,6 +137,7 @@ export default function ProductsPage() {
       category_id: p.category_id,
       price_per_kg: p.price_per_kg,
       unit_type: p.unit_type || "kg",
+      unit_label_override: p.unit_label_override || "",
       halal_cert_id: p.halal_cert_id || "",
       is_featured: p.is_featured,
       is_active: p.is_active,
@@ -143,6 +160,7 @@ export default function ProductsPage() {
       category_id: form.category_id,
       price_per_kg: Number(form.price_per_kg),
       unit_type: form.unit_type,
+      unit_label_override: form.unit_label_override.trim() || null,
       halal_cert_id: form.halal_cert_id,
       is_featured: form.is_featured,
       is_active: form.is_active,
@@ -170,7 +188,7 @@ export default function ProductsPage() {
     setVarProduct(p);
     setVarModal(true);
     setEditingVar(null);
-    setVarForm({ label_i18n: emptyI18n(), weight_grams: "", price: "", stock_qty: "", sku: "" });
+    setVarForm(emptyVarForm());
     setVarLangTab("es");
     api.get(`/admin/products/${p.id}`).then((r: any) => {
       if (r.success && r.data?.variants) setVariants(r.data.variants);
@@ -188,6 +206,9 @@ export default function ProductsPage() {
       price: Number(varForm.price),
       stock_qty: Number(varForm.stock_qty),
       sku: varForm.sku,
+      compare_at_price: varForm.compare_at_price ? Number(varForm.compare_at_price) : null,
+      low_stock_threshold: varForm.low_stock_threshold !== "" ? Number(varForm.low_stock_threshold) : null,
+      badge_label: varForm.badge_label.trim() || null,
     };
     if (editingVar) {
       await api.put(`/admin/products/${varProduct.id}/variants/${editingVar.id}`, body);
@@ -195,7 +216,7 @@ export default function ProductsPage() {
       await api.post(`/admin/products/${varProduct.id}/variants`, body);
     }
     setEditingVar(null);
-    setVarForm({ label_i18n: emptyI18n(), weight_grams: "", price: "", stock_qty: "", sku: "" });
+    setVarForm(emptyVarForm());
     const r: any = await api.get(`/admin/products/${varProduct.id}`);
     if (r.success && r.data?.variants) setVariants(r.data.variants);
   };
@@ -330,6 +351,14 @@ export default function ProductsPage() {
           <FormField label="Cert. Halal">
             <input className={inputClass} value={form.halal_cert_id} onChange={(e) => setForm({ ...form, halal_cert_id: e.target.value })} />
           </FormField>
+          <FormField label='Etiqueta pack (opcional, ej: "Pack familiar", "Bandeja 4 filetes")'>
+            <input
+              className={inputClass}
+              maxLength={60}
+              value={form.unit_label_override}
+              onChange={(e) => setForm({ ...form, unit_label_override: e.target.value })}
+            />
+          </FormField>
 
           {/* i18n section */}
           <div className="border rounded-lg p-4 bg-gray-50">
@@ -427,7 +456,10 @@ export default function ProductsPage() {
                       label_i18n: v.label_i18n || { es: v.label, ca: "", en: "" },
                       weight_grams: String(v.weight_grams),
                       price: v.price,
+                      compare_at_price: v.compare_at_price != null ? String(v.compare_at_price) : "",
                       stock_qty: String(v.stock_qty),
+                      low_stock_threshold: v.low_stock_threshold != null ? String(v.low_stock_threshold) : "",
+                      badge_label: v.badge_label || "",
                       sku: v.sku || "",
                     });
                     setVarLangTab("es");
@@ -464,9 +496,34 @@ export default function ProductsPage() {
             <input type="number" className={inputClass} placeholder="Stock" required value={varForm.stock_qty} onChange={(e) => setVarForm({ ...varForm, stock_qty: e.target.value })} />
             <input className={inputClass} placeholder="SKU" value={varForm.sku} onChange={(e) => setVarForm({ ...varForm, sku: e.target.value })} />
           </div>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            <input
+              type="number"
+              step="0.01"
+              className={inputClass}
+              placeholder="Precio antes (anchor, opcional)"
+              value={varForm.compare_at_price}
+              onChange={(e) => setVarForm({ ...varForm, compare_at_price: e.target.value })}
+            />
+            <input
+              type="number"
+              min="0"
+              className={inputClass}
+              placeholder="Umbral stock bajo (opcional)"
+              value={varForm.low_stock_threshold}
+              onChange={(e) => setVarForm({ ...varForm, low_stock_threshold: e.target.value })}
+            />
+            <input
+              className={inputClass}
+              placeholder='Etiqueta promo (ej: "Oferta", "Nuevo")'
+              maxLength={40}
+              value={varForm.badge_label}
+              onChange={(e) => setVarForm({ ...varForm, badge_label: e.target.value })}
+            />
+          </div>
           <div className="flex gap-2 mt-3">
             <button type="submit" className={btnPrimary}>{editingVar ? "Actualizar" : "Añadir"}</button>
-            {editingVar && <button type="button" onClick={() => { setEditingVar(null); setVarForm({ label_i18n: emptyI18n(), weight_grams: "", price: "", stock_qty: "", sku: "" }); }} className={btnSecondary}>Cancelar</button>}
+            {editingVar && <button type="button" onClick={() => { setEditingVar(null); setVarForm(emptyVarForm()); }} className={btnSecondary}>Cancelar</button>}
           </div>
         </form>
       </Modal>
