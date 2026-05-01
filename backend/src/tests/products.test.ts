@@ -31,12 +31,16 @@ const seedProduct = async () => {
   );
   productId = products[0].id;
 
-  // Insert variant
+  // Insert variant with the new pricing/UX fields populated
   const { rows: variants } = await pool.query(
     `INSERT INTO product_variants
-       (id, product_id, label, weight_grams, price, stock_qty, sku, is_active, sort_order)
+       (id, product_id, label, weight_grams, price, compare_at_price,
+        stock_qty, low_stock_threshold, badge_label,
+        sku, is_active, sort_order)
      VALUES
-       (gen_random_uuid(), $1, '500g', 500, 4.25, 50, 'TEST-CORDERO-500G', true, 1)
+       (gen_random_uuid(), $1, '500g', 500, 4.25, 5.50,
+        50, 5, 'Oferta',
+        'TEST-CORDERO-500G', true, 1)
      RETURNING id`,
     [productId],
   );
@@ -218,6 +222,18 @@ describe("GET /api/v1/products/:id", () => {
 
     expect(typeof res.body.data.price_per_kg).toBe("number");
     expect(typeof res.body.data.variants[0].price).toBe("number");
+  });
+
+  it("exposes new variant pricing/UX fields (compare_at_price, low_stock_threshold, badge_label)", async () => {
+    const res = await request(app).get(`/api/v1/products/${productId}`);
+    expect(res.status).toBe(200);
+
+    const v = res.body.data.variants.find((v: any) => v.id === variantId);
+    expect(v).toBeDefined();
+    expect(v.compare_at_price).toBe(5.5);
+    expect(typeof v.compare_at_price).toBe("number");
+    expect(v.low_stock_threshold).toBe(5);
+    expect(v.badge_label).toBe("Oferta");
   });
 });
 

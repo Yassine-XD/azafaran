@@ -17,6 +17,7 @@ export interface ProductRow {
   is_active: boolean;
   is_featured: boolean;
   sort_order: number;
+  unit_label_override: string | null;
   created_at: Date;
   updated_at: Date;
   // i18n translation maps
@@ -35,7 +36,10 @@ export interface VariantRow {
   label_i18n: Record<string, string> | null;
   weight_grams: number;
   price: string;
+  compare_at_price: string | null;
   stock_qty: number;
+  low_stock_threshold: number | null;
+  badge_label: string | null;
   sku: string | null;
   is_active: boolean;
   sort_order: number;
