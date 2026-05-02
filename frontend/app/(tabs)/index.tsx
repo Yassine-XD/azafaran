@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
+import { Motion } from "@legendapp/motion";
 
 import { Display, Heading2, Body, Small } from "@/components/ui/Text";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -54,14 +55,19 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0B0B0C" />}
       >
         {/* Greeting */}
-        <View className="px-5 pt-4 pb-6">
+        <Motion.View
+          className="px-5 pt-4 pb-6"
+          initial={{ opacity: 0, translateY: 8 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 380 }}
+        >
           <Small className="text-muted-foreground uppercase tracking-wide">
             {greeting}
           </Small>
           <Display className="mt-1">
             {user?.first_name || t("rebuild.home.greet_guest")}.
           </Display>
-        </View>
+        </Motion.View>
 
         {/* Reorder last */}
         {lastOrder ? (

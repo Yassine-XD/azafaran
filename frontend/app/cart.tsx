@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
 import { ArrowLeft, Minus, Plus, X, Tag } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+import { Motion } from "@legendapp/motion";
 
 import { Display, Heading2, Heading3, Body, Small, Caption } from "@/components/ui/Text";
 import { Button } from "@/components/ui/Button";
@@ -64,7 +65,7 @@ export default function CartScreen() {
   const total = subtotal - (appliedPromo?.discount_amount ?? 0);
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-background">
+    <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
@@ -98,7 +99,12 @@ export default function CartScreen() {
           <ScrollView contentContainerClassName="px-5 pb-32">
             {/* Promo banner — informational */}
             {appliedPromo ? (
-              <View className="mb-4 p-4 rounded-2xl bg-halal/10 border border-halal/30 flex-row items-center justify-between">
+              <Motion.View
+                className="mb-4 p-4 rounded-2xl bg-halal/10 border border-halal/30 flex-row items-center justify-between"
+                initial={{ opacity: 0, translateY: -8 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ type: "spring", damping: 18, stiffness: 220 }}
+              >
                 <View className="flex-1 flex-row items-center gap-2">
                   <Tag size={16} color="#0F7A4A" strokeWidth={2} />
                   <View className="flex-1">
@@ -106,14 +112,14 @@ export default function CartScreen() {
                       {appliedPromo.code}
                     </Caption>
                     <Small className="text-foreground">
-                      Descuento aplicado: {fmt(appliedPromo.discount_amount)}
+                      {t("rebuild.cart.discount")}: {fmt(appliedPromo.discount_amount)}
                     </Small>
                   </View>
                 </View>
                 <Pressable onPress={clearPromo} className="ml-2 p-1.5 rounded-full bg-card">
                   <X size={14} color="#0B0B0C" strokeWidth={2} />
                 </Pressable>
-              </View>
+              </Motion.View>
             ) : null}
 
             {/* Items */}
