@@ -12,7 +12,7 @@ import { useLang } from "@/contexts/LanguageContext";
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -39,7 +39,7 @@ export default function RegisterScreen() {
     if (r.success) {
       router.replace("/terms-accept");
     } else {
-      Alert.alert("No se pudo crear la cuenta", r.error || "Inténtalo de nuevo");
+      Alert.alert(t("rebuild.auth.register_failed_title"), r.error || t("rebuild.product.add_failed_retry"));
     }
   };
 
@@ -60,42 +60,42 @@ export default function RegisterScreen() {
         </View>
 
         <ScrollView contentContainerClassName="px-5 pb-12 flex-grow">
-          <Display>Crea tu cuenta</Display>
-          <Body className="mt-2 text-muted-foreground">Tarda menos de un minuto.</Body>
+          <Display>{t("rebuild.auth.register_title")}</Display>
+          <Body className="mt-2 text-muted-foreground">{t("rebuild.auth.register_subtitle")}</Body>
 
           <View className="mt-8 gap-4">
             <View className="flex-row gap-3">
               <View className="flex-1">
-                <Field label="Nombre" value={form.first_name} onChange={(v) => set("first_name", v)} />
+                <Field label={t("rebuild.auth.first_name")} value={form.first_name} onChange={(v) => set("first_name", v)} />
               </View>
               <View className="flex-1">
-                <Field label="Apellido" value={form.last_name} onChange={(v) => set("last_name", v)} />
+                <Field label={t("rebuild.auth.last_name")} value={form.last_name} onChange={(v) => set("last_name", v)} />
               </View>
             </View>
             <Field
-              label="Email"
+              label={t("rebuild.auth.email")}
               value={form.email}
               onChange={(v) => set("email", v)}
               keyboardType="email-address"
               autoCapitalize="none"
             />
             <Field
-              label="Teléfono"
+              label={t("rebuild.auth.phone")}
               value={form.phone}
               onChange={(v) => set("phone", v)}
               keyboardType="phone-pad"
             />
             <Field
-              label="Contraseña"
+              label={t("rebuild.auth.password")}
               value={form.password}
               onChange={(v) => set("password", v)}
               secureTextEntry
-              hint="Mínimo 8 caracteres"
+              hint={t("rebuild.auth.password_hint")}
             />
           </View>
 
           <Button
-            title={submitting ? "Creando…" : "Crear cuenta"}
+            title={submitting ? t("rebuild.auth.registering") : t("rebuild.auth.register_cta")}
             variant="primary"
             size="lg"
             fullWidth
@@ -106,9 +106,9 @@ export default function RegisterScreen() {
           />
 
           <View className="mt-6 flex-row justify-center gap-1">
-            <Small className="text-muted-foreground">¿Ya tienes cuenta?</Small>
+            <Small className="text-muted-foreground">{t("rebuild.auth.have_account")}</Small>
             <Link href="/login" replace>
-              <Small className="font-body-semibold text-foreground">Inicia sesión</Small>
+              <Small className="font-body-semibold text-foreground">{t("rebuild.auth.sign_in")}</Small>
             </Link>
           </View>
         </ScrollView>

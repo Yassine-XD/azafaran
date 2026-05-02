@@ -14,6 +14,7 @@ import { PriceBlock, pricePerKg } from "@/components/product/PriceBlock";
 import { VariantPicker } from "@/components/product/VariantPicker";
 import { useProduct, type Variant } from "@/hooks/queries";
 import { useCart } from "@/contexts/CartContext";
+import { useLang } from "@/contexts/LanguageContext";
 import { allImages } from "@/lib/productImage";
 
 export default function ProductDetailScreen() {
@@ -21,6 +22,7 @@ export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: product, isLoading } = useProduct(id);
   const { addItem } = useCart();
+  const { t } = useLang();
 
   const [variantId, setVariantId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -58,7 +60,7 @@ export default function ProductDetailScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         router.push("/cart");
       } else {
-        Alert.alert("No se pudo añadir", r.error || "Inténtalo de nuevo");
+        Alert.alert(t("rebuild.product.add_failed_title"), r.error || t("rebuild.product.add_failed_retry"));
       }
     } finally {
       setAdding(false);
@@ -136,7 +138,7 @@ export default function ProductDetailScreen() {
                   ) : null}
                   {showLowStock ? (
                     <Caption className="text-sale font-body-semibold">
-                      Quedan {variant.stock_qty}
+                      {t("rebuild.product.stock_left")} {variant.stock_qty}
                     </Caption>
                   ) : null}
                 </View>
@@ -146,7 +148,7 @@ export default function ProductDetailScreen() {
             {/* Variants */}
             {product.variants && product.variants.length > 1 ? (
               <View className="mt-6">
-                <Heading3>Tamaño</Heading3>
+                <Heading3>{t("rebuild.product.size")}</Heading3>
                 <View className="mt-3">
                   <VariantPicker
                     variants={product.variants as any}
@@ -160,7 +162,7 @@ export default function ProductDetailScreen() {
             {/* Description */}
             {product.description ? (
               <View className="mt-8">
-                <Heading2>Descripción</Heading2>
+                <Heading2>{t("rebuild.product.description")}</Heading2>
                 <Body className="mt-2 leading-6">{product.description}</Body>
               </View>
             ) : null}
@@ -171,14 +173,14 @@ export default function ProductDetailScreen() {
                 <View className="flex-row items-center gap-2 mb-1">
                   <View className="w-2 h-2 rounded-full bg-halal" />
                   <Caption className="uppercase tracking-wide text-foreground font-body-semibold">
-                    Certificación halal
+                    {t("rebuild.product.halal_title")}
                   </Caption>
                 </View>
                 <Body>
                   {product.halal_cert_body || "CICEM"} · {product.halal_cert_id}
                 </Body>
                 <Small className="mt-1 text-muted-foreground">
-                  Sacrificado conforme a las normas halal y trazabilidad completa.
+                  {t("rebuild.product.halal_note")}
                 </Small>
               </View>
             ) : null}
@@ -186,7 +188,7 @@ export default function ProductDetailScreen() {
             {/* Pack contents */}
             {product.pack_items && product.pack_items.length > 0 ? (
               <View className="mt-8">
-                <Heading2>Contenido del pack</Heading2>
+                <Heading2>{t("rebuild.product.pack_contents")}</Heading2>
                 <View className="mt-3 gap-2">
                   {product.pack_items.map((item: any) => (
                     <View key={item.id} className="flex-row justify-between p-3 rounded-xl bg-surface border border-border">
@@ -205,7 +207,13 @@ export default function ProductDetailScreen() {
           className="absolute bottom-0 left-0 right-0 px-5 pt-3 pb-6 bg-background border-t border-border shadow-sticky"
         >
           <Button
-            title={outOfStock ? "Sin stock" : adding ? "Añadiendo…" : "Añadir al carrito"}
+            title={
+              outOfStock
+                ? t("rebuild.product.out_of_stock")
+                : adding
+                ? t("rebuild.product.adding")
+                : t("rebuild.product.add_to_cart")
+            }
             variant="primary"
             size="lg"
             fullWidth

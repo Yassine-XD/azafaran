@@ -15,14 +15,17 @@ import { useLang } from "@/contexts/LanguageContext";
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n);
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pendiente",
-  confirmed: "Confirmado",
-  preparing: "Preparando",
-  shipped: "En camino",
-  delivered: "Entregado",
-  cancelled: "Cancelado",
-};
+function statusLabel(t: (k: string) => string, s: string): string {
+  switch (s) {
+    case "pending": return t("rebuild.orders.status_pending");
+    case "confirmed": return t("rebuild.orders.status_confirmed");
+    case "preparing": return t("rebuild.orders.status_preparing");
+    case "shipped": return t("rebuild.orders.status_shipped");
+    case "delivered": return t("rebuild.orders.status_delivered");
+    case "cancelled": return t("rebuild.orders.status_cancelled");
+    default: return s;
+  }
+}
 
 export default function OrdersScreen() {
   const router = useRouter();
@@ -36,7 +39,7 @@ export default function OrdersScreen() {
     if (r.success) {
       router.push("/cart");
     } else {
-      Alert.alert("No se pudo repetir", r.error?.message || "Inténtalo de nuevo");
+      Alert.alert(t("rebuild.orders.reorder_failed"), r.error?.message || t("rebuild.product.add_failed_retry"));
     }
   };
 
@@ -44,12 +47,12 @@ export default function OrdersScreen() {
     return (
       <SafeAreaView edges={["top"]} className="flex-1 bg-background">
         <View className="flex-1 items-center justify-center px-8">
-          <Display className="text-center">Tus pedidos</Display>
+          <Display className="text-center">{t("rebuild.orders.title")}</Display>
           <Body className="mt-3 text-center text-muted-foreground">
-            Inicia sesión para ver tu historial de pedidos.
+            {t("rebuild.orders.auth_required")}
           </Body>
           <Button
-            title="Iniciar sesión"
+            title={t("rebuild.auth.login_cta")}
             variant="primary"
             size="lg"
             className="mt-8"
@@ -81,9 +84,9 @@ export default function OrdersScreen() {
             </>
           ) : (orders.data ?? []).length === 0 ? (
             <View className="py-20 items-center">
-              <Body className="text-muted-foreground">Aún no tienes pedidos.</Body>
+              <Body className="text-muted-foreground">{t("rebuild.orders.empty")}</Body>
               <Button
-                title="Empezar a comprar"
+                title={t("rebuild.cart.empty_cta")}
                 variant="secondary"
                 size="md"
                 className="mt-4"
@@ -105,7 +108,7 @@ export default function OrdersScreen() {
                           #{o.order_number}
                         </Caption>
                         <Heading3 className="mt-0.5">
-                          {STATUS_LABEL[o.status] ?? o.status}
+                          {statusLabel(t, o.status)}
                         </Heading3>
                         <Small className="mt-1 text-muted-foreground">
                           {new Date(o.created_at).toLocaleDateString("es-ES", {
@@ -153,7 +156,7 @@ export default function OrdersScreen() {
 
                       <View className="mt-4 flex-row gap-2">
                         <Button
-                          title="Repetir pedido"
+                          title={t("rebuild.orders.reorder")}
                           variant="secondary"
                           size="sm"
                           leftIcon={<Repeat size={14} color="#0B0B0C" strokeWidth={2} />}

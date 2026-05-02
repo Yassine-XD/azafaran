@@ -10,6 +10,7 @@ import { Display, Heading2, Heading3, Body, Small, Caption } from "@/components/
 import { Button } from "@/components/ui/Button";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLang } from "@/contexts/LanguageContext";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n);
@@ -17,6 +18,7 @@ const fmt = (n: number) =>
 export default function CartScreen() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const { t } = useLang();
   const {
     items,
     subtotal,
@@ -34,9 +36,9 @@ export default function CartScreen() {
   const onApplyPromo = async () => {
     if (!promoCode.trim()) return;
     if (!isAuthenticated) {
-      Alert.alert("Inicia sesión", "Inicia sesión para usar códigos promocionales", [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Iniciar sesión", onPress: () => router.push("/login") },
+      Alert.alert(t("rebuild.cart.promo_login_cta"), t("rebuild.cart.promo_login_required"), [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("rebuild.cart.promo_login_cta"), onPress: () => router.push("/login") },
       ]);
       return;
     }
@@ -73,18 +75,18 @@ export default function CartScreen() {
         >
           <ArrowLeft size={20} color="#0B0B0C" strokeWidth={2} />
         </Pressable>
-        <Heading2>Carrito</Heading2>
+        <Heading2>{t("rebuild.cart.title")}</Heading2>
         <View className="w-10" />
       </View>
 
       {items.length === 0 && !isLoading ? (
         <View className="flex-1 items-center justify-center px-8">
-          <Display className="text-center">Carrito vacío</Display>
+          <Display className="text-center">{t("rebuild.cart.empty_title")}</Display>
           <Body className="mt-3 text-center text-muted-foreground">
-            Aún no has añadido nada. Echa un vistazo a las ofertas de hoy.
+            {t("rebuild.cart.empty_subtitle")}
           </Body>
           <Button
-            title="Empezar a comprar"
+            title={t("rebuild.cart.empty_cta")}
             variant="primary"
             size="lg"
             className="mt-8"
@@ -174,11 +176,11 @@ export default function CartScreen() {
             {/* Promo input */}
             {!appliedPromo ? (
               <View className="mt-6">
-                <Heading3>Código promocional</Heading3>
+                <Heading3>{t("rebuild.cart.promo_label")}</Heading3>
                 <View className="mt-3 flex-row gap-2">
                   <View className="flex-1 px-4 h-12 rounded-xl bg-card border border-border justify-center">
                     <TextInput
-                      placeholder="WELCOME10"
+                      placeholder={t("rebuild.cart.promo_placeholder")}
                       autoCapitalize="characters"
                       value={promoCode}
                       onChangeText={setPromoCode}
@@ -187,7 +189,7 @@ export default function CartScreen() {
                     />
                   </View>
                   <Button
-                    title="Aplicar"
+                    title={t("common.apply")}
                     variant="secondary"
                     size="md"
                     loading={applyingPromo}
@@ -201,19 +203,19 @@ export default function CartScreen() {
             {/* Totals */}
             <View className="mt-6 p-4 rounded-2xl bg-surface border border-border">
               <View className="flex-row justify-between">
-                <Body className="text-muted-foreground">Subtotal</Body>
+                <Body className="text-muted-foreground">{t("rebuild.cart.subtotal")}</Body>
                 <Body className="font-mono-medium">{fmt(subtotal)}</Body>
               </View>
               {appliedPromo ? (
                 <View className="mt-2 flex-row justify-between">
-                  <Body className="text-halal">Descuento</Body>
+                  <Body className="text-halal">{t("rebuild.cart.discount")}</Body>
                   <Body className="font-mono-medium text-halal">
                     −{fmt(appliedPromo.discount_amount)}
                   </Body>
                 </View>
               ) : null}
               <View className="mt-3 pt-3 border-t border-border flex-row justify-between items-baseline">
-                <Heading3>Total</Heading3>
+                <Heading3>{t("rebuild.cart.total")}</Heading3>
                 <Body className="font-mono-semibold text-h2">{fmt(total)}</Body>
               </View>
             </View>
@@ -222,7 +224,7 @@ export default function CartScreen() {
           {/* Sticky checkout */}
           <View className="absolute bottom-0 left-0 right-0 px-5 pt-3 pb-6 bg-background border-t border-border shadow-sticky">
             <Button
-              title={`Continuar · ${fmt(total)}`}
+              title={`${t("rebuild.cart.checkout_cta")} · ${fmt(total)}`}
               variant="primary"
               size="lg"
               fullWidth

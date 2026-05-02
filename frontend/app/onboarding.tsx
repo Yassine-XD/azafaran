@@ -29,9 +29,9 @@ export default function OnboardingScreen() {
     <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-background">
       <View className="flex-1 px-6 pt-12 justify-between">
         <View>
-          <Display>Bienvenido</Display>
+          <Display>{t("rebuild.onboarding_v2.welcome")}</Display>
           <Body className="mt-3 text-muted-foreground">
-            Carnicería halal certificada, a domicilio.
+            {t("rebuild.onboarding_v2.tagline")}
           </Body>
 
           <View className="mt-12 gap-3">
@@ -53,7 +53,7 @@ export default function OnboardingScreen() {
         </View>
 
         <Button
-          title={t("common.continue") || "Continuar"}
+          title={t("common.continue")}
           variant="primary"
           size="lg"
           fullWidth

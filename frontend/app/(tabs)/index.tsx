@@ -25,10 +25,10 @@ export default function HomeScreen() {
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Buenos días";
-    if (hour < 20) return "Buenas tardes";
-    return "Buenas noches";
-  }, []);
+    if (hour < 12) return t("rebuild.home.greet_morning");
+    if (hour < 20) return t("rebuild.home.greet_afternoon");
+    return t("rebuild.home.greet_evening");
+  }, [t]);
 
   const refreshing =
     featured.isFetching || categories.isFetching || (isAuthenticated && orders.isFetching);
@@ -59,16 +59,17 @@ export default function HomeScreen() {
             {greeting}
           </Small>
           <Display className="mt-1">
-            {user?.first_name || t("home.greeting_guest") || "Hola"}.
+            {user?.first_name || t("rebuild.home.greet_guest")}.
           </Display>
         </View>
 
         {/* Reorder last */}
         {lastOrder ? (
           <Section
-            title={t("home.reorder_title") || "Repetir pedido"}
-            subtitle={t("home.reorder_subtitle") || "Lo de la semana pasada, en un toque"}
+            title={t("rebuild.home.reorder_title")}
+            subtitle={t("rebuild.home.reorder_subtitle")}
             onPressMore={() => router.push("/(tabs)/orders")}
+            seeMoreLabel={t("common.see_more")}
           >
             <Pressable
               onPress={() => router.push(`/order/${lastOrder.id}` as any)}
@@ -92,9 +93,10 @@ export default function HomeScreen() {
         {/* Ofertas hoy */}
         {dealsProducts.length > 0 ? (
           <Section
-            title={t("home.deals_title") || "Ofertas hoy"}
-            subtitle={t("home.deals_subtitle") || "Carne fresca a precio especial"}
+            title={t("rebuild.home.deals_title")}
+            subtitle={t("rebuild.home.deals_subtitle")}
             onPressMore={() => router.push("/(tabs)/categories")}
+            seeMoreLabel={t("common.see_more")}
           >
             <ScrollView
               horizontal
@@ -115,8 +117,8 @@ export default function HomeScreen() {
 
         {/* Categories */}
         <Section
-          title={t("home.categories_title") || "Categorías"}
-          subtitle={t("home.categories_subtitle") || "Cordero, ternera, pollo y más"}
+          title={t("rebuild.home.categories_title")}
+          subtitle={t("rebuild.home.categories_subtitle")}
         >
           <View className="px-5">
             {categories.isLoading ? (
@@ -155,8 +157,8 @@ export default function HomeScreen() {
 
         {/* Bestsellers */}
         <Section
-          title={t("home.bestsellers_title") || "Lo más pedido"}
-          subtitle={t("home.bestsellers_subtitle") || "Lo que más compran nuestras familias"}
+          title={t("rebuild.home.bestsellers_title")}
+          subtitle={t("rebuild.home.bestsellers_subtitle")}
         >
           {featured.isLoading ? (
             <View className="px-5 flex-row gap-3">
@@ -190,10 +192,11 @@ interface SectionProps {
   title: string;
   subtitle?: string;
   onPressMore?: () => void;
+  seeMoreLabel?: string;
   children: React.ReactNode;
 }
 
-function Section({ title, subtitle, onPressMore, children }: SectionProps) {
+function Section({ title, subtitle, onPressMore, seeMoreLabel, children }: SectionProps) {
   return (
     <View className="mt-6">
       <View className="px-5 mb-3 flex-row items-end justify-between">
@@ -205,7 +208,7 @@ function Section({ title, subtitle, onPressMore, children }: SectionProps) {
         </View>
         {onPressMore ? (
           <Pressable onPress={onPressMore} className="flex-row items-center active:opacity-60">
-            <Small className="text-foreground font-body-semibold">Ver más</Small>
+            <Small className="text-foreground font-body-semibold">{seeMoreLabel || "Ver más"}</Small>
             <ChevronRight size={16} color="#0B0B0C" strokeWidth={2} />
           </Pressable>
         ) : null}

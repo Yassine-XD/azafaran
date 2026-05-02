@@ -7,10 +7,12 @@ import { ArrowLeft } from "lucide-react-native";
 import { Display, Heading3, Body, Small } from "@/components/ui/Text";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLang } from "@/contexts/LanguageContext";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
+  const { t } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -23,7 +25,7 @@ export default function LoginScreen() {
     if (r.success) {
       router.back();
     } else {
-      Alert.alert("No se pudo iniciar sesión", r.error || "Inténtalo de nuevo");
+      Alert.alert(t("rebuild.auth.login_failed_title"), r.error || t("rebuild.product.add_failed_retry"));
     }
   };
 
@@ -44,19 +46,19 @@ export default function LoginScreen() {
         </View>
 
         <ScrollView contentContainerClassName="px-5 pb-12 flex-grow">
-          <Display>Bienvenido</Display>
-          <Body className="mt-2 text-muted-foreground">Inicia sesión para continuar.</Body>
+          <Display>{t("rebuild.auth.login_title")}</Display>
+          <Body className="mt-2 text-muted-foreground">{t("rebuild.auth.login_subtitle")}</Body>
 
           <View className="mt-8 gap-4">
             <Field
-              label="Email"
+              label={t("rebuild.auth.email")}
               value={email}
               onChange={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
             />
             <Field
-              label="Contraseña"
+              label={t("rebuild.auth.password")}
               value={password}
               onChange={setPassword}
               secureTextEntry
@@ -64,7 +66,7 @@ export default function LoginScreen() {
           </View>
 
           <Button
-            title={submitting ? "Entrando…" : "Iniciar sesión"}
+            title={submitting ? t("rebuild.auth.logging_in") : t("rebuild.auth.login_cta")}
             variant="primary"
             size="lg"
             fullWidth
@@ -75,9 +77,9 @@ export default function LoginScreen() {
           />
 
           <View className="mt-6 flex-row justify-center gap-1">
-            <Small className="text-muted-foreground">¿No tienes cuenta?</Small>
+            <Small className="text-muted-foreground">{t("rebuild.auth.no_account")}</Small>
             <Link href="/register" replace>
-              <Small className="font-body-semibold text-foreground">Regístrate</Small>
+              <Small className="font-body-semibold text-foreground">{t("rebuild.auth.sign_up")}</Small>
             </Link>
           </View>
         </ScrollView>

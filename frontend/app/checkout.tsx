@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLang } from "@/contexts/LanguageContext";
 import { api } from "@/lib/api";
 import { useStripePay } from "@/hooks/useStripePay";
 import type { Address } from "@/lib/types";
@@ -19,6 +20,7 @@ const fmt = (n: number) =>
 export default function CheckoutScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLang();
   const { items, subtotal, appliedPromo, clearCart } = useCart();
   const { payWithCard, CardField } = useStripePay();
 
@@ -48,7 +50,7 @@ export default function CheckoutScreen() {
 
   const onSubmit = async () => {
     if (!selectedAddressId) {
-      Alert.alert("Selecciona una dirección", "Necesitamos una dirección de entrega.");
+      Alert.alert(t("rebuild.checkout.address_required_title"), t("rebuild.checkout.address_required_message"));
       return;
     }
     if (items.length === 0) return;
@@ -110,7 +112,7 @@ export default function CheckoutScreen() {
         >
           <ArrowLeft size={20} color="#0B0B0C" strokeWidth={2} />
         </Pressable>
-        <Display>Pago</Display>
+        <Display>{t("rebuild.checkout.title")}</Display>
       </View>
 
       <KeyboardAvoidingView
@@ -120,7 +122,7 @@ export default function CheckoutScreen() {
         <ScrollView contentContainerClassName="px-5 pb-32">
           {/* Address selector */}
           <View className="mt-4">
-            <Heading2>Dirección de entrega</Heading2>
+            <Heading2>{t("rebuild.checkout.address_section")}</Heading2>
             {loadingAddresses ? (
               <View className="mt-3 gap-2">
                 <Skeleton className="h-20 rounded-2xl" />
@@ -167,7 +169,7 @@ export default function CheckoutScreen() {
                   className="flex-row items-center gap-2 px-4 h-12 rounded-2xl border border-dashed border-border active:opacity-80"
                 >
                   <Plus size={16} color="#0B0B0C" strokeWidth={2} />
-                  <Small className="font-body-semibold">Añadir nueva dirección</Small>
+                  <Small className="font-body-semibold">{t("rebuild.checkout.add_address")}</Small>
                 </Pressable>
               </View>
             )}
@@ -175,13 +177,13 @@ export default function CheckoutScreen() {
 
           {/* Notes */}
           <View className="mt-6">
-            <Heading3>Notas para el repartidor</Heading3>
+            <Heading3>{t("rebuild.checkout.notes_label")}</Heading3>
             <View className="mt-2 px-4 py-3 rounded-xl bg-card border border-border">
               <TextInput
                 value={notes}
                 onChangeText={setNotes}
                 multiline
-                placeholder="Opcional"
+                placeholder={t("common.optional")}
                 placeholderTextColor="#A1A1A6"
                 style={{
                   fontFamily: "Inter_400Regular",
@@ -197,7 +199,7 @@ export default function CheckoutScreen() {
           {/* Card field — web only renders, native uses Payment Sheet */}
           {CardField ? (
             <View className="mt-6">
-              <Heading2>Datos de pago</Heading2>
+              <Heading2>{t("rebuild.checkout.payment_section")}</Heading2>
               <View className="mt-3 p-4 rounded-2xl border border-border bg-card">
                 <CardField />
               </View>
@@ -206,21 +208,21 @@ export default function CheckoutScreen() {
 
           {/* Summary */}
           <View className="mt-6 p-4 rounded-2xl bg-surface border border-border">
-            <Heading3 className="mb-3">Resumen</Heading3>
+            <Heading3 className="mb-3">{t("rebuild.checkout.summary")}</Heading3>
             <View className="flex-row justify-between">
-              <Body className="text-muted-foreground">Subtotal</Body>
+              <Body className="text-muted-foreground">{t("rebuild.cart.subtotal")}</Body>
               <Body className="font-mono-medium">{fmt(subtotal)}</Body>
             </View>
             {appliedPromo ? (
               <View className="mt-2 flex-row justify-between">
-                <Body className="text-halal">Descuento</Body>
+                <Body className="text-halal">{t("rebuild.cart.discount")}</Body>
                 <Body className="font-mono-medium text-halal">
                   −{fmt(appliedPromo.discount_amount)}
                 </Body>
               </View>
             ) : null}
             <View className="mt-3 pt-3 border-t border-border flex-row justify-between items-baseline">
-              <Heading3>Total</Heading3>
+              <Heading3>{t("rebuild.cart.total")}</Heading3>
               <Body className="font-mono-semibold text-h2">{fmt(total)}</Body>
             </View>
           </View>
@@ -229,7 +231,7 @@ export default function CheckoutScreen() {
         {/* Sticky CTA */}
         <View className="absolute bottom-0 left-0 right-0 px-5 pt-3 pb-6 bg-background border-t border-border shadow-sticky">
           <Button
-            title={submitting ? "Procesando…" : `Pagar ${fmt(total)}`}
+            title={submitting ? t("rebuild.checkout.processing") : `${t("rebuild.checkout.pay_cta")} ${fmt(total)}`}
             variant="primary"
             size="lg"
             fullWidth

@@ -17,9 +17,9 @@ export default function ProfileScreen() {
   const { lang, t } = useLang();
 
   const onLogout = () => {
-    Alert.alert("Cerrar sesión", "¿Quieres salir de tu cuenta?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Cerrar sesión", style: "destructive", onPress: () => logout() },
+    Alert.alert(t("rebuild.profile.logout_confirm_title"), t("rebuild.profile.logout_confirm_message"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("rebuild.profile.logout"), style: "destructive", onPress: () => logout() },
     ]);
   };
 
@@ -47,19 +47,19 @@ export default function ProfileScreen() {
         ) : (
           <View className="px-5">
             <View className="p-5 rounded-2xl bg-surface border border-border">
-              <Heading3>Inicia sesión</Heading3>
+              <Heading3>{t("rebuild.profile.auth_section_title")}</Heading3>
               <Small className="mt-1 text-muted-foreground">
-                Para guardar tu carrito, hacer pedidos y recibir ofertas.
+                {t("rebuild.profile.auth_section_subtitle")}
               </Small>
               <View className="flex-row gap-2 mt-4">
                 <Button
-                  title="Iniciar sesión"
+                  title={t("rebuild.auth.login_cta")}
                   variant="primary"
                   size="md"
                   onPress={() => router.push("/login")}
                 />
                 <Button
-                  title="Crear cuenta"
+                  title={t("rebuild.auth.register_cta")}
                   variant="secondary"
                   size="md"
                   onPress={() => router.push("/register")}
@@ -72,19 +72,19 @@ export default function ProfileScreen() {
         {/* Settings rows */}
         <View className="mt-6 px-5">
           <Caption className="uppercase tracking-wide text-muted-foreground mb-2 px-1">
-            Preferencias
+            {t("rebuild.profile.preferences")}
           </Caption>
           <View className="rounded-2xl bg-card border border-border overflow-hidden">
             <Row
               icon={<Globe size={18} color="#0B0B0C" strokeWidth={1.8} />}
-              title="Idioma"
+              title={t("rebuild.profile.language")}
               value={LANG_LABEL[lang]}
               onPress={() => router.push("/language-select")}
             />
             <Divider />
             <Row
               icon={<Bell size={18} color="#0B0B0C" strokeWidth={1.8} />}
-              title="Notificaciones"
+              title={t("rebuild.profile.notifications")}
               onPress={() => router.push("/notification-preferences" as any)}
             />
           </View>
@@ -92,18 +92,18 @@ export default function ProfileScreen() {
 
         <View className="mt-6 px-5">
           <Caption className="uppercase tracking-wide text-muted-foreground mb-2 px-1">
-            Información
+            {t("rebuild.profile.info")}
           </Caption>
           <View className="rounded-2xl bg-card border border-border overflow-hidden">
             <Row
               icon={<ShieldCheck size={18} color="#0B0B0C" strokeWidth={1.8} />}
-              title="Política de privacidad"
+              title={t("rebuild.profile.privacy")}
               onPress={() => router.push("/policies" as any)}
             />
             <Divider />
             <Row
               icon={<FileText size={18} color="#0B0B0C" strokeWidth={1.8} />}
-              title="Términos y condiciones"
+              title={t("rebuild.profile.terms")}
               onPress={() => router.push("/policies" as any)}
             />
           </View>
@@ -116,7 +116,7 @@ export default function ProfileScreen() {
               className="flex-row items-center gap-3 p-4 rounded-2xl bg-card border border-border active:opacity-80"
             >
               <LogOut size={18} color="#D6342C" strokeWidth={1.8} />
-              <Body className="text-sale font-body-semibold">Cerrar sesión</Body>
+              <Body className="text-sale font-body-semibold">{t("rebuild.profile.logout")}</Body>
             </Pressable>
           </View>
         ) : null}

@@ -15,7 +15,7 @@ const LANGS: { code: Lang; label: string }[] = [
 
 export default function LanguageSelectScreen() {
   const router = useRouter();
-  const { lang, setLang } = useLang();
+  const { lang, setLang, t } = useLang();
 
   const onPick = async (l: Lang) => {
     await setLang(l);
@@ -35,8 +35,8 @@ export default function LanguageSelectScreen() {
       </View>
 
       <View className="px-5 pt-2">
-        <Heading1>Idioma</Heading1>
-        <Body className="mt-1 text-muted-foreground">Elige tu idioma preferido.</Body>
+        <Heading1>{t("rebuild.language.title")}</Heading1>
+        <Body className="mt-1 text-muted-foreground">{t("rebuild.language.subtitle")}</Body>
       </View>
 
       <View className="px-5 mt-6 gap-2">

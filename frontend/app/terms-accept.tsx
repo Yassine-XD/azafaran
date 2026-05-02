@@ -8,9 +8,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Display, Body, Small } from "@/components/ui/Text";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
+import { useLang } from "@/contexts/LanguageContext";
 
 export default function TermsAcceptScreen() {
   const router = useRouter();
+  const { t } = useLang();
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedMarketing, setAcceptedMarketing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -35,31 +37,31 @@ export default function TermsAcceptScreen() {
     <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerClassName="px-5 pt-8 pb-12 flex-grow">
-        <Display>Antes de empezar</Display>
+        <Display>{t("rebuild.terms.title")}</Display>
         <Body className="mt-3 text-muted-foreground">
-          Necesitamos tu visto bueno a lo siguiente.
+          {t("rebuild.terms.subtitle")}
         </Body>
 
         <View className="mt-8 gap-3">
           <CheckRow
             checked={acceptedTerms}
             onToggle={() => setAcceptedTerms((v) => !v)}
-            title="Acepto los Términos y la Política de Privacidad"
-            subtitle="Obligatorio para usar la app."
+            title={t("rebuild.terms.accept_terms")}
+            subtitle={t("rebuild.terms.accept_terms_hint")}
             required
           />
           <CheckRow
             checked={acceptedMarketing}
             onToggle={() => setAcceptedMarketing((v) => !v)}
-            title="Quiero recibir ofertas y recordatorios"
-            subtitle="Puedes cambiarlo en Perfil → Notificaciones."
+            title={t("rebuild.terms.accept_marketing")}
+            subtitle={t("rebuild.terms.accept_marketing_hint")}
           />
         </View>
 
         <View className="flex-1" />
 
         <Button
-          title={submitting ? "Guardando…" : "Continuar"}
+          title={submitting ? t("common.saving") : t("common.continue")}
           variant="primary"
           size="lg"
           fullWidth
