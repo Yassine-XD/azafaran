@@ -8,7 +8,7 @@ export default function StripeProviderWrapper({ children }: { children: ReactNod
       publishableKey={STRIPE_PUBLISHABLE_KEY}
       merchantIdentifier="merchant.com.azafaran"
     >
-      {children}
+      <>{children}</>
     </StripeProvider>
   );
 }

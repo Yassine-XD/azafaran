@@ -96,10 +96,13 @@ export type Product = {
   updated_at?: string;
 };
 
-// Helper to get the first image URL from a product
+// Helper to get the first image URL from a product. The backend returns
+// product.images as JSONB which can be either string[] or {url}[].
 export function getProductImage(product: Product | null | undefined): string {
-  return product?.images?.[0]?.url || product?.images[0];
-;
+  const first: any = product?.images?.[0];
+  if (!first) return "";
+  if (typeof first === "string") return first;
+  return first.url || "";
 }
 
 // Helper to get the cheapest variant price

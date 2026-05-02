@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { Text } from "@/components/ui/Text";
 import { Badge } from "@/components/ui/Badge";
 import { PriceBlock, pricePerKg } from "./PriceBlock";
+import { firstImage } from "@/lib/productImage";
 import { cn } from "@/lib/cva";
 
 /**
@@ -28,7 +29,7 @@ interface Variant {
 interface Product {
   id: string;
   name: string;
-  images?: string[];
+  images?: unknown; // JSONB — string[] | {url}[]
   halal_cert_id?: string | null;
   unit_label_override?: string | null;
   variants?: Variant[];
@@ -52,7 +53,7 @@ function pickHeadlineVariant(variants: Variant[] | undefined): Variant | null {
 
 export function ProductCard({ product, onPress, className }: Props) {
   const v = pickHeadlineVariant(product.variants);
-  const image = product.images?.[0];
+  const image = firstImage(product.images);
   const showHalal = !!product.halal_cert_id;
   const showLowStock =
     v && v.low_stock_threshold != null && v.stock_qty <= v.low_stock_threshold;

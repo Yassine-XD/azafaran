@@ -18,12 +18,8 @@ const button = cva(
         md: "px-4 h-11",
         lg: "px-5 h-14",
       },
-      fullWidth: {
-        true: "w-full",
-        false: "",
-      },
     },
-    defaultVariants: { variant: "primary", size: "md", fullWidth: false },
+    defaultVariants: { variant: "primary", size: "md" },
   },
 );
 
@@ -75,7 +71,8 @@ export function Button({
   return (
     <Pressable
       className={cn(
-        button({ variant, size, fullWidth }),
+        button({ variant, size }),
+        fullWidth && "w-full",
         (disabled || loading) && "opacity-50",
         className,
       )}
