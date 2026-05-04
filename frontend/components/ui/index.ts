@@ -13,6 +13,7 @@ export { ConfirmModal } from "./ConfirmModal";
 export type { ConfirmModalTone } from "./ConfirmModal";
 export { Gradient } from "./Gradient";
 export { MobileTopBar } from "./MobileTopBar";
+export { DrawerMenu } from "./DrawerMenu";
 export { TrustStrip } from "./TrustStrip";
 export { CategoryRail } from "./CategoryRail";
 export { PromoRow } from "./PromoRow";

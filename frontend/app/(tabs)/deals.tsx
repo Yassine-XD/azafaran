@@ -27,7 +27,7 @@ import { useLang } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import type { Product } from "@/lib/types";
 import { getProductImage, getMinPrice } from "@/lib/types";
-import { Gradient } from "@/components/ui";
+import { Gradient, MobileTopBar } from "@/components/ui";
 import { brand, shadows } from "@/theme";
 
 type DiscountedProduct = Product & { off: number };
@@ -93,6 +93,8 @@ export default function DealsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
+
+      <MobileTopBar showGreeting={false} />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32, paddingTop: 8 }}

@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import { useLang } from "@/contexts/LanguageContext";
 import type { Category, Product } from "@/lib/types";
-import { Gradient } from "@/components/ui";
+import { Gradient, MobileTopBar } from "@/components/ui";
 import { brand, shadows } from "@/theme";
 
 const SLUG_EMOJI: Record<string, string> = {
@@ -82,6 +82,8 @@ export default function CategoriesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
+
+      <MobileTopBar showGreeting={false} />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32, paddingTop: 8 }}

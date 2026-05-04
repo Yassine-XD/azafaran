@@ -22,7 +22,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LanguageContext";
 import type { Order, OrderStatus } from "@/lib/types";
-import { Button, Gradient } from "@/components/ui";
+import { Button, Gradient, MobileTopBar } from "@/components/ui";
 import { brand, shadows } from "@/theme";
 
 type Filter = "all" | "active" | "delivered" | "cancelled";
@@ -108,6 +108,8 @@ export default function OrdersScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
+
+      <MobileTopBar showGreeting={false} />
 
       <View className="px-5 pt-2 pb-4">
         <Text className="font-body text-sm text-muted-foreground">

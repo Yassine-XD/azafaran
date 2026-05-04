@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Menu, Search, ShoppingBag } from "lucide-react-native";
 import { useRouter } from "expo-router";
@@ -7,6 +7,7 @@ import { useLang } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { brand, shadows } from "@/theme";
 import { Gradient } from "./Gradient";
+import { DrawerMenu } from "./DrawerMenu";
 
 type Props = {
   onMenuPress?: () => void;
@@ -24,12 +25,13 @@ export function MobileTopBar({ onMenuPress, onSearchPress, showGreeting = true }
   const { itemCount } = useCart();
   const { t } = useLang();
   const { user } = useAuth();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
     <View className="px-5 pt-3 pb-3 bg-background">
       <View className="flex-row items-center justify-between mb-3">
         <Pressable
-          onPress={onMenuPress}
+          onPress={() => (onMenuPress ? onMenuPress() : setDrawerOpen(true))}
           className="w-11 h-11 rounded-2xl bg-card items-center justify-center border border-border"
           style={shadows.card}
           hitSlop={6}
@@ -83,6 +85,7 @@ export function MobileTopBar({ onMenuPress, onSearchPress, showGreeting = true }
           <Text className="font-body-bold text-[11px] text-primary">Filter</Text>
         </View>
       </Pressable>
+      <DrawerMenu visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </View>
   );
 }

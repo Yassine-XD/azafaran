@@ -22,7 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LanguageContext";
 import { LANGUAGES, type Lang } from "@/lib/i18n";
 import { api } from "@/lib/api";
-import { Button, ConfirmModal, Gradient } from "@/components/ui";
+import { Button, ConfirmModal, Gradient, MobileTopBar } from "@/components/ui";
 import { brand, shadows } from "@/theme";
 
 type MenuItem = {
@@ -118,6 +118,8 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
+
+      <MobileTopBar showGreeting={false} />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32, paddingTop: 8 }}
