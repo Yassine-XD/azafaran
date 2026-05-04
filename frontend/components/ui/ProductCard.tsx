@@ -8,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { shadows } from "@/theme";
 import { PriceTag } from "./PriceTag";
+import { Gradient } from "./Gradient";
 
 type Props = {
   image?: string;
@@ -91,10 +92,18 @@ export function ProductCard({
         </View>
 
         {rating != null && rating > 0 && (
-          <View className="absolute top-3 right-3 bg-coal/75 px-2 py-1 rounded-full flex-row items-center gap-1">
+          <View className="absolute top-3 right-3 bg-card/95 px-2 py-1 rounded-full flex-row items-center gap-1" style={shadows.card}>
             <Star size={10} fill="#C9A961" color="#C9A961" />
-            <Text className="text-white text-[11px] font-body-semibold">
+            <Text className="text-foreground text-[11px] font-body-bold">
               {Number(rating).toFixed(1)}
+            </Text>
+          </View>
+        )}
+
+        {compareAt && Number(compareAt) > Number(price) && (
+          <View className="absolute bottom-3 left-3 bg-wine px-2 py-1 rounded-full">
+            <Text className="text-white text-[10px] font-body-bold">
+              -{Math.round((1 - Number(price) / Number(compareAt)) * 100)}%
             </Text>
           </View>
         )}
@@ -121,11 +130,16 @@ export function ProductCard({
           {onAdd && (
             <Pressable
               onPress={onAdd}
-              className="w-10 h-10 rounded-full bg-primary items-center justify-center"
-              style={shadows.goldGlow}
+              className="rounded-full overflow-hidden"
+              style={shadows.button}
               hitSlop={8}
             >
-              <Plus size={20} color="#FFFFFF" strokeWidth={2.6} />
+              <Gradient
+                name="primary"
+                style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+              >
+                <Plus size={20} color="#FFFFFF" strokeWidth={2.8} />
+              </Gradient>
             </Pressable>
           )}
         </View>
