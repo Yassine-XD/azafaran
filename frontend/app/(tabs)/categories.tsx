@@ -8,15 +8,32 @@ import {
   ActivityIndicator,
   StatusBar,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowRight, Search } from "lucide-react-native";
+import { ChevronRight } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import { useLang } from "@/contexts/LanguageContext";
 import type { Category, Product } from "@/lib/types";
-import { SectionHeader } from "@/components/ui";
+import { Gradient } from "@/components/ui";
 import { brand, shadows } from "@/theme";
+
+const SLUG_EMOJI: Record<string, string> = {
+  beef: "🥩",
+  ternera: "🥩",
+  lamb: "🐑",
+  cordero: "🐑",
+  chicken: "🍗",
+  pollo: "🍗",
+  kebabs: "🍢",
+  burgers: "🍔",
+  hamburguesas: "🍔",
+  turkey: "🦃",
+  pavo: "🦃",
+  "bbq-packs": "🔥",
+  packs: "🔥",
+  ofertas: "🏷️",
+  deals: "🏷️",
+};
 
 type CategoryWithCount = Category & { product_count?: number };
 
@@ -33,10 +50,12 @@ export default function CategoriesScreen() {
       const res = await api.get<CategoryWithCount[]>("/categories/", false);
       if (res.success && res.data) {
         setCategories(res.data);
-        // Fetch product counts for display (best effort).
         const pairs = await Promise.all(
           res.data.map(async (c) => {
-            const pr = await api.get<Product[]>(`/categories/${c.slug}/products?limit=100`, false);
+            const pr = await api.get<Product[]>(
+              `/categories/${c.slug}/products?limit=100`,
+              false,
+            );
             return [c.slug, pr.success && pr.data ? pr.data.length : c.product_count ?? 0] as const;
           }),
         );
@@ -54,138 +73,113 @@ export default function CategoriesScreen() {
     );
   }
 
-  const featured = categories.slice(0, 2);
-  const rest = categories.slice(2);
-
   const open = (c: Category) =>
-    router.push({ pathname: "/shop", params: { category: c.slug, categoryName: c.name } });
+    router.push({
+      pathname: "/shop",
+      params: { category: c.slug, categoryName: c.name },
+    });
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <View className="px-5 pt-2 pb-4">
-        <Text className="font-body-semibold text-[11px] uppercase tracking-widest text-muted-foreground mb-1">
-          Azafarán
-        </Text>
-        <Text className="font-display text-[30px] leading-9 text-foreground">
-          {t("categories.title")}
-        </Text>
-      </View>
-
-      <View className="px-5 pb-4">
-        <Pressable
-          onPress={() => router.push("/search")}
-          className="flex-row items-center gap-3 h-12 px-4 rounded-full bg-card"
-          style={shadows.card}
-        >
-          <Search size={18} color={brand.textSecondary} strokeWidth={2.2} />
-          <Text className="font-body text-[14px] text-muted-foreground">
-            {t("categories.search_placeholder")}
-          </Text>
-        </Pressable>
-      </View>
-
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 128, paddingHorizontal: 20 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32, paddingTop: 8 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Featured editorial cards — full width, tall */}
-        {featured.length > 0 && (
-          <View className="mb-6">
-            <SectionHeader
-              title={t("categories.featured")}
-              accent="gold"
-              className="mb-4"
-            />
-            <View className="gap-4">
-              {featured.map((cat) => (
-                <EditorialCard
-                  key={cat.id}
-                  category={cat}
-                  count={counts[cat.slug] ?? 0}
-                  countLabel={t("home.cuts")}
-                  onPress={() => open(cat)}
-                  tall
-                />
-              ))}
-            </View>
-          </View>
-        )}
+        {/* Header */}
+        <View className="pt-2 pb-5">
+          <Text className="font-body text-sm text-muted-foreground">
+            {t("categories.eyebrow")}
+          </Text>
+          <Text className="font-display text-3xl leading-9 text-foreground mt-0.5">
+            {t("categories.title")}
+          </Text>
+        </View>
 
-        {/* Grid of the rest */}
-        {rest.length > 0 && (
-          <View>
-            <SectionHeader title={t("categories.all")} className="mb-4" />
-            <View className="flex-row flex-wrap" style={{ gap: 14 }}>
-              {rest.map((cat) => (
-                <View key={cat.id} style={{ width: "47.8%" }}>
-                  <EditorialCard
-                    category={cat}
-                    count={counts[cat.slug] ?? 0}
-                    countLabel={t("home.cuts")}
-                    onPress={() => open(cat)}
-                  />
-                </View>
-              ))}
+        {/* 2-col grid */}
+        <View className="flex-row flex-wrap" style={{ gap: 12 }}>
+          {categories.map((c, i) => (
+            <View key={c.id} style={{ width: "47.8%" }}>
+              <CategoryCard
+                category={c}
+                count={counts[c.slug] ?? 0}
+                countLabel={t("categories.items")}
+                onPress={() => open(c)}
+                delayMs={i * 60}
+              />
             </View>
-          </View>
-        )}
+          ))}
+        </View>
+
+        {/* Custom request CTA */}
+        <View className="mt-5 rounded-3xl overflow-hidden" style={shadows.cardLift}>
+          <Gradient name="gold" style={{ padding: 20 }}>
+            <Text className="font-body-bold text-[10px] uppercase tracking-widest text-coal">
+              {t("categories.custom_request_eyebrow")}
+            </Text>
+            <Text className="font-display text-coal text-xl leading-7 mt-1">
+              {t("categories.custom_request_title")}
+            </Text>
+            <Text className="font-body text-coal/85 text-sm mt-1">
+              {t("categories.custom_request_subtitle")}
+            </Text>
+            <Pressable
+              onPress={() => router.push("/support-new")}
+              className="self-start mt-3 bg-coal px-4 py-2 rounded-full"
+            >
+              <Text className="font-body-bold text-white text-sm">
+                {t("categories.custom_request_cta")}
+              </Text>
+            </Pressable>
+          </Gradient>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function EditorialCard({
+function CategoryCard({
   category,
   count,
   countLabel,
   onPress,
-  tall = false,
+  delayMs: _delayMs = 0,
 }: {
   category: Category;
   count: number;
   countLabel: string;
   onPress: () => void;
-  tall?: boolean;
+  delayMs?: number;
 }) {
-  const fallback =
-    "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=900&auto=format&fit=crop&q=80";
+  const emoji = SLUG_EMOJI[category.slug] ?? "🍽️";
 
   return (
-    <Pressable onPress={onPress} style={shadows.cardLift} className="rounded-3xl overflow-hidden">
+    <Pressable
+      onPress={onPress}
+      style={[{ aspectRatio: 4 / 5 }, shadows.cardLift]}
+      className="rounded-3xl overflow-hidden"
+    >
       <ImageBackground
-        source={{ uri: category.image_url || fallback }}
-        style={{ height: tall ? 220 : 200 }}
-        imageStyle={{ backgroundColor: "#1A0F0F" }}
+        source={category.image_url ? { uri: category.image_url } : undefined}
+        style={{ flex: 1, backgroundColor: "#1A0F0F" }}
+        imageStyle={{ resizeMode: "cover" }}
       >
-        <LinearGradient
-          colors={["rgba(26,15,15,0.05)", "rgba(26,15,15,0.35)", "rgba(26,15,15,0.92)"]}
-          locations={[0, 0.45, 1]}
-          style={{ flex: 1, justifyContent: "flex-end", padding: 18 }}
-        >
-          <View className="flex-row items-end justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="font-body-semibold text-[11px] uppercase tracking-widest text-gold mb-1.5">
-                {count} {countLabel}
-              </Text>
-              <Text
-                className="font-display text-white text-[22px] leading-7"
-                numberOfLines={2}
-              >
-                {category.name}
-              </Text>
-            </View>
-
-            <View
-              className="w-11 h-11 rounded-full bg-gold items-center justify-center"
-              style={shadows.goldGlow}
-            >
-              <ArrowRight size={18} color="#1A0F0F" strokeWidth={2.4} />
-            </View>
+        <Gradient name="overlay" style={{ flex: 1, padding: 14 }}>
+          <View className="self-end">
+            <Text className="text-3xl">{emoji}</Text>
           </View>
-        </LinearGradient>
+          <View className="flex-1" />
+          <Text className="font-display text-white text-2xl leading-7" numberOfLines={2}>
+            {category.name}
+          </Text>
+          <View className="flex-row items-center justify-between mt-1">
+            <Text className="font-body text-white/85 text-xs">
+              {count} {countLabel}
+            </Text>
+            <ChevronRight size={16} color="#FFFFFF" />
+          </View>
+        </Gradient>
       </ImageBackground>
     </Pressable>
   );
