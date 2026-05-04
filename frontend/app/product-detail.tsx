@@ -34,6 +34,7 @@ import { getProductImage } from "@/lib/types";
 import {
   Button,
   Card,
+  Gradient,
   HalalBadge,
   PriceTag,
   SectionHeader,
@@ -255,31 +256,32 @@ export default function ProductDetailScreen() {
           )}
 
           {/* Quantity */}
-          <Card className="p-4 mb-6 flex-row items-center justify-between">
-            <Text className="font-body-semibold text-[15px] text-foreground">
+          <View className="bg-muted/50 rounded-2xl p-3 mb-6 flex-row items-center justify-between">
+            <Text className="font-body-bold text-sm text-foreground ml-1">
               {t("product.quantity")}
             </Text>
-            <View className="flex-row items-center gap-4">
+            <View className="flex-row items-center gap-3">
               <Pressable
                 onPress={() => setQuantity(Math.max(1, quantity - 1))}
-                className="w-11 h-11 rounded-full bg-muted items-center justify-center"
-                hitSlop={8}
+                className="w-9 h-9 rounded-xl bg-card border border-border items-center justify-center"
+                hitSlop={6}
               >
-                <Minus size={18} color={brand.coal[900]} strokeWidth={2.4} />
+                <Minus size={16} color={brand.coal[900]} strokeWidth={2.4} />
               </Pressable>
-              <Text className="font-display-semibold text-xl text-foreground w-8 text-center">
+              <Text className="font-display text-lg text-foreground w-6 text-center">
                 {quantity}
               </Text>
               <Pressable
-                onPress={() => setQuantity(Math.min(selectedVariant?.stock_qty || 99, quantity + 1))}
-                className="w-11 h-11 rounded-full bg-primary items-center justify-center"
-                style={shadows.button}
-                hitSlop={8}
+                onPress={() =>
+                  setQuantity(Math.min(selectedVariant?.stock_qty || 99, quantity + 1))
+                }
+                className="w-9 h-9 rounded-xl bg-card border border-border items-center justify-center"
+                hitSlop={6}
               >
-                <Plus size={18} color="#FFFFFF" strokeWidth={2.6} />
+                <Plus size={16} color={brand.coal[900]} strokeWidth={2.4} />
               </Pressable>
             </View>
-          </Card>
+          </View>
 
           {/* Pack contents */}
           {isPack && product.pack_items && (
@@ -351,27 +353,44 @@ export default function ProductDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Sticky bottom CTA */}
-      <SafeAreaView edges={["bottom"]} style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
+      {/* Sticky bottom CTA — gradient with total inline */}
+      <SafeAreaView
+        edges={["bottom"]}
+        style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
+      >
         <View
-          className="bg-card px-5 pt-4 pb-4 flex-row items-center gap-4 border-t border-border"
+          className="bg-background/95 px-4 pt-3 pb-3 border-t border-border"
           style={shadows.sticky}
         >
-          <View>
-            <Text className="font-body-semibold text-[11px] uppercase tracking-widest text-muted-foreground">
-              Total
-            </Text>
-            <PriceTag amount={total} size="lg" />
-          </View>
-          <View className="flex-1">
-            <Button
-              label={t("product.add_to_cart")}
-              onPress={handleAddToCart}
-              loading={addingToCart}
-              disabled={!selectedVariant}
-              leftIcon={<ShoppingCart size={18} color="#FFFFFF" strokeWidth={2.4} />}
-            />
-          </View>
+          <Pressable
+            onPress={handleAddToCart}
+            disabled={!selectedVariant || addingToCart}
+            className="rounded-2xl overflow-hidden"
+            style={shadows.button}
+          >
+            <Gradient
+              name="primary"
+              style={{
+                height: 56,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                opacity: !selectedVariant || addingToCart ? 0.6 : 1,
+              }}
+            >
+              {addingToCart ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Plus size={20} color="#FFFFFF" strokeWidth={2.8} />
+                  <Text className="font-body-bold text-base text-white">
+                    {t("product.add_to_cart")} · €{total.toFixed(2)}
+                  </Text>
+                </>
+              )}
+            </Gradient>
+          </Pressable>
         </View>
       </SafeAreaView>
     </View>
