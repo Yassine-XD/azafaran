@@ -1,193 +1,244 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image, TextInput, Alert, ActivityIndicator } from "react-native";
+import { useState } from "react";
+import { ScrollView, View, Pressable, TextInput, Alert } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag, Tag, X } from "lucide-react-native";
-import { useRouter } from "expo-router";
+import { useRouter, Stack } from "expo-router";
+import { ArrowLeft, Minus, Plus, X, Tag } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
+import { Motion } from "@legendapp/motion";
+
+import { Display, Heading2, Heading3, Body, Small, Caption } from "@/components/ui/Text";
+import { Button } from "@/components/ui/Button";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LanguageContext";
 
-const DELIVERY_FEE = 3.99;
-const FREE_DELIVERY_THRESHOLD = 40;
+const fmt = (n: number) =>
+  new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n);
 
 export default function CartScreen() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { t } = useLang();
-  const { items, itemCount, isLoading, updateItem, removeItem, applyPromo, appliedPromo, clearPromo } = useCart();
-
-  const subtotal = items.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
+  const {
+    items,
+    subtotal,
+    isLoading,
+    updateItem,
+    removeItem,
+    applyPromo,
+    clearPromo,
+    appliedPromo,
+  } = useCart();
 
   const [promoCode, setPromoCode] = useState("");
   const [applyingPromo, setApplyingPromo] = useState(false);
 
-  const discount = appliedPromo?.free_delivery ? 0 : (appliedPromo?.discount_amount || 0);
-  const deliveryFee = (subtotal >= FREE_DELIVERY_THRESHOLD || appliedPromo?.free_delivery) ? 0 : DELIVERY_FEE;
-  const total = subtotal - discount + deliveryFee;
-
-  const handleApplyPromo = async () => {
+  const onApplyPromo = async () => {
     if (!promoCode.trim()) return;
+    if (!isAuthenticated) {
+      Alert.alert(t("rebuild.cart.promo_login_cta"), t("rebuild.cart.promo_login_required"), [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("rebuild.cart.promo_login_cta"), onPress: () => router.push("/login") },
+      ]);
+      return;
+    }
     setApplyingPromo(true);
-    const result = await applyPromo(promoCode.trim().toUpperCase());
+    const r = await applyPromo(promoCode.trim());
     setApplyingPromo(false);
-    if (result.success) {
-      Alert.alert(t("cart.promo_apply"), t("cart.free_delivery"));
+    if (r.success) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setPromoCode("");
     } else {
-      Alert.alert(t("common.error"), result.error || t("cart.promo_placeholder"));
+      Alert.alert("Código no válido", r.error || "Inténtalo de nuevo");
     }
   };
 
-  const handleCheckout = () => {
+  const onCheckout = () => {
     if (!isAuthenticated) {
       router.push("/login");
       return;
     }
-    router.push("/payment");
+    router.push("/checkout");
   };
 
-  if (items.length === 0 && !isLoading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-        <View className="px-4 py-3 flex-row items-center border-b border-border">
-          <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
-            <ArrowLeft size={24} className="text-foreground" />
-          </TouchableOpacity>
-          <Text className="text-xl font-bold text-foreground ml-2">{t("cart.title")}</Text>
-        </View>
-        <View className="flex-1 items-center justify-center px-6">
-          <ShoppingBag size={64} className="text-muted-foreground mb-4" />
-          <Text className="text-xl font-bold text-foreground mb-2">{t("cart.empty_title")}</Text>
-          <Text className="text-muted-foreground text-center mb-6">{t("cart.empty_subtitle")}</Text>
-          <TouchableOpacity onPress={() => router.push("/(tabs)")} className="bg-primary px-8 py-3 rounded-xl">
-            <Text className="text-primary-foreground font-bold">{t("cart.explore")}</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const total = subtotal - (appliedPromo?.discount_amount ?? 0);
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-background">
+      <Stack.Screen options={{ headerShown: false }} />
+
       {/* Header */}
-      <View className="px-4 py-3 flex-row items-center border-b border-border">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
-          <ArrowLeft size={24} className="text-foreground" />
-        </TouchableOpacity>
-        <Text className="text-xl font-bold text-foreground ml-2">{t("cart.title")} ({itemCount})</Text>
+      <View className="px-5 py-3 flex-row items-center justify-between">
+        <Pressable
+          onPress={() => router.back()}
+          className="w-10 h-10 items-center justify-center rounded-full bg-muted"
+        >
+          <ArrowLeft size={20} color="#0B0B0C" strokeWidth={2} />
+        </Pressable>
+        <Heading2>{t("rebuild.cart.title")}</Heading2>
+        <View className="w-10" />
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 200 }} showsVerticalScrollIndicator={false}>
-        {/* Cart Items */}
-        {items.map((item) => (
-          <View key={item.id} className="mx-4 mt-4 bg-card rounded-xl border border-border p-4">
-            <View className="flex-row">
-              <Image
-                source={{ uri: item.product_image || "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=200" }}
-                className="w-20 h-20 rounded-xl"
-                resizeMode="cover"
-              />
-              <View className="flex-1 ml-3">
-                <Text className="text-foreground font-semibold" numberOfLines={2}>{item.product_name}</Text>
-                <Text className="text-muted-foreground text-xs mt-0.5">{item.weight_label}</Text>
-                <Text className="text-primary font-bold mt-1">€{item.price ? item.price.toFixed(2) : "0.00"}</Text>
-              </View>
-              <TouchableOpacity onPress={() => removeItem(item.id)} className="p-1">
-                <Trash2 size={18} className="text-destructive" />
-              </TouchableOpacity>
-            </View>
-            <View className="flex-row items-center justify-end mt-3 gap-3">
-              <TouchableOpacity
-                onPress={() => updateItem(item.id, Math.max(0, item.quantity - 1))}
-                className="w-8 h-8 bg-muted rounded-full items-center justify-center"
-              >
-                <Minus size={14} className="text-foreground" />
-              </TouchableOpacity>
-              <Text className="text-foreground font-bold text-base w-6 text-center">{item.quantity}</Text>
-              <TouchableOpacity
-                onPress={() => updateItem(item.id, item.quantity + 1)}
-                className="w-8 h-8 bg-primary rounded-full items-center justify-center"
-              >
-                <Plus size={14} style={{ color: "white" }} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-
-        {/* Promo Code */}
-        {!appliedPromo && (
-          <View className="mx-4 mt-4 flex-row items-center bg-card rounded-xl border border-border px-4 py-3">
-            <Tag size={18} className="text-muted-foreground mr-3" />
-            <TextInput
-              className="flex-1 text-foreground text-base"
-              placeholder={t("cart.promo_placeholder")}
-              placeholderTextColor="#a8a29e"
-              value={promoCode}
-              onChangeText={setPromoCode}
-              autoCapitalize="characters"
-            />
-            <TouchableOpacity onPress={handleApplyPromo} disabled={applyingPromo} className="bg-primary px-4 py-2 rounded-lg">
-              {applyingPromo ? (
-                <ActivityIndicator color="white" size="small" />
-              ) : (
-                <Text className="text-primary-foreground font-semibold text-sm">{t("cart.promo_apply")}</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Applied Promo Badge */}
-        {appliedPromo && (
-          <View className="mx-4 mt-4 flex-row items-center bg-green-50 rounded-xl border border-green-200 px-4 py-3">
-            <Tag size={16} color="#16a34a" />
-            <Text className="flex-1 text-green-700 font-medium text-sm ml-2">
-              "{appliedPromo.code}" —{" "}
-              {appliedPromo.free_delivery
-                ? t("cart.free_delivery")
-                : `-€${appliedPromo.discount_amount.toFixed(2)}`}
-            </Text>
-            <TouchableOpacity onPress={clearPromo} className="p-1">
-              <X size={16} color="#16a34a" />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Order Summary */}
-        <View className="mx-4 mt-4 bg-card rounded-xl border border-border p-4">
-          <Text className="text-foreground font-bold text-lg mb-3">{t("cart.summary")}</Text>
-          <View className="flex-row justify-between mb-2">
-            <Text className="text-muted-foreground">{t("cart.subtotal")}</Text>
-            <Text className="text-foreground font-medium">€{subtotal.toFixed(2)}</Text>
-          </View>
-          {discount > 0 && (
-            <View className="flex-row justify-between mb-2">
-              <Text className="text-green-600">{t("cart.discount")}</Text>
-              <Text className="text-green-600 font-medium">-€{discount.toFixed(2)}</Text>
-            </View>
-          )}
-          <View className="flex-row justify-between mb-2">
-            <Text className="text-muted-foreground">{t("cart.delivery")}</Text>
-            <Text className={deliveryFee === 0 ? "text-green-600 font-medium" : "text-foreground font-medium"}>
-              {deliveryFee === 0 ? t("cart.delivery_free") : `€${deliveryFee.toFixed(2)}`}
-            </Text>
-          </View>
-          {deliveryFee > 0 && (
-            <Text className="text-xs text-muted-foreground mb-2">
-              {t("cart.delivery_free_from")} €{FREE_DELIVERY_THRESHOLD}
-            </Text>
-          )}
-          <View className="border-t border-border mt-2 pt-3 flex-row justify-between">
-            <Text className="text-foreground font-bold text-lg">{t("cart.total")}</Text>
-            <Text className="text-primary font-bold text-lg">€{total.toFixed(2)}</Text>
-          </View>
+      {items.length === 0 && !isLoading ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <Display className="text-center">{t("rebuild.cart.empty_title")}</Display>
+          <Body className="mt-3 text-center text-muted-foreground">
+            {t("rebuild.cart.empty_subtitle")}
+          </Body>
+          <Button
+            title={t("rebuild.cart.empty_cta")}
+            variant="primary"
+            size="lg"
+            className="mt-8"
+            onPress={() => router.push("/(tabs)" as any)}
+          />
         </View>
-      </ScrollView>
+      ) : (
+        <>
+          <ScrollView contentContainerClassName="px-5 pb-32">
+            {/* Promo banner — informational */}
+            {appliedPromo ? (
+              <Motion.View
+                className="mb-4 p-4 rounded-2xl bg-halal/10 border border-halal/30 flex-row items-center justify-between"
+                initial={{ opacity: 0, translateY: -8 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ type: "spring", damping: 18, stiffness: 220 }}
+              >
+                <View className="flex-1 flex-row items-center gap-2">
+                  <Tag size={16} color="#0F7A4A" strokeWidth={2} />
+                  <View className="flex-1">
+                    <Caption className="uppercase tracking-wide text-halal font-body-semibold">
+                      {appliedPromo.code}
+                    </Caption>
+                    <Small className="text-foreground">
+                      {t("rebuild.cart.discount")}: {fmt(appliedPromo.discount_amount)}
+                    </Small>
+                  </View>
+                </View>
+                <Pressable onPress={clearPromo} className="ml-2 p-1.5 rounded-full bg-card">
+                  <X size={14} color="#0B0B0C" strokeWidth={2} />
+                </Pressable>
+              </Motion.View>
+            ) : null}
 
-      {/* Checkout Button */}
-      <View className="absolute bottom-0 left-0 right-0 bg-card border-t border-border px-6 py-4">
-        <TouchableOpacity onPress={handleCheckout} className="bg-primary py-4 rounded-xl items-center">
-          <Text className="text-primary-foreground font-bold text-lg">{t("cart.checkout")} · €{total.toFixed(2)}</Text>
-        </TouchableOpacity>
-      </View>
+            {/* Items */}
+            <View className="gap-3">
+              {items.map((item) => (
+                <View
+                  key={item.id}
+                  className="flex-row p-3 rounded-2xl bg-card border border-border"
+                >
+                  <View className="w-20 h-20 rounded-xl overflow-hidden bg-muted">
+                    {item.product_image ? (
+                      <Image
+                        source={{ uri: item.product_image }}
+                        style={{ width: "100%", height: "100%" }}
+                        contentFit="cover"
+                        transition={150}
+                      />
+                    ) : null}
+                  </View>
+                  <View className="flex-1 ml-3 justify-between">
+                    <View>
+                      <Body numberOfLines={2} className="font-body-semibold">
+                        {item.product_name}
+                      </Body>
+                      <Small className="text-muted-foreground">
+                        {item.weight_label}
+                      </Small>
+                    </View>
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center bg-muted rounded-pill">
+                        <Pressable
+                          onPress={() =>
+                            item.quantity <= 1
+                              ? removeItem(item.id)
+                              : updateItem(item.id, item.quantity - 1)
+                          }
+                          className="w-8 h-8 items-center justify-center"
+                        >
+                          <Minus size={14} color="#0B0B0C" strokeWidth={2} />
+                        </Pressable>
+                        <Body className="font-body-semibold mx-2 min-w-[20px] text-center">
+                          {item.quantity}
+                        </Body>
+                        <Pressable
+                          onPress={() => updateItem(item.id, item.quantity + 1)}
+                          className="w-8 h-8 items-center justify-center"
+                        >
+                          <Plus size={14} color="#0B0B0C" strokeWidth={2} />
+                        </Pressable>
+                      </View>
+                      <Body className="font-mono-semibold">
+                        {fmt((item.price ?? 0) * item.quantity)}
+                      </Body>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Promo input */}
+            {!appliedPromo ? (
+              <View className="mt-6">
+                <Heading3>{t("rebuild.cart.promo_label")}</Heading3>
+                <View className="mt-3 flex-row gap-2">
+                  <View className="flex-1 px-4 h-12 rounded-xl bg-card border border-border justify-center">
+                    <TextInput
+                      placeholder={t("rebuild.cart.promo_placeholder")}
+                      autoCapitalize="characters"
+                      value={promoCode}
+                      onChangeText={setPromoCode}
+                      style={{ fontFamily: "Inter_500Medium", fontSize: 15 }}
+                      placeholderTextColor="#A1A1A6"
+                    />
+                  </View>
+                  <Button
+                    title={t("common.apply")}
+                    variant="secondary"
+                    size="md"
+                    loading={applyingPromo}
+                    disabled={!promoCode.trim()}
+                    onPress={onApplyPromo}
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {/* Totals */}
+            <View className="mt-6 p-4 rounded-2xl bg-surface border border-border">
+              <View className="flex-row justify-between">
+                <Body className="text-muted-foreground">{t("rebuild.cart.subtotal")}</Body>
+                <Body className="font-mono-medium">{fmt(subtotal)}</Body>
+              </View>
+              {appliedPromo ? (
+                <View className="mt-2 flex-row justify-between">
+                  <Body className="text-halal">{t("rebuild.cart.discount")}</Body>
+                  <Body className="font-mono-medium text-halal">
+                    −{fmt(appliedPromo.discount_amount)}
+                  </Body>
+                </View>
+              ) : null}
+              <View className="mt-3 pt-3 border-t border-border flex-row justify-between items-baseline">
+                <Heading3>{t("rebuild.cart.total")}</Heading3>
+                <Body className="font-mono-semibold text-h2">{fmt(total)}</Body>
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Sticky checkout */}
+          <View className="absolute bottom-0 left-0 right-0 px-5 pt-3 pb-6 bg-background border-t border-border shadow-sticky">
+            <Button
+              title={`${t("rebuild.cart.checkout_cta")} · ${fmt(total)}`}
+              variant="primary"
+              size="lg"
+              fullWidth
+              onPress={onCheckout}
+            />
+          </View>
+        </>
+      )}
     </SafeAreaView>
   );
 }

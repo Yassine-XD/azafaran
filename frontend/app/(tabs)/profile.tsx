@@ -1,297 +1,155 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  StatusBar,
-} from "react-native";
+import { ScrollView, View, Pressable, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  User,
-  MapPin,
-  Phone,
-  Bell,
-  HelpCircle,
-  LogOut,
-  ChevronRight,
-  Globe,
-  Calendar,
-} from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { ChevronRight, Globe, Bell, FileText, LogOut, User as UserIcon, ShieldCheck } from "lucide-react-native";
+
+import { Display, Heading3, Body, Small, Caption } from "@/components/ui/Text";
+import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LanguageContext";
-import { LANGUAGES, type Lang } from "@/lib/i18n";
-import { api } from "@/lib/api";
-import { Button, Card, ConfirmModal, HalalBadge } from "@/components/ui";
-import { brand, shadows } from "@/theme";
+import type { Lang } from "@/lib/i18n";
 
-type MenuItem = {
-  id: string;
-  label: string;
-  icon: typeof User;
-  route?: string;
-  iconBg: string;
-  iconColor: string;
-};
+const LANG_LABEL: Record<Lang, string> = { es: "Español", ca: "Català", en: "English" };
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, isAuthenticated, logout, refreshProfile } = useAuth();
-  const { lang, setLang, t } = useLang();
-  const [logoutModal, setLogoutModal] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
+  const { lang, t } = useLang();
 
-  const MENU_SECTIONS: { title: string; items: MenuItem[] }[] = [
-    {
-      title: t("profile.section_account"),
-      items: [
-        {
-          id: "1",
-          label: t("profile.menu_personal_info"),
-          icon: User,
-          iconBg: "bg-primary-tint",
-          iconColor: brand.burgundy[600],
-          route: "/edit-profile",
-        },
-        {
-          id: "2",
-          label: t("profile.menu_addresses"),
-          icon: MapPin,
-          iconBg: "bg-gold/15",
-          iconColor: brand.gold[600],
-          route: "/addresses",
-        },
-      ],
-    },
-    {
-      title: t("profile.section_preferences"),
-      items: [
-        {
-          id: "4",
-          label: t("profile.menu_notifications"),
-          icon: Bell,
-          iconBg: "bg-primary-tint",
-          iconColor: brand.burgundy[600],
-          route: "/notification-preferences",
-        },
-      ],
-    },
-    {
-      title: t("profile.section_support"),
-      items: [
-        {
-          id: "7",
-          label: t("profile.menu_help"),
-          icon: HelpCircle,
-          iconBg: "bg-gold/15",
-          iconColor: brand.gold[600],
-          route: "/support",
-        },
-      ],
-    },
-  ];
-
-  const handleLangChange = async (newLang: Lang) => {
-    await setLang(newLang);
-    await api.put("/users/", { preferred_lang: newLang });
-    await refreshProfile();
-  };
-
-  const handleLogoutConfirm = async () => {
-    setLogoutModal(false);
-    await logout();
-    router.replace("/login");
-  };
-
-  if (!isAuthenticated || !user) {
-    return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center px-6">
-        <View className="w-20 h-20 rounded-full bg-primary-tint items-center justify-center mb-6">
-          <User size={32} color={brand.burgundy[600]} />
-        </View>
-        <Text className="font-display text-[22px] text-foreground mb-2">
-          {t("profile.not_logged_title")}
-        </Text>
-        <Text className="font-body text-muted-foreground text-center mb-8 leading-6">
-          {t("profile.not_logged_subtitle")}
-        </Text>
-        <Button
-          label={t("profile.not_logged_button")}
-          onPress={() => router.push("/login")}
-          fullWidth={false}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  const renderMenuItem = (item: MenuItem, isLast: boolean) => {
-    const Icon = item.icon;
-    return (
-      <Pressable
-        key={item.id}
-        onPress={() => item.route && router.push(item.route as never)}
-        className={`flex-row items-center gap-3 py-3 ${isLast ? "" : "border-b border-borderSoft border-border"}`}
-      >
-        <View className={`w-10 h-10 rounded-2xl items-center justify-center ${item.iconBg}`}>
-          <Icon size={18} color={item.iconColor} strokeWidth={2.4} />
-        </View>
-        <Text className="flex-1 font-body-semibold text-[15px] text-foreground">
-          {item.label}
-        </Text>
-        <ChevronRight size={18} color={brand.textSecondary} />
-      </Pressable>
-    );
+  const onLogout = () => {
+    Alert.alert(t("rebuild.profile.logout_confirm_title"), t("rebuild.profile.logout_confirm_message"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("rebuild.profile.logout"), style: "destructive", onPress: () => logout() },
+    ]);
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
-      <StatusBar barStyle="dark-content" />
-
-      <View className="px-5 pt-2 pb-4">
-        <Text className="font-body-semibold text-[11px] uppercase tracking-widest text-muted-foreground mb-1">
-          Azafarán
-        </Text>
-        <Text className="font-display text-[30px] leading-9 text-foreground">
-          {t("profile.title")}
-        </Text>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 128, paddingHorizontal: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Identity card with gold halal accent */}
-        <Card className="overflow-hidden mb-7">
-          <View className="bg-coal px-5 pt-5 pb-12">
-            <View className="flex-row items-center gap-4">
-              <View
-                className="w-16 h-16 rounded-2xl bg-primary items-center justify-center"
-                style={shadows.button}
-              >
-                <Text className="font-display-black text-white text-xl">
-                  {user.first_name[0]}
-                  {user.last_name[0]}
-                </Text>
-              </View>
-              <View className="flex-1">
-                <Text className="font-display text-white text-[20px]">
-                  {user.first_name} {user.last_name}
-                </Text>
-                <Text className="font-body text-white/65 text-xs mt-0.5">{user.email}</Text>
-              </View>
-              <HalalBadge label={t("home.halal_badge")} size="sm" />
-            </View>
-          </View>
-
-          <View className="px-5 -mt-7 pb-5">
-            <View
-              className="bg-card rounded-2xl px-4 py-4 flex-row"
-              style={shadows.card}
-            >
-              <View className="flex-1">
-                <View className="flex-row items-center gap-1.5 mb-1">
-                  <Phone size={12} color={brand.textSecondary} strokeWidth={2.4} />
-                  <Text className="font-body-semibold text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {t("profile.phone_label")}
-                  </Text>
-                </View>
-                <Text className="font-body-semibold text-[14px] text-foreground">
-                  {user.phone || t("profile.not_added")}
-                </Text>
-              </View>
-              <View className="w-px bg-border mx-3" />
-              <View className="flex-1">
-                <View className="flex-row items-center gap-1.5 mb-1">
-                  <Calendar size={12} color={brand.textSecondary} strokeWidth={2.4} />
-                  <Text className="font-body-semibold text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {t("profile.member_since")}
-                  </Text>
-                </View>
-                <Text className="font-body-semibold text-[14px] text-foreground">
-                  {new Date(user.created_at).toLocaleDateString("es-ES", {
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </Card>
-
-        {/* Menu sections */}
-        {MENU_SECTIONS.map((section) => (
-          <View key={section.title} className="mb-6">
-            <Text className="font-body-semibold text-[11px] uppercase tracking-widest text-muted-foreground mb-3 px-1">
-              {section.title}
-            </Text>
-            <Card className="px-4 py-1">
-              {section.items.map((item, idx) => renderMenuItem(item, idx === section.items.length - 1))}
-            </Card>
-          </View>
-        ))}
-
-        {/* Language */}
-        <View className="mb-6">
-          <Text className="font-body-semibold text-[11px] uppercase tracking-widest text-muted-foreground mb-3 px-1">
-            {t("profile.language_section")}
-          </Text>
-          <Card className="p-4">
-            <View className="flex-row items-center gap-2 mb-3">
-              <Globe size={16} color={brand.gold[600]} strokeWidth={2.4} />
-              <Text className="font-body-semibold text-[13px] text-foreground">
-                {t("profile.language_label")}
-              </Text>
-            </View>
-            <View className="flex-row bg-muted rounded-2xl p-1">
-              {LANGUAGES.map((opt) => {
-                const active = lang === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => handleLangChange(opt.value)}
-                    className={`flex-1 items-center justify-center py-2.5 rounded-xl ${active ? "bg-primary" : ""}`}
-                    style={active ? shadows.button : undefined}
-                  >
-                    <Text
-                      className={`font-body-semibold text-[13px] ${active ? "text-primary-foreground" : "text-muted-foreground"}`}
-                    >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </Card>
+    <SafeAreaView edges={["top"]} className="flex-1 bg-background">
+      <ScrollView contentContainerClassName="pb-12">
+        <View className="px-5 pt-4 pb-6">
+          <Display>{t("tabs.profile")}</Display>
         </View>
 
-        {/* Logout */}
-        <Pressable
-          onPress={() => setLogoutModal(true)}
-          className="flex-row items-center justify-center gap-3 h-14 rounded-2xl bg-destructive/10 border border-destructive/20 mb-4"
-        >
-          <LogOut size={18} color="#B91C1C" strokeWidth={2.4} />
-          <Text className="font-body-bold text-destructive text-[15px]">
-            {t("profile.logout")}
-          </Text>
-        </Pressable>
+        {isAuthenticated && user ? (
+          <View className="px-5">
+            <View className="flex-row items-center gap-3 p-4 rounded-2xl bg-surface border border-border">
+              <View className="w-12 h-12 rounded-full bg-primary items-center justify-center">
+                <UserIcon size={20} color="#FFFFFF" strokeWidth={2} />
+              </View>
+              <View className="flex-1">
+                <Heading3>
+                  {user.first_name} {user.last_name}
+                </Heading3>
+                <Small className="text-muted-foreground">{user.email}</Small>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View className="px-5">
+            <View className="p-5 rounded-2xl bg-surface border border-border">
+              <Heading3>{t("rebuild.profile.auth_section_title")}</Heading3>
+              <Small className="mt-1 text-muted-foreground">
+                {t("rebuild.profile.auth_section_subtitle")}
+              </Small>
+              <View className="flex-row gap-2 mt-4">
+                <Button
+                  title={t("rebuild.auth.login_cta")}
+                  variant="primary"
+                  size="md"
+                  onPress={() => router.push("/login")}
+                />
+                <Button
+                  title={t("rebuild.auth.register_cta")}
+                  variant="secondary"
+                  size="md"
+                  onPress={() => router.push("/register")}
+                />
+              </View>
+            </View>
+          </View>
+        )}
 
-        <View className="items-center pt-2">
-          <Text className="font-body text-[11px] text-muted-foreground">
-            {t("profile.version")}
-          </Text>
+        {/* Settings rows */}
+        <View className="mt-6 px-5">
+          <Caption className="uppercase tracking-wide text-muted-foreground mb-2 px-1">
+            {t("rebuild.profile.preferences")}
+          </Caption>
+          <View className="rounded-2xl bg-card border border-border overflow-hidden">
+            <Row
+              icon={<Globe size={18} color="#0B0B0C" strokeWidth={1.8} />}
+              title={t("rebuild.profile.language")}
+              value={LANG_LABEL[lang]}
+              onPress={() => router.push("/language-select")}
+            />
+            <Divider />
+            <Row
+              icon={<Bell size={18} color="#0B0B0C" strokeWidth={1.8} />}
+              title={t("rebuild.profile.notifications")}
+              onPress={() => router.push("/notification-preferences" as any)}
+            />
+          </View>
+        </View>
+
+        <View className="mt-6 px-5">
+          <Caption className="uppercase tracking-wide text-muted-foreground mb-2 px-1">
+            {t("rebuild.profile.info")}
+          </Caption>
+          <View className="rounded-2xl bg-card border border-border overflow-hidden">
+            <Row
+              icon={<ShieldCheck size={18} color="#0B0B0C" strokeWidth={1.8} />}
+              title={t("rebuild.profile.privacy")}
+              onPress={() => router.push("/policies" as any)}
+            />
+            <Divider />
+            <Row
+              icon={<FileText size={18} color="#0B0B0C" strokeWidth={1.8} />}
+              title={t("rebuild.profile.terms")}
+              onPress={() => router.push("/policies" as any)}
+            />
+          </View>
+        </View>
+
+        {isAuthenticated ? (
+          <View className="mt-6 px-5">
+            <Pressable
+              onPress={onLogout}
+              className="flex-row items-center gap-3 p-4 rounded-2xl bg-card border border-border active:opacity-80"
+            >
+              <LogOut size={18} color="#D6342C" strokeWidth={1.8} />
+              <Body className="text-sale font-body-semibold">{t("rebuild.profile.logout")}</Body>
+            </Pressable>
+          </View>
+        ) : null}
+
+        <View className="mt-8 items-center">
+          <Caption className="text-muted-foreground">Azafaran · v1.0</Caption>
         </View>
       </ScrollView>
-
-      <ConfirmModal
-        visible={logoutModal}
-        tone="destructive"
-        title={t("profile.logout_title")}
-        message={t("profile.logout_message")}
-        confirmLabel={t("profile.logout")}
-        cancelLabel={t("profile.logout_cancel")}
-        onConfirm={handleLogoutConfirm}
-        onCancel={() => setLogoutModal(false)}
-      />
     </SafeAreaView>
   );
+}
+
+interface RowProps {
+  icon: React.ReactNode;
+  title: string;
+  value?: string;
+  onPress: () => void;
+}
+
+function Row({ icon, title, value, onPress }: RowProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center px-4 h-14 active:opacity-80"
+    >
+      <View className="w-8">{icon}</View>
+      <Body className="flex-1 font-body-medium">{title}</Body>
+      {value ? <Small className="text-muted-foreground mr-2">{value}</Small> : null}
+      <ChevronRight size={16} color="#A1A1A6" strokeWidth={2} />
+    </Pressable>
+  );
+}
+
+function Divider() {
+  return <View className="h-px bg-border ml-12" />;
 }

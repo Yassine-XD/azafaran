@@ -16,6 +16,7 @@ function formatProduct(product: any, lang = 'es') {
       ...v,
       label: resolveI18n(v.label_i18n, v.label, lang),
       price: parseFloat(v.price),
+      compare_at_price: v.compare_at_price != null ? parseFloat(v.compare_at_price) : null,
     })),
     // Pack items: resolve product names inside packs
     pack_items: product.pack_items?.map((pi: any) => ({
@@ -130,6 +131,7 @@ export const productService = {
       ...v,
       label: resolveI18n(v.label_i18n, v.label, lang),
       price: parseFloat(v.price),
+      compare_at_price: v.compare_at_price != null ? parseFloat(v.compare_at_price) : null,
     }));
   },
 };

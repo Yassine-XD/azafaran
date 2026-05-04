@@ -1,12 +1,6 @@
+export { Text, Display, Heading1, Heading2, Heading3, Body, Small, Caption, Micro } from "./Text";
 export { Button } from "./Button";
-export type { ButtonVariant, ButtonSize } from "./Button";
 export { Card } from "./Card";
-export { Badge, HalalBadge } from "./Badge";
-export { PriceTag } from "./PriceTag";
-export { SectionHeader } from "./SectionHeader";
-export { Chip } from "./Chip";
-export { HeroBanner } from "./HeroBanner";
-export { MoroccanPattern } from "./MoroccanPattern";
-export { ProductCard } from "./ProductCard";
-export { ConfirmModal } from "./ConfirmModal";
-export type { ConfirmModalTone } from "./ConfirmModal";
+export { Badge } from "./Badge";
+export { Skeleton } from "./Skeleton";
+export { Sheet } from "./Sheet";

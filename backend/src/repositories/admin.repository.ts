@@ -106,6 +106,7 @@ export const adminRepository = {
     short_desc?: string;
     price_per_kg: number;
     unit_type: string;
+    unit_label_override?: string;
     halal_cert_id?: string;
     halal_cert_body?: string;
     images?: any[];
@@ -122,10 +123,11 @@ export const adminRepository = {
     const { rows } = await pool.query(
       `INSERT INTO products
          (id, category_id, name, slug, description, short_desc,
-          price_per_kg, unit_type, halal_cert_id, halal_cert_body,
+          price_per_kg, unit_type, unit_label_override,
+          halal_cert_id, halal_cert_body,
           images, tags, is_featured,
           name_i18n, description_i18n, short_desc_i18n)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING *`,
       [
         uuidv4(),
@@ -136,6 +138,7 @@ export const adminRepository = {
         data.short_desc || null,
         data.price_per_kg,
         data.unit_type || "kg",
+        data.unit_label_override || null,
         data.halal_cert_id || null,
         data.halal_cert_body || null,
         JSON.stringify(data.images || []),
@@ -156,7 +159,8 @@ export const adminRepository = {
 
     const allowed = [
       "category_id", "name", "slug", "description", "short_desc",
-      "price_per_kg", "unit_type", "halal_cert_id", "halal_cert_body",
+      "price_per_kg", "unit_type", "unit_label_override",
+      "halal_cert_id", "halal_cert_body",
       "is_featured", "is_active", "sort_order",
     ];
 
@@ -236,12 +240,16 @@ export const adminRepository = {
     stock_qty: number;
     sku?: string;
     label_i18n?: Record<string, string>;
+    compare_at_price?: number | null;
+    low_stock_threshold?: number | null;
+    badge_label?: string | null;
   }) {
     const labelI18n = data.label_i18n ?? { es: data.label, ca: data.label, en: data.label };
     const { rows } = await pool.query(
       `INSERT INTO product_variants
-         (id, product_id, label, weight_grams, price, stock_qty, sku, label_i18n)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         (id, product_id, label, weight_grams, price, stock_qty, sku, label_i18n,
+          compare_at_price, low_stock_threshold, badge_label)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
         uuidv4(),
@@ -252,6 +260,9 @@ export const adminRepository = {
         data.stock_qty,
         data.sku || null,
         JSON.stringify(labelI18n),
+        data.compare_at_price ?? null,
+        data.low_stock_threshold ?? null,
+        data.badge_label ?? null,
       ],
     );
     return rows[0];
@@ -265,6 +276,7 @@ export const adminRepository = {
     const allowed = [
       "label", "weight_grams", "price", "stock_qty", "sku",
       "is_active", "sort_order",
+      "compare_at_price", "low_stock_threshold", "badge_label",
     ];
 
     for (const key of allowed) {

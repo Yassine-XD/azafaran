@@ -27,6 +27,8 @@ export const updateProductSchema = z.object({
 
   unit_type: z.enum(["kg", "unit", "pack"]).optional(),
 
+  unit_label_override: z.string().max(60).nullable().optional(),
+
   halal_cert_id: z.string().uuid().nullable().optional(),
   halal_cert_body: z.string().max(255).nullable().optional(),
 

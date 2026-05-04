@@ -1,102 +1,95 @@
 import { useEffect } from "react";
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { ThemeProvider } from "@/components/ThemeProvider";
+import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
+import {
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_600SemiBold,
+} from "@expo-google-fonts/jetbrains-mono";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import StripeProviderWrapper from "@/components/StripeProviderWrapper";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { NotificationsBridge } from "@/components/NotificationsBridge";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { CartProvider } from "@/contexts/CartContext";
-import { LanguageProvider } from "@/contexts/LanguageContext";
-import { NotificationProvider } from "@/contexts/NotificationContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import "@/lib/notifications";
-import { useAppFonts } from "@/hooks/useAppFonts";
+import { QueryClientProvider } from "@tanstack/react-query";
+
 import "@/global.css";
+import { queryClient } from "@/lib/queryClient";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import StripeProviderWrapper from "@/components/StripeProviderWrapper";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
+import { CartProvider } from "@/contexts/CartContext";
+import { NavigationGuard } from "@/components/NavigationGuard";
+import { NotificationsBridge } from "@/components/NotificationsBridge";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-function NavigationGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    (async () => {
-      const onboardingDone = await AsyncStorage.getItem("onboarding_done");
-
-      if (!onboardingDone) {
-        if (!isAuthenticated) {
-          const langSaved = await AsyncStorage.getItem("preferred_lang");
-          if (!langSaved) {
-            router.replace("/language-select");
-          } else {
-            router.replace("/onboarding");
-          }
-        } else {
-          // Authenticated but didn't finish onboarding (e.g. app killed mid-flow)
-          router.replace("/terms-accept");
-        }
-      }
-      // If onboarding_done is set, user completed the full flow — let them in
-    })();
-  }, [isLoading, isAuthenticated]);
-
-  return <>{children}</>;
-}
-
 export default function RootLayout() {
-  const fontsLoaded = useAppFonts();
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    JetBrainsMono_400Regular,
+    JetBrainsMono_500Medium,
+    JetBrainsMono_600SemiBold,
+  });
 
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
+    if (fontsLoaded) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
   }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
 
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
         <SafeAreaProvider>
-          <StripeProviderWrapper>
-            <LanguageProvider>
-              <AuthProvider>
-                <NotificationProvider>
-                  <CartProvider>
-                    <NavigationGuard>
-                      <NotificationsBridge />
-                      <Stack screenOptions={{ headerShown: false }}>
-                      <Stack.Screen name="(tabs)" />
-                      <Stack.Screen name="onboarding" />
-                      <Stack.Screen name="language-select" />
-                      <Stack.Screen name="login" />
-                      <Stack.Screen name="register" />
-                      <Stack.Screen name="profile-setup" />
-                      <Stack.Screen name="terms-accept" />
-                      <Stack.Screen name="policies" options={{ presentation: "card" }} />
-                      <Stack.Screen name="shop" options={{ presentation: "card" }} />
-                      <Stack.Screen name="product-detail" options={{ presentation: "card" }} />
-                      <Stack.Screen name="deal-detail" options={{ presentation: "card" }} />
-                      <Stack.Screen name="cart" options={{ presentation: "card" }} />
-                      <Stack.Screen name="payment" options={{ presentation: "card" }} />
-                      <Stack.Screen name="order-details" options={{ presentation: "card" }} />
-                      <Stack.Screen name="addresses" options={{ presentation: "card" }} />
-                      <Stack.Screen name="edit-profile" options={{ presentation: "card" }} />
-                      <Stack.Screen name="notification-preferences" options={{ presentation: "card" }} />
-                      <Stack.Screen name="support" options={{ presentation: "card" }} />
-                      <Stack.Screen name="support-new" options={{ presentation: "card" }} />
-                      <Stack.Screen name="support-ticket" options={{ presentation: "card" }} />
-                      </Stack>
-                    </NavigationGuard>
-                  </CartProvider>
-                </NotificationProvider>
-              </AuthProvider>
-            </LanguageProvider>
-          </StripeProviderWrapper>
+          <QueryClientProvider client={queryClient}>
+            <StripeProviderWrapper>
+              <LanguageProvider>
+                <AuthProvider>
+                  <NotificationProvider>
+                    <CartProvider>
+                      <NavigationGuard>
+                        <NotificationsBridge />
+                        <StatusBar style="dark" />
+                        <Stack
+                          screenOptions={{
+                            headerShown: false,
+                            contentStyle: { backgroundColor: "#FFFFFF" },
+                            animation: "slide_from_right",
+                          }}
+                        >
+                          <Stack.Screen name="(tabs)" />
+                          <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
+                          <Stack.Screen name="language-select" options={{ presentation: "modal" }} />
+                          <Stack.Screen name="login" options={{ presentation: "modal" }} />
+                          <Stack.Screen name="register" options={{ presentation: "modal" }} />
+                          <Stack.Screen name="terms-accept" options={{ presentation: "modal" }} />
+                          <Stack.Screen name="cart" options={{ presentation: "modal" }} />
+                          <Stack.Screen name="checkout" />
+                          <Stack.Screen name="product/[id]" />
+                          <Stack.Screen name="category/[slug]" />
+                        </Stack>
+                      </NavigationGuard>
+                    </CartProvider>
+                  </NotificationProvider>
+                </AuthProvider>
+              </LanguageProvider>
+            </StripeProviderWrapper>
+          </QueryClientProvider>
         </SafeAreaProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }

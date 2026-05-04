@@ -1,80 +1,48 @@
-import React from "react";
-import { View, Text, type ViewStyle, type StyleProp } from "react-native";
-import { ShieldCheck } from "lucide-react-native";
-import { shadows } from "@/theme";
+import { View } from "react-native";
+import { Text } from "./Text";
+import { cva, cn, type VariantPropsOf } from "@/lib/cva";
 
-type Props = {
+const badge = cva(
+  "self-start flex-row items-center px-2 py-0.5 rounded-full",
+  {
+    variants: {
+      variant: {
+        promo: "bg-sale",
+        halal: "bg-halal",
+        scarcity: "bg-foreground",
+        new: "bg-muted",
+        neutral: "bg-muted",
+      },
+    },
+    defaultVariants: { variant: "neutral" },
+  },
+);
+
+const text = cva("font-body-semibold text-2xs uppercase tracking-wide", {
+  variants: {
+    variant: {
+      promo: "text-sale-foreground",
+      halal: "text-halal-foreground",
+      scarcity: "text-background",
+      new: "text-foreground",
+      neutral: "text-muted-foreground",
+    },
+  },
+  defaultVariants: { variant: "neutral" },
+});
+
+interface Props {
+  variant?: VariantPropsOf<typeof badge>["variant"];
   label: string;
-  tone?: "gold" | "burgundy" | "coal" | "neutral";
-  size?: "sm" | "md";
   icon?: React.ReactNode;
-  glow?: boolean;
-  style?: StyleProp<ViewStyle>;
-};
+  className?: string;
+}
 
-const TONE_CONTAINER = {
-  gold: "bg-gold",
-  burgundy: "bg-primary",
-  coal: "bg-coal",
-  neutral: "bg-muted",
-} as const;
-
-const TONE_TEXT = {
-  gold: "text-coal",
-  burgundy: "text-primary-foreground",
-  coal: "text-coal-foreground",
-  neutral: "text-foreground",
-} as const;
-
-const SIZES = {
-  sm: { container: "h-6 px-2.5", text: "text-[10px]" },
-  md: { container: "h-8 px-3", text: "text-xs" },
-} as const;
-
-export function Badge({
-  label,
-  tone = "gold",
-  size = "md",
-  icon,
-  glow = false,
-  style,
-}: Props) {
-  const s = SIZES[size];
+export function Badge({ variant = "neutral", label, icon, className }: Props) {
   return (
-    <View
-      className={`flex-row items-center gap-1.5 rounded-full ${s.container} ${TONE_CONTAINER[tone]}`}
-      style={[glow ? shadows.goldGlow : undefined, style]}
-    >
-      {icon}
-      <Text className={`${s.text} font-body-bold uppercase tracking-wider ${TONE_TEXT[tone]}`}>
-        {label}
-      </Text>
+    <View className={cn(badge({ variant }), className)}>
+      {icon ? <View className="mr-1">{icon}</View> : null}
+      <Text className={text({ variant })}>{label}</Text>
     </View>
   );
 }
-
-/**
- * Halal Certificado — always gold, always with the shield icon, subtle glow.
- */
-export function HalalBadge({
-  label,
-  size = "md",
-  style,
-}: {
-  label: string;
-  size?: "sm" | "md";
-  style?: StyleProp<ViewStyle>;
-}) {
-  return (
-    <Badge
-      label={label}
-      tone="gold"
-      size={size}
-      glow
-      icon={<ShieldCheck size={size === "sm" ? 12 : 14} color="#1A0F0F" />}
-      style={style}
-    />
-  );
-}
-
-export default Badge;

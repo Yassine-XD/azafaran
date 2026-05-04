@@ -1,193 +1,148 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { useState } from "react";
+import { ScrollView, View, Pressable, TextInput, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { User, Mail, Lock, Eye, EyeOff, Phone } from "lucide-react-native";
-import { useRouter } from "expo-router";
+import { useRouter, Stack, Link } from "expo-router";
+import { ArrowLeft } from "lucide-react-native";
+
+import { Display, Heading3, Body, Small } from "@/components/ui/Text";
+import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LanguageContext";
-
-function StepIndicator({ current, total }: { current: number; total: number }) {
-  return (
-    <View className="flex-row items-center justify-center gap-2 mb-6">
-      {Array.from({ length: total }, (_, i) => (
-        <View
-          key={i}
-          className={`h-1.5 rounded-full ${
-            i <= current ? "w-8 bg-primary" : "w-8 bg-muted"
-          }`}
-        />
-      ))}
-    </View>
-  );
-}
-
-export { StepIndicator };
 
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
-  const { t, lang } = useLang();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { lang, t } = useLang();
+  const [form, setForm] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    password: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleRegister = async () => {
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !password) {
-      Alert.alert(t("common.error"), t("auth.register.error_fields"));
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert(t("common.error"), t("auth.register.error_password_match"));
-      return;
-    }
-    if (password.length < 8) {
-      Alert.alert(t("common.error"), t("auth.register.error_password_length"));
-      return;
-    }
+  const set = <K extends keyof typeof form>(k: K, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-    setIsLoading(true);
-    const result = await register({
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
-      email: email.trim().toLowerCase(),
-      password,
-      phone: phone.trim(),
-      preferred_lang: lang,
-    });
-    setIsLoading(false);
+  const valid =
+    form.first_name.trim() &&
+    form.last_name.trim() &&
+    form.email.trim() &&
+    form.phone.trim() &&
+    form.password.length >= 8;
 
-    if (result.success) {
-      router.replace("/profile-setup");
+  const onSubmit = async () => {
+    if (!valid) return;
+    setSubmitting(true);
+    const r = await register({ ...form, preferred_lang: lang });
+    setSubmitting(false);
+    if (r.success) {
+      router.replace("/terms-accept");
     } else {
-      Alert.alert(t("common.error"), result.error || t("auth.register.error_create"));
+      Alert.alert(t("rebuild.auth.register_failed_title"), r.error || t("rebuild.product.add_failed_retry"));
     }
   };
 
-  const inputClass = "flex-row items-center bg-card border border-border rounded-xl px-4 py-3";
-
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24 }} keyboardShouldPersistTaps="handled">
-          <StepIndicator current={0} total={3} />
+    <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-background">
+      <Stack.Screen options={{ headerShown: false }} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+      >
+        <View className="px-5 py-3">
+          <Pressable
+            onPress={() => router.back()}
+            className="w-10 h-10 items-center justify-center rounded-full bg-muted"
+          >
+            <ArrowLeft size={20} color="#0B0B0C" strokeWidth={2} />
+          </Pressable>
+        </View>
 
-          {/* Header */}
-          <View className="mb-6">
-            <Text className="text-3xl font-bold text-foreground mb-1">{t("auth.register.title")}</Text>
-            <Text className="text-muted-foreground text-base">{t("auth.register.subtitle")}</Text>
-          </View>
+        <ScrollView contentContainerClassName="px-5 pb-12 flex-grow">
+          <Display>{t("rebuild.auth.register_title")}</Display>
+          <Body className="mt-2 text-muted-foreground">{t("rebuild.auth.register_subtitle")}</Body>
 
-          {/* Name Row */}
-          <View className="flex-row gap-3 mb-4">
-            <View className="flex-1">
-              <View className={inputClass}>
-                <User size={20} className="text-muted-foreground mr-3" />
-                <TextInput
-                  className="flex-1 text-foreground text-base"
-                  placeholder={t("auth.register.first_name")}
-                  placeholderTextColor="#a8a29e"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                />
+          <View className="mt-8 gap-4">
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Field label={t("rebuild.auth.first_name")} value={form.first_name} onChange={(v) => set("first_name", v)} />
+              </View>
+              <View className="flex-1">
+                <Field label={t("rebuild.auth.last_name")} value={form.last_name} onChange={(v) => set("last_name", v)} />
               </View>
             </View>
-            <View className="flex-1">
-              <View className={inputClass}>
-                <TextInput
-                  className="flex-1 text-foreground text-base"
-                  placeholder={t("auth.register.last_name")}
-                  placeholderTextColor="#a8a29e"
-                  value={lastName}
-                  onChangeText={setLastName}
-                />
-              </View>
-            </View>
+            <Field
+              label={t("rebuild.auth.email")}
+              value={form.email}
+              onChange={(v) => set("email", v)}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <Field
+              label={t("rebuild.auth.phone")}
+              value={form.phone}
+              onChange={(v) => set("phone", v)}
+              keyboardType="phone-pad"
+            />
+            <Field
+              label={t("rebuild.auth.password")}
+              value={form.password}
+              onChange={(v) => set("password", v)}
+              secureTextEntry
+              hint={t("rebuild.auth.password_hint")}
+            />
           </View>
 
-          {/* Email */}
-          <View className="mb-4">
-            <View className={inputClass}>
-              <Mail size={20} className="text-muted-foreground mr-3" />
-              <TextInput
-                className="flex-1 text-foreground text-base"
-                placeholder={t("auth.register.email")}
-                placeholderTextColor="#a8a29e"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
+          <Button
+            title={submitting ? t("rebuild.auth.registering") : t("rebuild.auth.register_cta")}
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={submitting}
+            disabled={!valid}
+            className="mt-6"
+            onPress={onSubmit}
+          />
 
-          {/* Phone */}
-          <View className="mb-4">
-            <View className={inputClass}>
-              <Phone size={20} className="text-muted-foreground mr-3" />
-              <TextInput
-                className="flex-1 text-foreground text-base"
-                placeholder={t("auth.register.phone")}
-                placeholderTextColor="#a8a29e"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-            </View>
-          </View>
-
-          {/* Password */}
-          <View className="mb-4">
-            <View className={inputClass}>
-              <Lock size={20} className="text-muted-foreground mr-3" />
-              <TextInput
-                className="flex-1 text-foreground text-base"
-                placeholder={t("auth.register.password")}
-                placeholderTextColor="#a8a29e"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? <EyeOff size={20} className="text-muted-foreground" /> : <Eye size={20} className="text-muted-foreground" />}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Confirm Password */}
-          <View className="mb-8">
-            <View className={inputClass}>
-              <Lock size={20} className="text-muted-foreground mr-3" />
-              <TextInput
-                className="flex-1 text-foreground text-base"
-                placeholder={t("auth.register.confirm_password")}
-                placeholderTextColor="#a8a29e"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showPassword}
-              />
-            </View>
-          </View>
-
-          {/* Register Button */}
-          <TouchableOpacity onPress={handleRegister} disabled={isLoading} className="bg-primary py-4 rounded-xl items-center mb-4">
-            {isLoading ? <ActivityIndicator color="white" /> : <Text className="text-primary-foreground font-bold text-lg">{t("auth.register.button")}</Text>}
-          </TouchableOpacity>
-
-          {/* Login Link */}
-          <View className="flex-row justify-center mt-2">
-            <Text className="text-muted-foreground">{t("auth.register.has_account")}</Text>
-            <TouchableOpacity onPress={() => router.push("/login")}>
-              <Text className="text-primary font-semibold">{t("auth.register.login_link")}</Text>
-            </TouchableOpacity>
+          <View className="mt-6 flex-row justify-center gap-1">
+            <Small className="text-muted-foreground">{t("rebuild.auth.have_account")}</Small>
+            <Link href="/login" replace>
+              <Small className="font-body-semibold text-foreground">{t("rebuild.auth.sign_in")}</Small>
+            </Link>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+interface FieldProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  keyboardType?: "default" | "email-address" | "phone-pad";
+  autoCapitalize?: "none" | "sentences" | "words";
+  secureTextEntry?: boolean;
+  hint?: string;
+}
+
+function Field({ label, value, onChange, keyboardType, autoCapitalize, secureTextEntry, hint }: FieldProps) {
+  return (
+    <View>
+      <Heading3 className="mb-2">{label}</Heading3>
+      <View className="px-4 h-12 rounded-xl bg-card border border-border justify-center">
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          secureTextEntry={secureTextEntry}
+          style={{ fontFamily: "Inter_400Regular", fontSize: 15, color: "#0B0B0C" }}
+          placeholderTextColor="#A1A1A6"
+        />
+      </View>
+      {hint ? <Small className="mt-1 text-muted-foreground">{hint}</Small> : null}
+    </View>
   );
 }

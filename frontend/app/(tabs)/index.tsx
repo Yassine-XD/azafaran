@@ -1,482 +1,225 @@
-import React, { useEffect, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  FlatList,
-  Image,
-  Pressable,
-  ActivityIndicator,
-  RefreshControl,
-  StatusBar,
-} from "react-native";
+import { useMemo } from "react";
+import { ScrollView, View, RefreshControl, Pressable } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MapPin, ShoppingCart, Search, ChevronRight, BookOpen } from "lucide-react-native";
 import { useRouter } from "expo-router";
-import { api } from "@/lib/api";
-import { useCart } from "@/contexts/CartContext";
+import { ChevronRight } from "lucide-react-native";
+import { Motion } from "@legendapp/motion";
+
+import { Display, Heading2, Body, Small } from "@/components/ui/Text";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ProductCard } from "@/components/product/ProductCard";
+import { useFeatured, useCategories, useOrders, type Product } from "@/hooks/queries";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LanguageContext";
-import type { Category, Product, Banner } from "@/lib/types";
-import { getProductImage, getMinPrice } from "@/lib/types";
-import {
-  HeroBanner,
-  SectionHeader,
-  ProductCard,
-  Card,
-  HalalBadge,
-} from "@/components/ui";
-import { brand, shadows } from "@/theme";
+
+const COL_GAP = 12;
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { itemCount } = useCart();
-  const { user } = useAuth();
-  const { t, lang } = useLang();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [featured, setFeatured] = useState<Product[]>([]);
-  const [banners, setBanners] = useState<Banner[]>([]);
-  const packsCategory = categories.find((c) => c.slug === "bbq-packs");
-  const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { user, isAuthenticated } = useAuth();
+  const { t } = useLang();
 
-  const fetchData = useCallback(async () => {
-    const [catRes, featRes, bannerRes] = await Promise.all([
-      api.get<Category[]>("/categories/", false),
-      api.get<Product[]>("/products/featured", false),
-      api.get("/promotions/banners", false),
-    ]);
-    if (catRes.success && catRes.data) setCategories(catRes.data);
-    if (featRes.success && featRes.data) setFeatured(featRes.data);
-    if (bannerRes.success && bannerRes.data) setBanners(bannerRes.data as Banner[]);
-    setIsLoading(false);
-    // `lang` triggers a refetch so localized API fields (category names, etc.) update.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
+  const featured = useFeatured();
+  const categories = useCategories();
+  const orders = useOrders({ enabled: isAuthenticated });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return t("rebuild.home.greet_morning");
+    if (hour < 20) return t("rebuild.home.greet_afternoon");
+    return t("rebuild.home.greet_evening");
+  }, [t]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchData();
-    setRefreshing(false);
-  }, [fetchData]);
+  const refreshing =
+    featured.isFetching || categories.isFetching || (isAuthenticated && orders.isFetching);
 
-  const openProduct = (id: string) =>
-    router.push({ pathname: "/product-detail", params: { id } });
+  const onRefresh = () => {
+    featured.refetch();
+    categories.refetch();
+    if (isAuthenticated) orders.refetch();
+  };
 
-  const openShop = (slug?: string, name?: string) =>
-    router.push({ pathname: "/shop", params: { category: slug ?? "", categoryName: name ?? "" } });
-
-  const heroImage = banners[0]?.image_url;
-  const promoBanner = banners[1];
-
-  if (isLoading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color={brand.burgundy[600]} />
-      </SafeAreaView>
+  const lastOrder = orders.data?.[0];
+  const dealsProducts = useMemo<Product[]>(() => {
+    const list = featured.data?.featured ?? [];
+    return list.filter((p) =>
+      p.variants?.some((v) => v.badge_label || v.compare_at_price),
     );
-  }
+  }, [featured.data]);
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right"]}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView edges={["top"]} className="flex-1 bg-background">
+      <ScrollView
+        contentContainerClassName="pb-12"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0B0B0C" />}
+      >
+        {/* Greeting */}
+        <Motion.View
+          className="px-5 pt-4 pb-6"
+          initial={{ opacity: 0, translateY: 8 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 380 }}
+        >
+          <Small className="text-muted-foreground uppercase tracking-wide">
+            {greeting}
+          </Small>
+          <Display className="mt-1">
+            {user?.first_name || t("rebuild.home.greet_guest")}.
+          </Display>
+        </Motion.View>
 
-      {/* Sticky-ish top block: address + cart + search */}
-      <View className="px-5 pt-2 pb-3 bg-background">
-        <View className="flex-row items-center justify-between mb-3">
-          <Pressable onPress={() => router.push("/addresses")} className="flex-row items-center gap-3 flex-1">
-            <View className="w-10 h-10 rounded-full bg-primary-tint items-center justify-center">
-              <MapPin size={18} color={brand.burgundy[600]} strokeWidth={2.4} />
-            </View>
-            <View className="flex-1">
-              <Text className="font-body-medium text-[11px] uppercase tracking-widest text-muted-foreground">
-                {t("home.deliver_to")}
-              </Text>
-              <Text
-                className="font-display-semibold text-[17px] text-foreground"
-                numberOfLines={1}
-              >
-                {user ? `${user.first_name}, Barcelona` : "Barcelona"}
-              </Text>
-            </View>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push("/cart")}
-            className="w-11 h-11 rounded-full bg-card items-center justify-center relative"
-            style={shadows.card}
+        {/* Reorder last */}
+        {lastOrder ? (
+          <Section
+            title={t("rebuild.home.reorder_title")}
+            subtitle={t("rebuild.home.reorder_subtitle")}
+            onPressMore={() => router.push("/(tabs)/orders")}
+            seeMoreLabel={t("common.see_more")}
           >
-            <ShoppingCart size={20} color={brand.coal[900]} strokeWidth={2.2} />
-            {itemCount > 0 && (
-              <View
-                className="absolute -top-1 -right-1 min-w-[20px] h-5 rounded-full bg-primary items-center justify-center px-1"
-                style={shadows.button}
-              >
-                <Text className="text-primary-foreground text-[10px] font-body-bold">
-                  {itemCount}
-                </Text>
+            <Pressable
+              onPress={() => router.push(`/order/${lastOrder.id}` as any)}
+              className="mx-5 p-4 rounded-2xl bg-surface border border-border active:opacity-90"
+            >
+              <Small className="uppercase tracking-wide text-muted-foreground">
+                #{lastOrder.order_number}
+              </Small>
+              <Body className="mt-1 font-body-semibold">
+                {(lastOrder.items?.length ?? 0)}{" "}
+                {(lastOrder.items?.length ?? 0) === 1 ? "artículo" : "artículos"} ·{" "}
+                {new Intl.NumberFormat("es-ES", {
+                  style: "currency",
+                  currency: "EUR",
+                }).format(lastOrder.total)}
+              </Body>
+            </Pressable>
+          </Section>
+        ) : null}
+
+        {/* Ofertas hoy */}
+        {dealsProducts.length > 0 ? (
+          <Section
+            title={t("rebuild.home.deals_title")}
+            subtitle={t("rebuild.home.deals_subtitle")}
+            onPressMore={() => router.push("/(tabs)/categories")}
+            seeMoreLabel={t("common.see_more")}
+          >
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerClassName="px-5 gap-3"
+            >
+              {dealsProducts.slice(0, 8).map((p) => (
+                <View key={p.id} style={{ width: 200 }}>
+                  <ProductCard
+                    product={p as any}
+                    onPress={() => router.push(`/product/${p.id}`)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </Section>
+        ) : null}
+
+        {/* Categories */}
+        <Section
+          title={t("rebuild.home.categories_title")}
+          subtitle={t("rebuild.home.categories_subtitle")}
+        >
+          <View className="px-5">
+            {categories.isLoading ? (
+              <View className="flex-row flex-wrap" style={{ gap: COL_GAP }}>
+                {[0, 1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-32 rounded-2xl" style={{ width: "48%" }} />
+                ))}
+              </View>
+            ) : (
+              <View className="flex-row flex-wrap" style={{ gap: COL_GAP }}>
+                {(categories.data || []).slice(0, 6).map((c) => (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => router.push(`/category/${c.slug}` as any)}
+                    style={{ width: "48%" }}
+                    className="aspect-[3/2] rounded-2xl overflow-hidden bg-muted active:opacity-90"
+                  >
+                    {c.image_url ? (
+                      <Image
+                        source={{ uri: c.image_url }}
+                        style={{ width: "100%", height: "100%" }}
+                        contentFit="cover"
+                        transition={200}
+                      />
+                    ) : null}
+                    <View className="absolute inset-0 bg-foreground/30" />
+                    <View className="absolute inset-0 p-3 justify-end">
+                      <Heading2 className="text-background">{c.name}</Heading2>
+                    </View>
+                  </Pressable>
+                ))}
               </View>
             )}
-          </Pressable>
-        </View>
+          </View>
+        </Section>
 
-        {/* Elevated pill search */}
-        <Pressable
-          onPress={() => router.push("/search")}
-          className="flex-row items-center gap-3 h-12 px-4 rounded-full bg-card"
-          style={shadows.card}
+        {/* Bestsellers */}
+        <Section
+          title={t("rebuild.home.bestsellers_title")}
+          subtitle={t("rebuild.home.bestsellers_subtitle")}
         >
-          <Search size={18} color={brand.textSecondary} strokeWidth={2.2} />
-          <Text className="font-body text-[14px] text-muted-foreground">
-            {t("home.search_placeholder")}
-          </Text>
-        </Pressable>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 128 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={brand.burgundy[600]}
-          />
-        }
-      >
-        {/* Hero */}
-        <View className="px-5 mb-7">
-          <HeroBanner
-            eyebrow={t("home.hero_eyebrow")}
-            title={t("home.hero_title")}
-            subtitle={t("home.hero_subtitle")}
-            ctaLabel={t("home.hero_cta")}
-            onCtaPress={() => router.push("/deals")}
-            imageUrl={heroImage}
-          />
-        </View>
-
-        {/* Category chips rail */}
-        {categories.length > 0 && (
-          <View className="mb-7">
-            <FlatList
-              data={categories}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
-              keyExtractor={(c) => c.id}
-              renderItem={({ item }) => (
-                <CategoryChip
-                  name={item.name}
-                  imageUrl={item.image_url}
-                  onPress={() => openShop(item.slug, item.name)}
-                />
-              )}
-            />
-          </View>
-        )}
-
-        {/* Featured */}
-        {featured.length > 0 && (
-          <View className="mb-8">
-            <View className="px-5 mb-4">
-              <SectionHeader
-                eyebrow={t("home.halal_badge")}
-                title={t("home.featured")}
-                accent="gold"
-                actionLabel={t("home.see_all")}
-                onActionPress={() => openShop()}
-              />
+          {featured.isLoading ? (
+            <View className="px-5 flex-row gap-3">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-72 rounded-2xl flex-1" />
+              ))}
             </View>
-            <FlatList
-              data={featured}
+          ) : (
+            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
-              keyExtractor={(p) => p.id}
-              renderItem={({ item }) => (
-                <ProductCard
-                  image={getProductImage(item)}
-                  name={item.name}
-                  category={item.category_name}
-                  price={getMinPrice(item)}
-                  rating={item.avg_rating ?? null}
-                  isPack={item.unit_type === "pack"}
-                  onPress={() => openProduct(item.id)}
-                />
-              )}
-            />
-          </View>
-        )}
-
-        {/* Category rows */}
-        {categories.slice(0, 3).map((cat) => (
-          <CategoryProductsSection
-            key={cat.id}
-            category={cat}
-            onOpenProduct={openProduct}
-            onSeeAll={() => openShop(cat.slug, cat.name)}
-            seeAllLabel={t("home.see_all")}
-          />
-        ))}
-
-        {/* Mid-scroll promo */}
-        {promoBanner && (
-          <View className="px-5 mb-8">
-            <Pressable
-              onPress={() => router.push({ pathname: "/article", params: { id: promoBanner.id } })}
+              contentContainerClassName="px-5 gap-3"
             >
-              <HeroBanner
-                eyebrow={promoBanner.subtitle}
-                title={promoBanner.title}
-                imageUrl={promoBanner.image_url}
-                height={220}
-              />
-            </Pressable>
-          </View>
-        )}
-
-        {/* Packs */}
-        {packsCategory && (
-          <PacksSection
-            onOpenProduct={openProduct}
-            onSeeAll={() => openShop(packsCategory.slug, packsCategory.name)}
-            category={packsCategory}
-            title={t("home.packs")}
-            seeAllLabel={t("home.see_all")}
-          />
-        )}
-
-        {/* Recipes */}
-        <RecipesSection
-          banners={banners.filter((b) => b.link_type === "recipe")}
-          title={t("home.recipes")}
-          onPress={(b) => router.push({ pathname: "/article", params: { id: b.id } })}
-        />
-
-        {/* Trust footer */}
-        <View className="px-5 mt-2">
-          <Card className="p-5 flex-row items-center gap-4">
-            <HalalBadge label={t("home.halal_badge")} />
-            <Text className="flex-1 font-body text-[13px] leading-5 text-muted-foreground">
-              {t("home.hero_subtitle")}
-            </Text>
-            <ChevronRight size={18} color={brand.textSecondary} />
-          </Card>
-        </View>
+              {(featured.data?.bestsellers ?? []).slice(0, 10).map((p) => (
+                <View key={p.id} style={{ width: 200 }}>
+                  <ProductCard
+                    product={p as any}
+                    onPress={() => router.push(`/product/${p.id}`)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </Section>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function CategoryChip({
-  name,
-  imageUrl,
-  onPress,
-}: {
-  name: string;
-  imageUrl?: string;
-  onPress?: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} className="items-center" style={{ width: 76 }}>
-      <View
-        className="w-16 h-16 rounded-2xl bg-card items-center justify-center mb-2 overflow-hidden"
-        style={shadows.card}
-      >
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
-        ) : (
-          <Text className="font-display-semibold text-2xl text-primary">
-            {name.charAt(0).toUpperCase()}
-          </Text>
-        )}
-      </View>
-      <Text
-        className="font-body-semibold text-[11px] text-foreground text-center"
-        numberOfLines={1}
-      >
-        {name}
-      </Text>
-    </Pressable>
-  );
-}
-
-function CategoryProductsSection({
-  category,
-  onOpenProduct,
-  onSeeAll,
-  seeAllLabel,
-}: {
-  category: Category;
-  onOpenProduct: (id: string) => void;
-  onSeeAll: () => void;
-  seeAllLabel: string;
-}) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const { lang } = useLang();
-
-  useEffect(() => {
-    (async () => {
-      const res = await api.get<Product[]>(
-        `/categories/${category.slug}/products?limit=6`,
-        false,
-      );
-      if (res.success && res.data) setProducts(res.data);
-    })();
-  }, [category.slug, lang]);
-
-  if (products.length === 0) return null;
-
-  return (
-    <View className="mb-8">
-      <View className="px-5 mb-4">
-        <SectionHeader
-          title={category.name}
-          actionLabel={seeAllLabel}
-          onActionPress={onSeeAll}
-        />
-      </View>
-      <FlatList
-        data={products}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
-        keyExtractor={(p) => p.id}
-        renderItem={({ item }) => (
-          <ProductCard
-            image={getProductImage(item)}
-            name={item.name}
-            category={item.category_name}
-            price={getMinPrice(item)}
-            rating={item.avg_rating ?? null}
-            onPress={() => onOpenProduct(item.id)}
-          />
-        )}
-      />
-    </View>
-  );
-}
-
-function PacksSection({
-  onOpenProduct,
-  onSeeAll,
-  category,
-  title,
-  seeAllLabel,
-}: {
-  onOpenProduct: (id: string) => void;
-  onSeeAll: () => void;
-  category: Category;
+interface SectionProps {
   title: string;
-  seeAllLabel: string;
-}) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const { lang } = useLang();
-
-  useEffect(() => {
-    (async () => {
-      const res = await api.get<Product[]>(`/categories/${category.slug}/products?limit=6`, false);
-      if (res.success && res.data) setProducts(res.data);
-    })();
-  }, [category.slug, lang]);
-
-  if (products.length === 0) return null;
-
-  return (
-    <View className="mb-8">
-      <View className="px-5 mb-4">
-        <SectionHeader
-          title={title}
-          accent="gold"
-          actionLabel={seeAllLabel}
-          onActionPress={onSeeAll}
-        />
-      </View>
-      <FlatList
-        data={products}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
-        keyExtractor={(p) => p.id}
-        renderItem={({ item }) => (
-          <ProductCard
-            width={260}
-            image={getProductImage(item)}
-            name={item.name}
-            category={item.category_name}
-            price={getMinPrice(item)}
-            isPack
-            onPress={() => onOpenProduct(item.id)}
-          />
-        )}
-      />
-    </View>
-  );
+  subtitle?: string;
+  onPressMore?: () => void;
+  seeMoreLabel?: string;
+  children: React.ReactNode;
 }
 
-function RecipesSection({
-  banners,
-  onPress,
-  title,
-}: {
-  banners: Banner[];
-  onPress: (b: Banner) => void;
-  title: string;
-}) {
-  if (banners.length === 0) return null;
-
+function Section({ title, subtitle, onPressMore, seeMoreLabel, children }: SectionProps) {
   return (
-    <View className="mb-8">
-      <View className="px-5 mb-4">
-        <SectionHeader title={title} eyebrow="Inspiración" />
+    <View className="mt-6">
+      <View className="px-5 mb-3 flex-row items-end justify-between">
+        <View className="flex-1 pr-2">
+          <Heading2>{title}</Heading2>
+          {subtitle ? (
+            <Small className="mt-0.5 text-muted-foreground">{subtitle}</Small>
+          ) : null}
+        </View>
+        {onPressMore ? (
+          <Pressable onPress={onPressMore} className="flex-row items-center active:opacity-60">
+            <Small className="text-foreground font-body-semibold">{seeMoreLabel || "Ver más"}</Small>
+            <ChevronRight size={16} color="#0B0B0C" strokeWidth={2} />
+          </Pressable>
+        ) : null}
       </View>
-      <FlatList
-        data={banners}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
-        keyExtractor={(b) => b.id}
-        renderItem={({ item }) => (
-          <Card
-            onPress={() => onPress(item)}
-            className="rounded-2xl overflow-hidden"
-            style={{ width: 260 }}
-          >
-            <View className="h-36 w-full bg-coal items-center justify-center">
-              {item.image_url ? (
-                <Image
-                  source={{ uri: item.image_url }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
-              ) : (
-                <BookOpen size={36} color={brand.gold[400]} />
-              )}
-            </View>
-            <View className="p-4">
-              <Text
-                className="font-display-semibold text-[15px] leading-5 text-foreground"
-                numberOfLines={2}
-              >
-                {item.title}
-              </Text>
-              {item.subtitle && (
-                <Text
-                  className="font-body text-xs text-muted-foreground mt-1"
-                  numberOfLines={1}
-                >
-                  {item.subtitle}
-                </Text>
-              )}
-            </View>
-          </Card>
-        )}
-      />
+      {children}
     </View>
   );
 }
