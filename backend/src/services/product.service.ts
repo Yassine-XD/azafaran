@@ -6,17 +6,37 @@ import type {
 } from "../validators/product.schema";
 
 function formatProduct(product: any, lang = 'es') {
+  // List endpoints (findAll/findFeatured/findBestsellers/searchProducts) ship a
+  // single representative `default_variant` JSON column instead of a full
+  // variants[] array — surface it as variants: [v] so frontend code that reads
+  // product.variants[0] just works, without paying for a full variants join
+  // on every product card.
+  let variants = product.variants?.map((v: any) => ({
+    ...v,
+    label: resolveI18n(v.label_i18n, v.label, lang),
+    price: parseFloat(v.price),
+  }));
+  if (!variants && product.default_variant) {
+    const dv = product.default_variant;
+    variants = [
+      {
+        ...dv,
+        label: resolveI18n(dv.label_i18n, dv.label, lang),
+        price: parseFloat(dv.price),
+      },
+    ];
+  }
+
+  // Drop the raw aggregate column from the response payload.
+  const { default_variant: _dv, ...rest } = product;
+
   return {
-    ...product,
+    ...rest,
     name: resolveI18n(product.name_i18n, product.name, lang),
     description: resolveI18n(product.description_i18n, product.description, lang),
     short_desc: resolveI18n(product.short_desc_i18n, product.short_desc, lang),
     price_per_kg: parseFloat(product.price_per_kg),
-    variants: product.variants?.map((v: any) => ({
-      ...v,
-      label: resolveI18n(v.label_i18n, v.label, lang),
-      price: parseFloat(v.price),
-    })),
+    variants,
     // Pack items: resolve product names inside packs
     pack_items: product.pack_items?.map((pi: any) => ({
       ...pi,

@@ -1,6 +1,31 @@
 import { pool } from "../config/database";
 import type { ListProductsInput } from "../validators/product.schema";
 
+/**
+ * SQL fragment that adds a `default_variant` JSON column to a products query
+ * by joining the cheapest active variant. Used by every list endpoint
+ * (findAll / findFeatured / findBestsellers / searchProducts) so the
+ * frontend can render a per-unit + per-kg price without paying a second
+ * round-trip per card. Returns NULL when the product has no active variants.
+ */
+const DEFAULT_VARIANT_LATERAL = `
+  LEFT JOIN LATERAL (
+    SELECT json_build_object(
+      'id', pv.id,
+      'label', pv.label,
+      'label_i18n', pv.label_i18n,
+      'price', pv.price,
+      'weight_grams', pv.weight_grams,
+      'stock_qty', pv.stock_qty,
+      'sort_order', pv.sort_order
+    ) AS data
+    FROM product_variants pv
+    WHERE pv.product_id = p.id AND pv.is_active = true
+    ORDER BY pv.price ASC, pv.sort_order ASC
+    LIMIT 1
+  ) dv ON TRUE
+`;
+
 export interface ProductRow {
   id: string;
   category_id: string;
@@ -121,9 +146,11 @@ export const productRepository = {
       `SELECT
          p.*,
          c.name AS category_name,
-         c.slug AS category_slug
+         c.slug AS category_slug,
+         dv.data AS default_variant
        FROM products p
        JOIN categories c ON c.id = p.category_id
+       ${DEFAULT_VARIANT_LATERAL}
        ${where}
        ORDER BY ${sortCol} ${sortDir}
        LIMIT $${idx} OFFSET $${idx + 1}`,
@@ -229,9 +256,11 @@ export const productRepository = {
       `SELECT
          p.*,
          c.name AS category_name,
-         c.slug AS category_slug
+         c.slug AS category_slug,
+         dv.data AS default_variant
        FROM products p
        JOIN categories c ON c.id = p.category_id
+       ${DEFAULT_VARIANT_LATERAL}
        WHERE p.is_active = true AND p.is_featured = true
        ORDER BY p.sort_order ASC
        LIMIT 10`,
@@ -246,13 +275,15 @@ export const productRepository = {
          p.*,
          c.name AS category_name,
          c.slug AS category_slug,
+         dv.data AS default_variant,
          COUNT(oi.id) AS order_count
        FROM products p
        JOIN categories c ON c.id = p.category_id
+       ${DEFAULT_VARIANT_LATERAL}
        LEFT JOIN product_variants pv ON pv.product_id = p.id
        LEFT JOIN order_items oi ON oi.variant_id = pv.id
        WHERE p.is_active = true
-       GROUP BY p.id, c.name, c.slug
+       GROUP BY p.id, c.name, c.slug, dv.data
        ORDER BY order_count DESC
        LIMIT 10`,
     );
@@ -297,12 +328,14 @@ export const productRepository = {
          p.*,
          c.name AS category_name,
          c.slug AS category_slug,
+         dv.data AS default_variant,
          ts_rank(
            to_tsvector('spanish', p.name || ' ' || COALESCE(p.description, '')),
            plainto_tsquery('spanish', $1)
          ) AS rank
        FROM products p
        JOIN categories c ON c.id = p.category_id
+       ${DEFAULT_VARIANT_LATERAL}
        WHERE p.is_active = true
          AND to_tsvector('spanish', p.name || ' ' || COALESCE(p.description, ''))
              @@ plainto_tsquery('spanish', $1)
@@ -317,9 +350,11 @@ export const productRepository = {
         `SELECT
            p.*,
            c.name AS category_name,
-           c.slug AS category_slug
+           c.slug AS category_slug,
+           dv.data AS default_variant
          FROM products p
          JOIN categories c ON c.id = p.category_id
+         ${DEFAULT_VARIANT_LATERAL}
          WHERE p.is_active = true
            AND (p.name ILIKE $1 OR p.description ILIKE $1)
          ORDER BY p.sort_order ASC

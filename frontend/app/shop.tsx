@@ -16,6 +16,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useLang } from "@/contexts/LanguageContext";
 import type { Product, Category } from "@/lib/types";
 import { getProductImage, getMinPrice } from "@/lib/types";
+import { buildDualPriceProps } from "@/lib/pricing";
 import { Chip, ProductCard } from "@/components/ui";
 import { brand, shadows } from "@/theme";
 
@@ -241,6 +242,7 @@ export default function ShopScreen() {
                       router.push({ pathname: "/product-detail", params: { id: item.id } })
                     }
                     onAdd={() => handleAddToCart(item)}
+                    {...buildDualPriceProps(item, t)}
                   />
                 </View>
               );
