@@ -15,6 +15,7 @@ import { useLang } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import type { Category, Product, Banner, Promotion } from "@/lib/types";
 import { getProductImage, getMinPrice } from "@/lib/types";
+import { buildDualPriceProps } from "@/lib/pricing";
 import {
   SectionHeader,
   ProductCard,
@@ -190,6 +191,7 @@ export default function HomeScreen() {
                   onPress={() => openProduct(item)}
                   onAdd={() => quickAdd(item)}
                   width={220}
+                  {...buildDualPriceProps(item, t)}
                 />
               )}
             />
@@ -246,6 +248,7 @@ export default function HomeScreen() {
                     onPress={() => openProduct(p)}
                     onAdd={() => quickAdd(p)}
                     width="full"
+                    {...buildDualPriceProps(p, t)}
                   />
                 </View>
               ))}

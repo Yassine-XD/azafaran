@@ -22,6 +22,14 @@ type Props = {
   onPress?: () => void;
   onAdd?: () => void;
   width?: number | "full";
+  /** Equivalent €/kg — when provided, renders the dual-price layout. */
+  pricePerKg?: number | null;
+  compareAtPerKg?: number | null;
+  /** Subscript line below the name, e.g. "Peso aprox. 200 g". */
+  weightLabel?: string;
+  /** Suffix after the main price (default "€/u." via callers). */
+  unitSuffix?: string;
+  perKgSuffix?: string;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -43,6 +51,11 @@ export function ProductCard({
   onPress,
   onAdd,
   width = 176,
+  pricePerKg,
+  compareAtPerKg,
+  weightLabel,
+  unitSuffix,
+  perKgSuffix,
 }: Props) {
   const scale = useSharedValue(1);
   const lift = useSharedValue(0);
@@ -107,6 +120,27 @@ export function ProductCard({
             </Text>
           </View>
         )}
+
+        {onAdd && (
+          <Pressable
+            onPress={onAdd}
+            className="absolute bottom-3 right-3 rounded-full overflow-hidden"
+            style={shadows.button}
+            hitSlop={8}
+          >
+            <Gradient
+              name="primary"
+              style={{
+                width: 40,
+                height: 40,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Plus size={20} color="#FFFFFF" strokeWidth={2.8} />
+            </Gradient>
+          </Pressable>
+        )}
       </View>
 
       <View className="p-3.5 pt-3">
@@ -125,24 +159,16 @@ export function ProductCard({
           {name}
         </Text>
 
-        <View className="flex-row items-end justify-between">
-          <PriceTag amount={price} compareAt={compareAt} size="md" />
-          {onAdd && (
-            <Pressable
-              onPress={onAdd}
-              className="rounded-full overflow-hidden"
-              style={shadows.button}
-              hitSlop={8}
-            >
-              <Gradient
-                name="primary"
-                style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-              >
-                <Plus size={20} color="#FFFFFF" strokeWidth={2.8} />
-              </Gradient>
-            </Pressable>
-          )}
-        </View>
+        <PriceTag
+          amount={price}
+          compareAt={compareAt}
+          size="md"
+          suffix={unitSuffix}
+          pricePerKg={pricePerKg ?? undefined}
+          compareAtPerKg={compareAtPerKg ?? undefined}
+          weightLabel={weightLabel}
+          perKgSuffix={perKgSuffix}
+        />
       </View>
     </AnimatedPressable>
   );

@@ -59,6 +59,9 @@ const es = {
     promos_title: "Promos y cupones",
     flash_deal_eyebrow: "Oferta flash · Termina en 02:14",
     flash_deal_title: "Pack BBQ Familiar -25%",
+    per_unit_short: "€/u.",
+    per_kg_short: "€/kg",
+    weight_approx: "Peso aprox.",
   },
   auth: {
     login: {
@@ -480,6 +483,9 @@ const ca: typeof es = {
     promos_title: "Promos i cupons",
     flash_deal_eyebrow: "Oferta flash · Acaba en 02:14",
     flash_deal_title: "Pack BBQ Familiar -25%",
+    per_unit_short: "€/u.",
+    per_kg_short: "€/kg",
+    weight_approx: "Pes aprox.",
   },
   categories: {
     title: "Categories",
@@ -800,6 +806,9 @@ const en: typeof es = {
     promos_title: "Promos & coupons",
     flash_deal_eyebrow: "Flash deal · Ends in 02:14",
     flash_deal_title: "Family BBQ Pack -25%",
+    per_unit_short: "€/ea.",
+    per_kg_short: "€/kg",
+    weight_approx: "Approx. weight",
   },
   categories: {
     title: "Categories",

@@ -108,6 +108,31 @@ export function getMinPrice(product: Product): number {
   return Math.min(...product.variants.map((v) => v.price));
 }
 
+// Equivalent €/kg for a (product, variant). Prefer computing from the
+// variant's actual weight so it matches what the customer is paying. Falls
+// back to product.price_per_kg if the variant carries no weight info.
+// Returns null when no per-kg can be derived (e.g. packs without weight).
+export function getPricePerKg(
+  product: Product,
+  variant?: ProductVariant | null,
+  rawPrice?: number,
+): number | null {
+  const v = variant ?? product.variants?.[0];
+  const price = rawPrice ?? v?.price;
+  if (v && v.weight_grams > 0 && price && price > 0) {
+    return (price / v.weight_grams) * 1000;
+  }
+  if (product.price_per_kg && product.price_per_kg > 0) return product.price_per_kg;
+  return null;
+}
+
+// True when the per-kg display makes sense (i.e. not a multi-cut pack box).
+export function isPerKgEligible(product: Product): boolean {
+  if (product.unit_type === "pack") return false;
+  if ((product.pack_items?.length ?? 0) > 0) return false;
+  return true;
+}
+
 // ─── Cart ──────────────────────────────────────────────────
 export type CartItem = {
   id: string;

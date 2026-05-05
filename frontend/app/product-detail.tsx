@@ -31,6 +31,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useLang } from "@/contexts/LanguageContext";
 import type { Product, ProductVariant, PackItem } from "@/lib/types";
 import { getProductImage } from "@/lib/types";
+import { buildDualPriceProps } from "@/lib/pricing";
 import {
   Button,
   Card,
@@ -216,7 +217,12 @@ export default function ProductDetailScreen() {
           )}
 
           <View className="mb-6">
-            <PriceTag amount={price} compareAt={comparePrice ?? undefined} size="xl" />
+            <PriceTag
+              amount={price}
+              compareAt={comparePrice ?? undefined}
+              size="xl"
+              {...buildDualPriceProps(product, t, selectedVariant)}
+            />
           </View>
 
           {/* Variant selector */}

@@ -8,7 +8,6 @@ import {
   Pressable,
   Image,
   ImageBackground,
-  Modal,
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,7 +26,8 @@ import { useLang } from "@/contexts/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import type { Product } from "@/lib/types";
 import { getProductImage, getMinPrice } from "@/lib/types";
-import { Gradient, MobileTopBar } from "@/components/ui";
+import { buildDualPriceProps } from "@/lib/pricing";
+import { BottomSheet, Gradient, MobileTopBar, PriceTag } from "@/components/ui";
 import { brand, shadows } from "@/theme";
 
 type DiscountedProduct = Product & { off: number };
@@ -143,6 +143,7 @@ export default function DealsScreen() {
             morePicksLabel={t("deals_tab.more_picks")}
             topDealLabel={t("deals_tab.top_deal")}
             onPick={(p) => setSelected({ kind: "product", data: p })}
+            t={t}
           />
         )}
 
@@ -156,65 +157,52 @@ export default function DealsScreen() {
         )}
       </ScrollView>
 
-      {/* Detail bottom sheet */}
-      <Modal
-        visible={!!selected}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelected(null)}
-        statusBarTranslucent
-      >
-        <Pressable className="flex-1 bg-coal/55" onPress={() => setSelected(null)}>
-          <Pressable
-            className="mt-auto bg-card rounded-t-[32px] overflow-hidden"
-            style={{ maxHeight: "90%" }}
-            onPress={() => {}}
-          >
-            {selected?.kind === "product" && (
-              <ProductSheet
-                product={selected.data}
-                onClose={() => setSelected(null)}
-                onAdd={async (qty) => {
-                  const v = selected.data.variants?.[0];
-                  if (v) {
-                    await addItem(v.id, qty, {
-                      product_name: selected.data.name,
-                      product_image: getProductImage(selected.data),
-                      weight_label: v.label,
-                      price: v.price,
-                    });
-                  }
-                  setSelected(null);
-                }}
-                addLabel={t("deals_tab.add_to_cart")}
-                qtyLabel={t("deals_tab.quantity")}
-              />
-            )}
-            {selected?.kind === "box" && (
-              <BoxSheet
-                product={selected.data}
-                onClose={() => setSelected(null)}
-                onAdd={async () => {
-                  const v = selected.data.variants?.[0];
-                  if (v) {
-                    await addItem(v.id, 1, {
-                      product_name: selected.data.name,
-                      product_image: getProductImage(selected.data),
-                      weight_label: v.label,
-                      price: v.price,
-                    });
-                  }
-                  setSelected(null);
-                }}
-                addLabel={t("deals_tab.add_box")}
-                insideLabel={t("deals_tab.inside")}
-                endsInLabel={t("deals_tab.ends_in")}
-                saveLabel={t("deals_tab.save")}
-              />
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      {/* Detail bottom sheet (custom reanimated slide-up) */}
+      <BottomSheet visible={!!selected} onClose={() => setSelected(null)}>
+        {selected?.kind === "product" && (
+          <ProductSheet
+            product={selected.data}
+            onClose={() => setSelected(null)}
+            onAdd={async (qty) => {
+              const v = selected.data.variants?.[0];
+              if (v) {
+                await addItem(v.id, qty, {
+                  product_name: selected.data.name,
+                  product_image: getProductImage(selected.data),
+                  weight_label: v.label,
+                  price: v.price,
+                });
+              }
+              setSelected(null);
+            }}
+            addLabel={t("deals_tab.add_to_cart")}
+            qtyLabel={t("deals_tab.quantity")}
+            dualPriceProps={buildDualPriceProps(selected.data, t)}
+          />
+        )}
+        {selected?.kind === "box" && (
+          <BoxSheet
+            product={selected.data}
+            onClose={() => setSelected(null)}
+            onAdd={async () => {
+              const v = selected.data.variants?.[0];
+              if (v) {
+                await addItem(v.id, 1, {
+                  product_name: selected.data.name,
+                  product_image: getProductImage(selected.data),
+                  weight_label: v.label,
+                  price: v.price,
+                });
+              }
+              setSelected(null);
+            }}
+            addLabel={t("deals_tab.add_box")}
+            insideLabel={t("deals_tab.inside")}
+            endsInLabel={t("deals_tab.ends_in")}
+            saveLabel={t("deals_tab.save")}
+          />
+        )}
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -255,12 +243,14 @@ function FlashList({
   morePicksLabel,
   topDealLabel,
   onPick,
+  t,
 }: {
   items: DiscountedProduct[];
   emptyLabel: string;
   morePicksLabel: string;
   topDealLabel: string;
   onPick: (p: DiscountedProduct) => void;
+  t: (k: string) => string;
 }) {
   if (!items.length) {
     return (
@@ -334,7 +324,7 @@ function FlashList({
       <View className="flex-row flex-wrap" style={{ gap: 12 }}>
         {rest.map((p) => (
           <View key={p.id} style={{ width: "47.8%" }}>
-            <FlashCard product={p} onPress={() => onPick(p)} />
+            <FlashCard product={p} onPress={() => onPick(p)} t={t} />
           </View>
         ))}
       </View>
@@ -342,9 +332,17 @@ function FlashList({
   );
 }
 
-function FlashCard({ product, onPress }: { product: DiscountedProduct; onPress: () => void }) {
-  const v = product.variants?.[0];
+function FlashCard({
+  product,
+  onPress,
+  t,
+}: {
+  product: DiscountedProduct;
+  onPress: () => void;
+  t: (k: string) => string;
+}) {
   const img = getProductImage(product);
+  const dual = buildDualPriceProps(product, t);
   return (
     <Pressable
       onPress={onPress}
@@ -353,7 +351,11 @@ function FlashCard({ product, onPress }: { product: DiscountedProduct; onPress: 
     >
       <View className="aspect-square relative bg-muted">
         {img ? (
-          <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+          <Image
+            source={{ uri: img }}
+            style={{ width: "100%", height: "100%" }}
+            resizeMode="cover"
+          />
         ) : null}
         <View className="absolute top-2 left-2 bg-primary px-2 py-0.5 rounded-full">
           <Text className="text-white text-[10px] font-body-bold">-{product.off}%</Text>
@@ -363,23 +365,18 @@ function FlashCard({ product, onPress }: { product: DiscountedProduct; onPress: 
         <Text className="font-body-bold text-sm text-foreground" numberOfLines={1}>
           {product.name}
         </Text>
-        <View className="flex-row items-center gap-1 mt-0.5">
+        <View className="flex-row items-center gap-1 mt-0.5 mb-2">
           <Star size={11} fill="#C9A961" color="#C9A961" />
           <Text className="font-body text-[11px] text-muted-foreground">
             {Number(product.avg_rating ?? 0).toFixed(1)}
-            {v?.label ? ` · ${v.label}` : ""}
           </Text>
         </View>
-        <View className="flex-row items-baseline gap-1.5 mt-1.5">
-          <Text className="font-display text-base text-primary">
-            €{Number(getMinPrice(product)).toFixed(2)}
-          </Text>
-          {v?.compare_at_price && (
-            <Text className="font-body text-[11px] text-muted-foreground line-through">
-              €{Number(v.compare_at_price).toFixed(2)}
-            </Text>
-          )}
-        </View>
+        <PriceTag
+          amount={getMinPrice(product)}
+          compareAt={product.variants?.[0]?.compare_at_price}
+          size="sm"
+          {...dual}
+        />
       </View>
     </Pressable>
   );
@@ -487,12 +484,14 @@ function ProductSheet({
   onAdd,
   addLabel,
   qtyLabel,
+  dualPriceProps,
 }: {
   product: Product;
   onClose: () => void;
   onAdd: (qty: number) => Promise<void>;
   addLabel: string;
   qtyLabel: string;
+  dualPriceProps: ReturnType<typeof buildDualPriceProps>;
 }) {
   const [qty, setQty] = useState(1);
   const v = product.variants?.[0];
@@ -546,13 +545,13 @@ function ProductSheet({
           )}
         </View>
 
-        <View className="flex-row items-baseline gap-2 mt-3">
-          <Text className="font-display text-3xl text-primary">€{Number(price).toFixed(2)}</Text>
-          {v?.compare_at_price && (
-            <Text className="font-body text-sm text-muted-foreground line-through">
-              €{Number(v.compare_at_price).toFixed(2)}
-            </Text>
-          )}
+        <View className="mt-3">
+          <PriceTag
+            amount={price}
+            compareAt={v?.compare_at_price}
+            size="lg"
+            {...dualPriceProps}
+          />
         </View>
 
         {product.description && (
