@@ -74,6 +74,7 @@ router.delete("/products/:id/pack-items/:itemId", adminController.deletePackItem
 
 // Orders management
 router.get("/orders", adminController.getOrders);
+router.get("/orders/active", adminController.getActiveOrders);
 router.get("/orders/:id", adminController.getOrderDetail);
 router.patch(
   "/orders/:id/status",

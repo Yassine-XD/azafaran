@@ -5,6 +5,9 @@ export const adminRepository = {
   // ─── Dashboard ──────────────────────────────────────
 
   async getDashboardStats() {
+    const ACTIVE_STATUSES = ["pending", "confirmed", "preparing", "shipped"];
+    const PAID_STATUSES = ["confirmed", "preparing", "shipped", "delivered"];
+
     const [
       usersRes,
       ordersTodayRes,
@@ -12,6 +15,18 @@ export const adminRepository = {
       pendingOrdersRes,
       openTicketsRes,
       unreadTicketsRes,
+      revenueTodayRes,
+      revenueYesterdayRes,
+      ordersYesterdayRes,
+      ordersSameWeekdayLastWeekRes,
+      aov7dRes,
+      newCustomersTodayRes,
+      activeOrdersRes,
+      lowStockRes,
+      todaysSlotsRes,
+      revenueSeriesRes,
+      ordersByStatusRes,
+      topProductsRes,
     ] = await Promise.all([
       pool.query("SELECT COUNT(*) FROM users WHERE is_active = true"),
       pool.query(
@@ -29,6 +44,109 @@ export const adminRepository = {
       pool.query(
         "SELECT COUNT(*) FROM support_tickets WHERE unread_for_admin = true",
       ),
+      pool.query(
+        `SELECT COALESCE(SUM(total::numeric), 0) AS revenue,
+                COUNT(*)::int AS count
+           FROM orders
+          WHERE created_at >= CURRENT_DATE
+            AND status = ANY($1::text[])`,
+        [PAID_STATUSES],
+      ),
+      pool.query(
+        `SELECT COALESCE(SUM(total::numeric), 0) AS revenue
+           FROM orders
+          WHERE created_at >= CURRENT_DATE - INTERVAL '1 day'
+            AND created_at < CURRENT_DATE
+            AND status = ANY($1::text[])`,
+        [PAID_STATUSES],
+      ),
+      pool.query(
+        `SELECT COUNT(*)::int AS count
+           FROM orders
+          WHERE created_at >= CURRENT_DATE - INTERVAL '1 day'
+            AND created_at < CURRENT_DATE`,
+      ),
+      pool.query(
+        `SELECT COUNT(*)::int AS count
+           FROM orders
+          WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+            AND created_at <  CURRENT_DATE - INTERVAL '6 days'`,
+      ),
+      pool.query(
+        `SELECT COALESCE(AVG(total::numeric), 0) AS aov
+           FROM orders
+          WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+            AND status = ANY($1::text[])`,
+        [PAID_STATUSES],
+      ),
+      pool.query(
+        `SELECT COUNT(*)::int AS count
+           FROM (
+             SELECT user_id, MIN(created_at) AS first_order_at
+               FROM orders
+              GROUP BY user_id
+           ) f
+          WHERE first_order_at >= CURRENT_DATE`,
+      ),
+      pool.query(
+        `SELECT COUNT(*)::int AS count
+           FROM orders WHERE status = ANY($1::text[])`,
+        [ACTIVE_STATUSES],
+      ),
+      pool.query(
+        `SELECT COUNT(*)::int AS count
+           FROM product_variants
+          WHERE is_active = true AND stock_qty <= 5`,
+      ),
+      pool.query(
+        `SELECT COALESCE(SUM(booked_count), 0)::int AS booked,
+                COALESCE(SUM(max_orders),  0)::int AS capacity
+           FROM delivery_slots
+          WHERE date = CURRENT_DATE AND is_active = true`,
+      ),
+      pool.query(
+        `WITH days AS (
+           SELECT generate_series(
+             CURRENT_DATE - INTERVAL '13 days',
+             CURRENT_DATE,
+             INTERVAL '1 day'
+           )::date AS day
+         )
+         SELECT to_char(d.day, 'YYYY-MM-DD') AS date,
+                COALESCE(SUM(o.total::numeric), 0) AS revenue,
+                COUNT(o.id)::int AS orders
+           FROM days d
+           LEFT JOIN orders o
+             ON o.created_at >= d.day
+            AND o.created_at <  d.day + INTERVAL '1 day'
+            AND o.status = ANY($1::text[])
+          GROUP BY d.day
+          ORDER BY d.day ASC`,
+        [PAID_STATUSES],
+      ),
+      pool.query(
+        `SELECT status, COUNT(*)::int AS count
+           FROM orders
+          WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+          GROUP BY status`,
+      ),
+      pool.query(
+        `SELECT p.id AS product_id,
+                p.name,
+                p.images,
+                SUM(oi.quantity)::int AS units,
+                COALESCE(SUM(oi.line_total::numeric), 0) AS revenue
+           FROM order_items oi
+           JOIN orders o ON o.id = oi.order_id
+           JOIN product_variants v ON v.id = oi.variant_id
+           JOIN products p ON p.id = v.product_id
+          WHERE o.created_at >= CURRENT_DATE - INTERVAL '30 days'
+            AND o.status = ANY($1::text[])
+          GROUP BY p.id, p.name, p.images
+          ORDER BY revenue DESC
+          LIMIT 5`,
+        [PAID_STATUSES],
+      ),
     ]);
 
     return {
@@ -38,7 +156,62 @@ export const adminRepository = {
       pending_orders: parseInt(pendingOrdersRes.rows[0].count, 10),
       open_tickets: parseInt(openTicketsRes.rows[0].count, 10),
       unread_tickets: parseInt(unreadTicketsRes.rows[0].count, 10),
+      revenue_today: parseFloat(revenueTodayRes.rows[0].revenue),
+      revenue_yesterday: parseFloat(revenueYesterdayRes.rows[0].revenue),
+      aov_today:
+        revenueTodayRes.rows[0].count > 0
+          ? parseFloat(revenueTodayRes.rows[0].revenue) /
+            revenueTodayRes.rows[0].count
+          : 0,
+      aov_7d_avg: parseFloat(aov7dRes.rows[0].aov),
+      new_customers_today: ordersTodayRes.rows[0].count
+        ? newCustomersTodayRes.rows[0].count
+        : 0,
+      orders_yesterday: ordersYesterdayRes.rows[0].count,
+      orders_same_weekday_last_week: ordersSameWeekdayLastWeekRes.rows[0].count,
+      active_orders: activeOrdersRes.rows[0].count,
+      low_stock_variants: lowStockRes.rows[0].count,
+      todays_slots: {
+        booked: todaysSlotsRes.rows[0].booked,
+        capacity: todaysSlotsRes.rows[0].capacity,
+      },
+      revenue_series_14d: revenueSeriesRes.rows.map((r: any) => ({
+        date: r.date,
+        revenue: parseFloat(r.revenue),
+        orders: r.orders,
+      })),
+      orders_by_status_7d: ordersByStatusRes.rows.map((r: any) => ({
+        status: r.status,
+        count: r.count,
+      })),
+      top_products_30d: topProductsRes.rows.map((r: any) => ({
+        product_id: r.product_id,
+        name: r.name,
+        images: r.images,
+        units: r.units,
+        revenue: parseFloat(r.revenue),
+      })),
     };
+  },
+
+  async findActiveOrders() {
+    const ACTIVE_STATUSES = ["pending", "confirmed", "preparing", "shipped"];
+    const { rows } = await pool.query(
+      `SELECT o.id, o.order_number, o.status, o.payment_method, o.payment_status,
+              o.total, o.subtotal, o.delivery_fee, o.discount_amount,
+              o.delivery_notes, o.created_at, o.updated_at,
+              u.first_name, u.last_name, u.email, u.phone,
+              ds.date AS slot_date, ds.start_time AS slot_start, ds.end_time AS slot_end,
+              (SELECT COUNT(*)::int FROM order_items oi WHERE oi.order_id = o.id) AS items_count
+         FROM orders o
+         LEFT JOIN users u ON u.id = o.user_id
+         LEFT JOIN delivery_slots ds ON ds.id = o.delivery_slot_id
+        WHERE o.status = ANY($1::text[])
+        ORDER BY o.created_at DESC
+        LIMIT 200`,
+      [ACTIVE_STATUSES],
+    );
+    return rows;
   },
 
   // ─── Products CRUD ──────────────────────────────────

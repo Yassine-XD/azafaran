@@ -5,6 +5,7 @@ import { productRepository } from "../repositories/product.repository";
 import { notificationService } from "./notification.service";
 import { emailService } from "./email.service";
 import { logger } from "../utils/logger";
+import { sseClients } from "../utils/sseClients";
 import {
   AdminSendNotificationInput,
   ALLOWED_NOTIFICATION_SCREENS,
@@ -264,6 +265,17 @@ export const adminService = {
     };
   },
 
+  async getActiveOrders() {
+    const rows = await adminRepository.findActiveOrders();
+    return rows.map((o: any) => ({
+      ...o,
+      subtotal: parseFloat(o.subtotal),
+      delivery_fee: parseFloat(o.delivery_fee),
+      discount_amount: parseFloat(o.discount_amount),
+      total: parseFloat(o.total),
+    }));
+  },
+
   async getOrderDetail(orderId: string) {
     const order = await adminRepository.findOrderById(orderId);
     if (!order) throw appError("Pedido no encontrado", 404, "ORDER_NOT_FOUND");
@@ -301,6 +313,12 @@ export const adminService = {
       before: { status: order.status },
       after: { status },
       ...ctx,
+    });
+
+    sseClients.emit("order_status_changed", {
+      id: orderId,
+      status,
+      at: new Date().toISOString(),
     });
 
     // Send push notification for status change

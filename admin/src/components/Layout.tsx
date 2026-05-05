@@ -2,13 +2,15 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
   LayoutDashboard, Package, Grid, ShoppingCart, Users, Tag, Image, Ticket,
-  Clock, Bell, Star, FileText, LogOut, Menu, X, ShoppingBag, LifeBuoy,
+  Bell, Star, FileText, LogOut, Menu, X, ShoppingBag, LifeBuoy, Radio,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { api, BASE, getTokens } from "../lib/api";
+import { useEffect, useState } from "react";
+import { api } from "../lib/api";
+import { useSse, useSseEvent } from "../contexts/SseContext";
 
 const NAV = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/orders/live", icon: Radio, label: "En vivo" },
   { to: "/products", icon: Package, label: "Productos" },
   { to: "/categories", icon: Grid, label: "Categorías" },
   { to: "/orders", icon: ShoppingCart, label: "Pedidos" },
@@ -28,12 +30,18 @@ type Toast =
 
 let toastSeq = 0;
 
+const STATUS_LABEL: Record<string, string> = {
+  connecting: "Conectando…",
+  live: "En vivo",
+  reconnecting: "Reconectando…",
+};
+
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { status } = useSse();
   const [open, setOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [unreadTickets, setUnreadTickets] = useState(0);
-  const activeRef = useRef(true);
 
   const addOrderToast = (total: string, payment: string) => {
     const id = ++toastSeq;
@@ -64,95 +72,22 @@ export default function Layout() {
     };
   }, []);
 
-  useEffect(() => {
-    activeRef.current = true;
+  useSseEvent("new_order", (data) => {
+    addOrderToast(data.total, data.payment_method ?? "");
+  });
 
-    const connect = async () => {
-      const tokens = getTokens();
-      if (!tokens?.accessToken) return;
+  useSseEvent("new_ticket", (data) => {
+    addTicketToast(data.subject || "Nuevo ticket", data.ticket_number || "");
+    setUnreadTickets((n) => n + 1);
+  });
 
-      let controller = new AbortController();
-
-      const run = async () => {
-        try {
-          const res = await fetch(`${BASE}/admin/events`, {
-            headers: { Authorization: `Bearer ${tokens.accessToken}` },
-            signal: controller.signal,
-          });
-
-          if (!res.ok || !res.body) return;
-
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = "";
-
-          while (activeRef.current) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const chunks = buffer.split("\n\n");
-            buffer = chunks.pop() ?? "";
-
-            for (const chunk of chunks) {
-              const lines = chunk.split("\n");
-              const eventLine = lines.find((l) => l.startsWith("event:"));
-              const dataLine = lines.find((l) => l.startsWith("data:"));
-              if (eventLine?.includes("new_order") && dataLine) {
-                try {
-                  const data = JSON.parse(dataLine.slice(5).trim());
-                  addOrderToast(data.total, data.payment_method ?? "");
-                } catch {
-                  // malformed data — ignore
-                }
-              } else if (
-                eventLine &&
-                (eventLine.includes("new_ticket_message") ||
-                  eventLine.includes("new_ticket")) &&
-                dataLine
-              ) {
-                try {
-                  const data = JSON.parse(dataLine.slice(5).trim());
-                  addTicketToast(
-                    data.subject || "Mensaje de soporte",
-                    data.ticket_number || "",
-                  );
-                  setUnreadTickets((n) => n + 1);
-                } catch {
-                  // ignore
-                }
-              }
-            }
-          }
-        } catch {
-          // aborted or network error
-        }
-
-        // Reconnect after 5 s if still active
-        if (activeRef.current) {
-          setTimeout(() => {
-            controller = new AbortController();
-            run();
-          }, 5000);
-        }
-      };
-
-      run();
-
-      return () => {
-        activeRef.current = false;
-        controller.abort();
-      };
-    };
-
-    let cleanup: (() => void) | undefined;
-    connect().then((fn) => { cleanup = fn; });
-
-    return () => {
-      activeRef.current = false;
-      cleanup?.();
-    };
-  }, []);
+  useSseEvent("new_ticket_message", (data) => {
+    addTicketToast(
+      data.subject || "Mensaje de soporte",
+      data.ticket_number || "",
+    );
+    setUnreadTickets((n) => n + 1);
+  });
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -201,7 +136,30 @@ export default function Layout() {
             {open ? <X size={24} /> : <Menu size={24} />}
           </button>
           <div className="flex-1" />
-          <span className="text-sm text-gray-500">{user?.first_name} {user?.last_name}</span>
+          <div className="flex items-center gap-3">
+            <span
+              className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${
+                status === "live"
+                  ? "bg-green-50 text-green-700"
+                  : status === "connecting"
+                  ? "bg-yellow-50 text-yellow-700"
+                  : "bg-red-50 text-red-700"
+              }`}
+              title="Estado de conexión en tiempo real"
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  status === "live"
+                    ? "bg-green-500 animate-pulse"
+                    : status === "connecting"
+                    ? "bg-yellow-500"
+                    : "bg-red-500"
+                }`}
+              />
+              {STATUS_LABEL[status]}
+            </span>
+            <span className="text-sm text-gray-500">{user?.first_name} {user?.last_name}</span>
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">
           <Outlet />

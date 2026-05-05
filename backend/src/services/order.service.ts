@@ -167,10 +167,17 @@ export const orderService = {
     }
 
     // 11. Notify admin dashboard in real-time
+    const buyer = await userRepository.findById(userId).catch(() => null);
     sseClients.emit("new_order", {
       id: order.id,
+      order_number: order.order_number,
+      status: order.status,
       total: total.toFixed(2),
       payment_method: input.payment_method,
+      payment_status: order.payment_status,
+      first_name: buyer?.first_name ?? null,
+      last_name: buyer?.last_name ?? null,
+      items_count: orderItems.length,
       at: new Date().toISOString(),
     });
 

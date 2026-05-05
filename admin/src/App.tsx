@@ -1,11 +1,13 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
+import { SseProvider } from "./contexts/SseContext";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProductsPage from "./pages/ProductsPage";
 import CategoriesPage from "./pages/CategoriesPage";
 import OrdersPage from "./pages/OrdersPage";
+import LiveOrdersPage from "./pages/LiveOrdersPage";
 import UsersPage from "./pages/UsersPage";
 import UserDetailPage from "./pages/UserDetailPage";
 import PromotionsPage from "./pages/PromotionsPage";
@@ -23,7 +25,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin text-orange-500" size={40} /></div>;
   if (!user) return <Navigate to="/login" replace />;
-  return <>{children}</>;
+  return <SseProvider>{children}</SseProvider>;
 }
 
 export default function App() {
@@ -36,6 +38,7 @@ export default function App() {
         <Route path="products" element={<ProductsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="orders" element={<OrdersPage />} />
+        <Route path="orders/live" element={<LiveOrdersPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="users/:id" element={<UserDetailPage />} />
         <Route path="promotions" element={<PromotionsPage />} />

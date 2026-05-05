@@ -146,6 +146,11 @@ export const adminController = {
     return success(res, order);
   }),
 
+  getActiveOrders: asyncHandler(async (_req: Request, res: Response) => {
+    const orders = await adminService.getActiveOrders();
+    return success(res, orders);
+  }),
+
   updateOrderStatus: asyncHandler(async (req: Request, res: Response) => {
     const { status } = req.body;
     const order = await adminService.updateOrderStatus(
